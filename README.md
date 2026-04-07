@@ -1,16 +1,36 @@
-# Stayse Landing Example
+# VostokStroyExpress
 
-Files:
+Структура репозитория:
 
-- `src/components/StayseLanding.tsx` - React component with regular CSS.
-- `src/components/stayse-landing.css` - typography, layout and responsive styles.
-- `src/components/StayseLandingTailwind.tsx` - Tailwind version of the same page.
-- `src/pages/index.astro` - Astro usage example.
+- `frontend/` - Astro + React + Tailwind frontend.
+- `backend/` - место под backend, сейчас пусто.
 
-Expected asset folders:
+## Запуск frontend
 
-- `public/assets/stayse/hero`
-- `public/assets/stayse/logos`
-- `public/assets/stayse/services`
-- `public/assets/stayse/blog`
-- `public/assets/stayse/reviews`
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Локальный адрес: `http://localhost:4321/`.
+
+## Основные страницы
+
+- `/` - главная.
+- `/catalog` - каталог.
+- `/catalog/[slug]` - карточка товара.
+- `/cart` - корзина.
+- `/checkout` - оформление заказа.
+- `/login` - вход.
+- `/register` - регистрация.
+- `/code` - ввод кода.
+- `/account` - личный кабинет.
+- `/admin` - админка.
+- `/admin/requests` - заявки.
+- `/admin/orders` - заказы.
+- `/admin/clients` - клиенты.
+- `/admin/news` - новости.
+- `/admin/catalog` - каталог в админке.
+- `/admin/projects` - проекты.
+- `/admin/settings` - настройки.

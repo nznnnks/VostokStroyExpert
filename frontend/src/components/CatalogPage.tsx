@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { formatPrice, products } from "../data/products";
 
 const categories = [
@@ -20,21 +21,17 @@ export function CatalogPage() {
   const maxPower = Math.max(...products.map((product) => product.power));
   const minVolume = Math.min(...products.map((product) => product.volume));
   const maxVolume = Math.max(...products.map((product) => product.volume));
-  const priceSteps = [25, 50, 75, 100];
   const itemsPerPage = 3;
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number][0]>("Системы климат-контроля");
-  const [pricePercent, setPricePercent] = useState(100);
-  const [powerPercent, setPowerPercent] = useState(100);
-  const [volumePercent, setVolumePercent] = useState(100);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxProductPrice]);
+  const [powerRange, setPowerRange] = useState<[number, number]>([minPower, maxPower]);
+  const [volumeRange, setVolumeRange] = useState<[number, number]>([minVolume, maxVolume]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-
-  const selectedMaxPrice = Math.round((maxProductPrice * pricePercent) / 100);
-  const selectedMaxPower = Number((minPower + ((maxPower - minPower) * powerPercent) / 100).toFixed(1));
-  const selectedMaxVolume = Number((minVolume + ((maxVolume - minVolume) * volumePercent) / 100).toFixed(1));
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -44,16 +41,16 @@ export function CatalogPage() {
         product.title.toLowerCase().includes(normalizedQuery) ||
         product.brand.toLowerCase().includes(normalizedQuery);
       const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-      const matchesPrice = product.price <= selectedMaxPrice;
-      const matchesPower = product.power <= selectedMaxPower;
-      const matchesVolume = product.volume <= selectedMaxVolume;
+      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+      const matchesPower = product.power >= powerRange[0] && product.power <= powerRange[1];
+      const matchesVolume = product.volume >= volumeRange[0] && product.volume <= volumeRange[1];
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(product.country);
       const matchesType = selectedTypes.length === 0 || selectedTypes.includes(product.type);
 
       return matchesQuery && matchesCategory && matchesPrice && matchesPower && matchesVolume && matchesBrand && matchesCountry && matchesType;
     });
-  }, [query, selectedCategory, selectedMaxPrice, selectedMaxPower, selectedMaxVolume, selectedBrands, selectedCountries, selectedTypes]);
+  }, [query, selectedCategory, priceRange, powerRange, volumeRange, selectedBrands, selectedCountries, selectedTypes]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
   const safePage = Math.min(page, totalPages);
@@ -75,6 +72,138 @@ export function CatalogPage() {
   }
 
   const visiblePercent = Math.round((filteredProducts.length / products.length) * 100);
+  const resultsAnimationKey = [
+    query,
+    selectedCategory,
+    priceRange.join("-"),
+    powerRange.join("-"),
+    volumeRange.join("-"),
+    selectedBrands.join("-"),
+    selectedCountries.join("-"),
+    selectedTypes.join("-"),
+    safePage,
+  ].join("|");
+
+  function renderFilters(idPrefix: string) {
+    return (
+      <div className="space-y-8">
+        <section>
+          <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Категории</h2>
+          <div className="mt-3 border-t border-[#e7e1d9] pt-5">
+            <div className="space-y-5 text-[18px] text-[#6f6f69]">
+              {categories.map(([value, label, count]) => {
+                const active = selectedCategory === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(value);
+                      setPage(1);
+                    }}
+                    className={`catalog-filter-row flex w-full items-center justify-between border-l-2 pl-4 text-left transition-all duration-300 ${
+                      active ? "border-[#d3b46a] text-[#111]" : "border-transparent text-[#8a8a85] hover:border-[#e4cf98] hover:text-[#3d3d39]"
+                    }`}
+                  >
+                    <span>{label}</span>
+                    <span className="text-[14px]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between gap-4 text-[16px] uppercase tracking-[1.4px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            <span>Цена</span>
+            <span className="flex items-center gap-3 text-right text-[#8a8a85]">
+              Отображено {visiblePercent}% товаров
+              <img src="/каталог/грустыный смайлик.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+            </span>
+          </div>
+          <div className="mt-4 border-t border-[#e7e1d9] pt-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">От</p>
+                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761]">{formatPrice(priceRange[0])}</div>
+              </div>
+              <div>
+                <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">До</p>
+                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761]">{formatPrice(priceRange[1])}</div>
+              </div>
+            </div>
+            <DoubleRange
+              min={0}
+              max={maxProductPrice}
+              step={1000}
+              value={priceRange}
+              ariaLabelMin="Минимальная цена"
+              ariaLabelMax="Максимальная цена"
+              formatValue={formatPrice}
+              onChange={(value) => {
+                setPriceRange(value);
+                setPage(1);
+              }}
+            />
+          </div>
+        </section>
+
+        {filterGroups.map(([title, items]) => (
+          <section key={title as string}>
+            <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
+            <div className="mt-3 space-y-5 border-t border-[#e7e1d9] pt-5">
+              {(items as string[]).map((item, index) => {
+                const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
+                const [selected, setSelected] = getFilterState(String(title));
+
+                return (
+                  <label key={item} htmlFor={id} className="flex items-center gap-4 text-[18px] text-[#6f6f69]">
+                    <input
+                      id={id}
+                      type="checkbox"
+                      checked={selected.includes(item)}
+                      onChange={() => toggleValue(item, selected, setSelected)}
+                      className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                    />
+                    <span>{item}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+        <RangeFilter
+          title="Мощность (кВт)"
+          min={minPower}
+          max={maxPower}
+          step={0.1}
+          value={powerRange}
+          ariaLabelMin="Минимальная мощность"
+          ariaLabelMax="Максимальная мощность"
+          onChange={(value) => {
+            setPowerRange(value);
+            setPage(1);
+          }}
+        />
+
+        <RangeFilter
+          title="Объем (кВт)"
+          min={minVolume}
+          max={maxVolume}
+          step={0.1}
+          value={volumeRange}
+          ariaLabelMin="Минимальный объем"
+          ariaLabelMax="Максимальный объем"
+          onChange={(value) => {
+            setVolumeRange(value);
+            setPage(1);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -115,165 +244,54 @@ export function CatalogPage() {
           </p>
 
           <div className="mt-12 flex flex-col gap-10 xl:flex-row">
-            <aside className="w-full xl:max-w-[360px]">
-              <div className="space-y-8">
-                <section>
-                  <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Категории</h2>
-                  <div className="mt-3 border-t border-[#e7e1d9] pt-5">
-                    <div className="space-y-5 text-[18px] text-[#6f6f69]">
-                      {categories.map(([value, label, count]) => {
-                        const active = selectedCategory === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCategory(value);
-                              setPage(1);
-                            }}
-                            className={`catalog-filter-row flex w-full items-center justify-between border-l-2 pl-4 text-left transition-all duration-300 ${
-                              active ? "border-[#d3b46a] text-[#111]" : "border-transparent text-[#8a8a85] hover:border-[#e4cf98] hover:text-[#3d3d39]"
-                            }`}
-                          >
-                            <span>{label}</span>
-                            <span className="text-[14px]">({count})</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </section>
+            <aside className="hidden w-full xl:block xl:max-w-[360px]">{renderFilters("desktop")}</aside>
 
-                <section>
-                  <div className="flex items-center justify-between text-[16px] uppercase tracking-[1.4px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    <span>Цена</span>
-                    <span className="flex items-center gap-3 text-[#8a8a85]">Отображено {visiblePercent}% товаров <img src="/каталог/грустыный смайлик.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" /></span>
-                  </div>
-                  <div className="mt-4 border-t border-[#e7e1d9] pt-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">От</p>
-                        <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761]">0</div>
-                      </div>
-                      <div>
-                        <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">До</p>
-                        <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761]">{formatPrice(selectedMaxPrice)}</div>
-                      </div>
-                    </div>
-                    <div className="mt-5 flex items-center justify-between text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      {priceSteps.map((step) => (
-                        <span key={step}>{formatPrice(Math.round((maxProductPrice * step) / 100))}</span>
-                      ))}
-                    </div>
-                    <div className="mt-3">
-                      <input
-                        type="range"
-                        min="1"
-                        max="100"
-                        value={pricePercent}
-                        aria-label="Процент цены"
-                        onChange={(event) => {
-                          setPricePercent(Number(event.target.value));
-                          setPage(1);
-                        }}
-                        className="catalog-range w-full accent-[#111]"
-                      />
-                    </div>
-                    <div className="mt-2 text-center text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{pricePercent}%</div>
-                  </div>
-                </section>
-
-                {filterGroups.map(([title, items]) => (
-                  <section key={title as string}>
-                    <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
-                    <div className="mt-3 border-t border-[#e7e1d9] pt-5 space-y-5">
-                      {(items as string[]).map((item, index) => {
-                        const id = `${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
-                        const [selected, setSelected] = getFilterState(String(title));
-
-                        return (
-                          <label key={item} htmlFor={id} className="flex items-center gap-4 text-[18px] text-[#6f6f69]">
-                            <input
-                              id={id}
-                              type="checkbox"
-                            checked={selected.includes(item)}
-                            onChange={() => toggleValue(item, selected, setSelected)}
-                            className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
-                          />
-                          <span>{item}</span>
-                        </label>
-                      );
-                    })}
-                    </div>
-                  </section>
-                ))}
-
-                <section>
-                  <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Мощность (кВт)</h2>
-                  <div className="mt-3 border-t border-[#e7e1d9] pt-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                        мин: {minPower.toFixed(1)}
-                      </div>
-                      <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                        макс: {selectedMaxPower.toFixed(1)}
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={powerPercent}
-                        aria-label="Максимальная мощность"
-                        onChange={(event) => {
-                          setPowerPercent(Number(event.target.value));
-                          setPage(1);
-                        }}
-                        className="catalog-range w-full accent-[#111]"
-                      />
-                    </div>
-                    <div className="mt-2 text-center text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      {powerPercent}%
-                    </div>
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Объем (кВт)</h2>
-                  <div className="mt-3 border-t border-[#e7e1d9] pt-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                        мин: {minVolume.toFixed(1)}
-                      </div>
-                      <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                        макс: {selectedMaxVolume.toFixed(1)}
-                      </div>
-                    </div>
-                    <div className="mt-5">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={volumePercent}
-                        aria-label="Максимальный объем"
-                        onChange={(event) => {
-                          setVolumePercent(Number(event.target.value));
-                          setPage(1);
-                        }}
-                        className="catalog-range w-full accent-[#111]"
-                      />
-                    </div>
-                    <div className="mt-2 text-center text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      {volumePercent}%
-                    </div>
-                  </div>
-                </section>
-              </div>
-            </aside>
+            <div
+              className={`fixed inset-0 z-50 xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+              aria-hidden={!filtersOpen}
+            >
+              <button
+                type="button"
+                aria-label="Закрыть фильтры"
+                onClick={() => setFiltersOpen(false)}
+                className={`absolute inset-0 bg-black/35 transition-opacity duration-300 ${filtersOpen ? "opacity-100" : "opacity-0"}`}
+              />
+              <aside
+                className={`absolute left-0 top-0 h-full w-[min(88vw,420px)] overflow-y-auto bg-white px-5 py-6 shadow-2xl transition-transform duration-300 ease-out ${
+                  filtersOpen ? "translate-x-0" : "-translate-x-full"
+                }`}
+              >
+                <div className="mb-8 flex items-center justify-between border-b border-[#e7e1d9] pb-4">
+                  <p className="text-[22px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Фильтры</p>
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen(false)}
+                    className="text-[32px] leading-none text-[#111]"
+                    aria-label="Закрыть фильтры"
+                  >
+                    ×
+                  </button>
+                </div>
+                {renderFilters("mobile")}
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="mt-10 h-14 w-full bg-[#111] text-[16px] uppercase tracking-[2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                >
+                  Показать товары
+                </button>
+              </aside>
+            </div>
 
             <div className="flex-1">
               <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(true)}
+                  className="flex h-16 items-center justify-center border border-[#e7e1d9] px-5 text-[16px] uppercase tracking-[1.6px] transition-colors hover:border-[#d3b46a] xl:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                >
+                  фильтры
+                </button>
                 <div className="flex h-16 w-16 items-center justify-center border border-[#e7e1d9]">
                   <img src="/каталог/списочек.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
                 </div>
@@ -292,9 +310,9 @@ export function CatalogPage() {
                 </div>
               </div>
 
-              <div className="mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-                {pageProducts.map((product) => (
-                  <article key={product.slug} className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)]">
+              <div key={resultsAnimationKey} className="catalog-results mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                {pageProducts.map((product, index) => (
+                  <article key={product.slug} style={{ animationDelay: `${index * 60}ms` }} className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)]">
                     <a href={`/catalog/${product.slug}`}>
                       <img
                         src={product.image}
@@ -424,6 +442,86 @@ export function CatalogPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+type DoubleRangeProps = {
+  min: number;
+  max: number;
+  step: number;
+  value: [number, number];
+  ariaLabelMin: string;
+  ariaLabelMax: string;
+  formatValue: (value: number) => string;
+  onChange: (value: [number, number]) => void;
+};
+
+function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange }: DoubleRangeProps) {
+  const [from, to] = value;
+  const minPercent = ((from - min) / (max - min)) * 100;
+  const maxPercent = ((to - min) / (max - min)) * 100;
+
+  function updateMin(next: number) {
+    onChange([Math.min(next, to - step), to]);
+  }
+
+  function updateMax(next: number) {
+    onChange([from, Math.max(next, from + step)]);
+  }
+
+  return (
+    <div className="catalog-double-range mt-5" style={{ "--range-start": `${minPercent}%`, "--range-end": `${maxPercent}%` } as CSSProperties}>
+      <div className="mb-3 flex items-center justify-between text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+        <span>{formatValue(from)}</span>
+        <span>{formatValue(to)}</span>
+      </div>
+      <div className="catalog-double-range__control">
+        <input type="range" min={min} max={max} step={step} value={from} aria-label={ariaLabelMin} onChange={(event) => updateMin(Number(event.target.value))} />
+        <input type="range" min={min} max={max} step={step} value={to} aria-label={ariaLabelMax} onChange={(event) => updateMax(Number(event.target.value))} />
+      </div>
+      <div className="mt-3 text-center text-[14px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+        {Math.round(maxPercent - minPercent)}%
+      </div>
+    </div>
+  );
+}
+
+type RangeFilterProps = {
+  title: string;
+  min: number;
+  max: number;
+  step: number;
+  value: [number, number];
+  ariaLabelMin: string;
+  ariaLabelMax: string;
+  onChange: (value: [number, number]) => void;
+};
+
+function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax, onChange }: RangeFilterProps) {
+  return (
+    <section>
+      <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
+      <div className="mt-3 border-t border-[#e7e1d9] pt-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            мин: {value[0].toFixed(1)}
+          </div>
+          <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            макс: {value[1].toFixed(1)}
+          </div>
+        </div>
+        <DoubleRange
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          ariaLabelMin={ariaLabelMin}
+          ariaLabelMax={ariaLabelMax}
+          formatValue={(rangeValue) => rangeValue.toFixed(1)}
+          onChange={onChange}
+        />
+      </div>
+    </section>
   );
 }
 
