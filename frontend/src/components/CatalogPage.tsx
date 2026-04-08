@@ -1,29 +1,40 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { formatPrice, products } from "../data/products";
 
-const categories = [
-  ["all", "Прецизионное охлаждение", 112],
-  ["Системы климат-контроля", "Модульные системы", 84],
-  ["ventilation", "Вентиляция", 96],
-  ["geothermal", "Геотермальные массивы", 55],
-] as const;
+import { formatPrice, type Product } from "../data/products";
 
-const filterGroups = [
-  ["Бренд", ["Aeris Pro", "Nordic Heavy", "Zenith Industrial"]],
-  ["Страна производства", ["Германия", "Швейцария", "Япония"]],
-  ["Тип", ["Устройства климат контроля", "Котлы", "Другое"]],
-];
+type CatalogPageProps = {
+  products: Product[];
+};
 
-export function CatalogPage() {
-  const maxProductPrice = Math.max(...products.map((product) => product.price));
-  const minPower = Math.min(...products.map((product) => product.power));
-  const maxPower = Math.max(...products.map((product) => product.power));
-  const minVolume = Math.min(...products.map((product) => product.volume));
-  const maxVolume = Math.max(...products.map((product) => product.volume));
-  const itemsPerPage = 3;
+export function CatalogPage({ products }: CatalogPageProps) {
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const product of products) {
+      counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+    }
+
+    const categoryItems = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ru"))
+      .map(([value, count]) => ({ value, label: value, count }));
+
+    return [{ value: "all", label: "Все категории", count: products.length }, ...categoryItems];
+  }, [products]);
+
+  const brands = useMemo(() => uniqueValues(products.map((product) => product.brand)), [products]);
+  const countries = useMemo(() => uniqueValues(products.map((product) => product.country)), [products]);
+  const types = useMemo(() => uniqueValues(products.map((product) => product.type)), [products]);
+
+  const maxProductPrice = getSafeMax(products.map((product) => product.price), 100000);
+  const minPower = getSafeMin(products.map((product) => product.power), 0);
+  const maxPower = getSafeMax(products.map((product) => product.power), 20);
+  const minVolume = getSafeMin(products.map((product) => product.volume), 0);
+  const maxVolume = getSafeMax(products.map((product) => product.volume), 20);
+  const itemsPerPage = 6;
+
   const [query, setQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number][0]>("Системы климат-контроля");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxProductPrice]);
   const [powerRange, setPowerRange] = useState<[number, number]>([minPower, maxPower]);
   const [volumeRange, setVolumeRange] = useState<[number, number]>([minVolume, maxVolume]);
@@ -39,7 +50,8 @@ export function CatalogPage() {
       const matchesQuery =
         normalizedQuery.length === 0 ||
         product.title.toLowerCase().includes(normalizedQuery) ||
-        product.brand.toLowerCase().includes(normalizedQuery);
+        product.brand.toLowerCase().includes(normalizedQuery) ||
+        product.article.toLowerCase().includes(normalizedQuery);
       const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
       const matchesPower = product.power >= powerRange[0] && product.power <= powerRange[1];
@@ -48,13 +60,34 @@ export function CatalogPage() {
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(product.country);
       const matchesType = selectedTypes.length === 0 || selectedTypes.includes(product.type);
 
-      return matchesQuery && matchesCategory && matchesPrice && matchesPower && matchesVolume && matchesBrand && matchesCountry && matchesType;
+      return (
+        matchesQuery &&
+        matchesCategory &&
+        matchesPrice &&
+        matchesPower &&
+        matchesVolume &&
+        matchesBrand &&
+        matchesCountry &&
+        matchesType
+      );
     });
-  }, [query, selectedCategory, priceRange, powerRange, volumeRange, selectedBrands, selectedCountries, selectedTypes]);
+  }, [products, query, selectedCategory, priceRange, powerRange, volumeRange, selectedBrands, selectedCountries, selectedTypes]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
   const safePage = Math.min(page, totalPages);
   const pageProducts = filteredProducts.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
+  const visiblePercent = products.length === 0 ? 0 : Math.round((filteredProducts.length / products.length) * 100);
+  const resultsAnimationKey = [
+    query,
+    selectedCategory,
+    priceRange.join("-"),
+    powerRange.join("-"),
+    volumeRange.join("-"),
+    selectedBrands.join("-"),
+    selectedCountries.join("-"),
+    selectedTypes.join("-"),
+    safePage,
+  ].join("|");
 
   function toggleValue(value: string, selected: string[], setter: (values: string[]) => void) {
     setter(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
@@ -71,19 +104,6 @@ export function CatalogPage() {
     return [selectedTypes, setSelectedTypes] as const;
   }
 
-  const visiblePercent = Math.round((filteredProducts.length / products.length) * 100);
-  const resultsAnimationKey = [
-    query,
-    selectedCategory,
-    priceRange.join("-"),
-    powerRange.join("-"),
-    volumeRange.join("-"),
-    selectedBrands.join("-"),
-    selectedCountries.join("-"),
-    selectedTypes.join("-"),
-    safePage,
-  ].join("|");
-
   function renderFilters(idPrefix: string) {
     return (
       <div className="space-y-8">
@@ -91,22 +111,22 @@ export function CatalogPage() {
           <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Категории</h2>
           <div className="mt-3 border-t border-[#e7e1d9] pt-5">
             <div className="space-y-5 text-[18px] text-[#6f6f69]">
-              {categories.map(([value, label, count]) => {
-                const active = selectedCategory === value;
+              {categories.map((category) => {
+                const active = selectedCategory === category.value;
                 return (
                   <button
-                    key={value}
+                    key={category.value}
                     type="button"
                     onClick={() => {
-                      setSelectedCategory(value);
+                      setSelectedCategory(category.value);
                       setPage(1);
                     }}
                     className={`catalog-filter-row flex w-full items-center justify-between border-l-2 pl-4 text-left transition-all duration-300 ${
                       active ? "border-[#d3b46a] text-[#111]" : "border-transparent text-[#8a8a85] hover:border-[#e4cf98] hover:text-[#3d3d39]"
                     }`}
                   >
-                    <span>{label}</span>
-                    <span className="text-[14px]">({count})</span>
+                    <span>{category.label}</span>
+                    <span className="text-[14px]">({category.count})</span>
                   </button>
                 );
               })}
@@ -119,7 +139,7 @@ export function CatalogPage() {
             <span>Цена</span>
             <span className="flex items-center gap-3 text-right text-[#8a8a85]">
               Отображено {visiblePercent}% товаров
-              <img src="/каталог/грустыный смайлик.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+              <img src="/РєР°С‚Р°Р»РѕРі/РіСЂСѓСЃС‚С‹РЅС‹РёМ† СЃРјР°РёМ†Р»РёРє.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-4 border-t border-[#e7e1d9] pt-5">
@@ -149,11 +169,11 @@ export function CatalogPage() {
           </div>
         </section>
 
-        {filterGroups.map(([title, items]) => (
-          <section key={title as string}>
+        {[["Бренд", brands], ["Страна производства", countries], ["Тип", types]].map(([title, items]) => (
+          <section key={title}>
             <h2 className="text-[20px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
             <div className="mt-3 space-y-5 border-t border-[#e7e1d9] pt-5">
-              {(items as string[]).map((item, index) => {
+              {items.map((item, index) => {
                 const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                 const [selected, setSelected] = getFilterState(String(title));
 
@@ -189,7 +209,7 @@ export function CatalogPage() {
         />
 
         <RangeFilter
-          title="Объем (кВт)"
+          title="Объем"
           min={minVolume}
           max={maxVolume}
           step={0.1}
@@ -221,7 +241,7 @@ export function CatalogPage() {
             <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/Р»СѓРїР°.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <a href="/login" className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
               войти
@@ -233,11 +253,11 @@ export function CatalogPage() {
       <section className="px-4 py-10 md:px-10 md:py-14">
         <div className="mx-auto max-w-[1480px]">
           <div className="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            каталог / системы климат-контроля
+            каталог / оборудование и климатические системы
           </div>
 
           <h1 className="mt-10 text-[54px] leading-[0.95] tracking-[-0.04em] md:text-[92px] [font-family:'Cormorant_Garamond',serif]">
-            Системы климат-контроля
+            Каталог оборудования
           </h1>
           <p className="mt-8 text-[20px] uppercase tracking-[1.6px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             Найдено: {filteredProducts.length} товаров
@@ -246,10 +266,7 @@ export function CatalogPage() {
           <div className="mt-12 flex flex-col gap-10 xl:flex-row">
             <aside className="hidden w-full xl:block xl:max-w-[360px]">{renderFilters("desktop")}</aside>
 
-            <div
-              className={`fixed inset-0 z-50 xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`}
-              aria-hidden={!filtersOpen}
-            >
+            <div className={`fixed inset-0 z-50 xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!filtersOpen}>
               <button
                 type="button"
                 aria-label="Закрыть фильтры"
@@ -263,13 +280,8 @@ export function CatalogPage() {
               >
                 <div className="mb-8 flex items-center justify-between border-b border-[#e7e1d9] pb-4">
                   <p className="text-[22px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">Фильтры</p>
-                  <button
-                    type="button"
-                    onClick={() => setFiltersOpen(false)}
-                    className="text-[32px] leading-none text-[#111]"
-                    aria-label="Закрыть фильтры"
-                  >
-                    ×
+                  <button type="button" onClick={() => setFiltersOpen(false)} className="text-[32px] leading-none text-[#111]" aria-label="Закрыть фильтры">
+                    x
                   </button>
                 </div>
                 {renderFilters("mobile")}
@@ -293,7 +305,7 @@ export function CatalogPage() {
                   фильтры
                 </button>
                 <div className="flex h-16 w-16 items-center justify-center border border-[#e7e1d9]">
-                  <img src="/каталог/списочек.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
+                  <img src="/РєР°С‚Р°Р»РѕРі/СЃРїРёСЃРѕС‡РµРє.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
                 </div>
                 <div className="flex h-16 flex-1 items-center justify-between border border-[#e7e1d9] px-5">
                   <input
@@ -306,13 +318,17 @@ export function CatalogPage() {
                     placeholder="Поиск по каталогу"
                     className="w-full border-0 bg-transparent text-[26px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none [font-family:DM_Sans,Manrope,sans-serif]"
                   />
-                  <img src="/каталог/стрелка в поиске.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain" />
+                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІ РїРѕРёСЃРєРµ.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain" />
                 </div>
               </div>
 
               <div key={resultsAnimationKey} className="catalog-results mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
                 {pageProducts.map((product, index) => (
-                  <article key={product.slug} style={{ animationDelay: `${index * 60}ms` }} className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)]">
+                  <article
+                    key={product.slug}
+                    style={{ animationDelay: `${index * 60}ms` }}
+                    className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+                  >
                     <a href={`/catalog/${product.slug}`}>
                       <img
                         src={product.image}
@@ -335,10 +351,16 @@ export function CatalogPage() {
                       </div>
                       <p className="mt-8 text-[48px] leading-none [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(product.price)}</p>
                       <div className="mt-8 grid gap-3">
-                        <a href={`/cart?add=${product.slug}`} className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        <a
+                          href={`/cart?add=${product.slug}`}
+                          className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        >
                           в корзину
                         </a>
-                        <a href={`/catalog/${product.slug}`} className="inline-flex h-16 items-center justify-center border border-[#111] text-[18px] uppercase tracking-[2px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        <a
+                          href={`/catalog/${product.slug}`}
+                          className="inline-flex h-16 items-center justify-center border border-[#111] text-[18px] uppercase tracking-[2px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        >
                           характеристики
                         </a>
                       </div>
@@ -360,7 +382,7 @@ export function CatalogPage() {
                   disabled={safePage === 1}
                   className="flex items-center gap-4 text-[#555] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <img src="/каталог/стрелка влево.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
+                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІР»РµРІРѕ.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
                   <span>назад</span>
                 </button>
                 <div className="flex items-center gap-8 text-[#8a8a85]">
@@ -382,7 +404,7 @@ export function CatalogPage() {
                   className="flex items-center gap-4 text-[#111] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span>далее</span>
-                  <img src="/каталог/стрелка вправо.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
+                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІРїСЂР°РІРѕ.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -405,23 +427,23 @@ export function CatalogPage() {
                 <p>Главная</p>
                 <p>О нас</p>
                 <p>Услуги</p>
-                <p>Услуги</p>
+                <p>Каталог</p>
               </div>
             </div>
             <div className="pt-10 md:pt-[36px]">
               <div className="space-y-5 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                <p>Главная</p>
-                <p>О нас</p>
-                <p>Услуги</p>
-                <p>Услуги</p>
+                <p>Проекты</p>
+                <p>Блог</p>
+                <p>Корзина</p>
+                <p>Оформление</p>
               </div>
             </div>
             <div className="pt-10 md:pt-[36px]">
               <div className="space-y-5 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                <p>Главная</p>
-                <p>О нас</p>
-                <p>Услуги</p>
-                <p>Услуги</p>
+                <p>Вход</p>
+                <p>Регистрация</p>
+                <p>Личный кабинет</p>
+                <p>Админка</p>
               </div>
             </div>
           </div>
@@ -458,8 +480,9 @@ type DoubleRangeProps = {
 
 function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange }: DoubleRangeProps) {
   const [from, to] = value;
-  const minPercent = ((from - min) / (max - min)) * 100;
-  const maxPercent = ((to - min) / (max - min)) * 100;
+  const distance = max - min || 1;
+  const minPercent = ((from - min) / distance) * 100;
+  const maxPercent = ((to - min) / distance) * 100;
 
   function updateMin(next: number) {
     onChange([Math.min(next, to - step), to]);
@@ -523,6 +546,18 @@ function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax,
       </div>
     </section>
   );
+}
+
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
+}
+
+function getSafeMin(values: number[], fallback: number) {
+  return values.length ? Math.min(...values) : fallback;
+}
+
+function getSafeMax(values: number[], fallback: number) {
+  return values.length ? Math.max(...values) : fallback;
 }
 
 export default CatalogPage;
