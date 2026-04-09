@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,17 +9,20 @@ import { UpdateOrderTemplateDto } from './dto/update-order-template.dto';
 export class OrderTemplatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(query: PaginationQueryDto) {
+  findAll(query: PaginationQueryDto, userId?: string) {
     return this.prisma.orderTemplate.findMany({
-      where: query.search
-        ? {
-            OR: [
-              { title: { contains: query.search, mode: 'insensitive' } },
-              { address: { contains: query.search, mode: 'insensitive' } },
-              { contactName: { contains: query.search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      where: {
+        ...(userId ? { userId } : {}),
+        ...(query.search
+          ? {
+              OR: [
+                { title: { contains: query.search, mode: 'insensitive' } },
+                { address: { contains: query.search, mode: 'insensitive' } },
+                { contactName: { contains: query.search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
       include: {
         user: {
           select: {
@@ -41,7 +44,7 @@ export class OrderTemplatesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string) {
     const template = await this.prisma.orderTemplate.findUnique({
       where: { id },
       include: {
@@ -65,12 +68,19 @@ export class OrderTemplatesService {
       throw new NotFoundException(`Order template ${id} not found.`);
     }
 
+    if (userId && template.userId !== userId) {
+      throw new ForbiddenException(`Order template ${id} does not belong to the current user.`);
+    }
+
     return template;
   }
 
-  create(dto: CreateOrderTemplateDto) {
+  create(dto: CreateOrderTemplateDto, userId?: string) {
     return this.prisma.orderTemplate.create({
-      data: dto,
+      data: {
+        ...dto,
+        userId: userId ?? dto.userId,
+      },
       include: {
         user: {
           select: {
@@ -89,8 +99,8 @@ export class OrderTemplatesService {
     });
   }
 
-  async update(id: string, dto: UpdateOrderTemplateDto) {
-    await this.ensureExists(id);
+  async update(id: string, dto: UpdateOrderTemplateDto, userId?: string) {
+    await this.ensureAccess(id, userId);
     return this.prisma.orderTemplate.update({
       where: { id },
       data: dto,
@@ -104,20 +114,24 @@ export class OrderTemplatesService {
     });
   }
 
-  async remove(id: string) {
-    await this.ensureExists(id);
+  async remove(id: string, userId?: string) {
+    await this.ensureAccess(id, userId);
     await this.prisma.orderTemplate.delete({ where: { id } });
     return { deleted: true, id };
   }
 
-  private async ensureExists(id: string) {
+  private async ensureAccess(id: string, userId?: string) {
     const template = await this.prisma.orderTemplate.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
 
     if (!template) {
       throw new NotFoundException(`Order template ${id} not found.`);
+    }
+
+    if (userId && template.userId !== userId) {
+      throw new ForbiddenException(`Order template ${id} does not belong to the current user.`);
     }
   }
 }

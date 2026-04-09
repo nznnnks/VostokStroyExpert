@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DiscountType, ItemKind, Prisma } from '@prisma/client';
 
+import {
+  AuthPrincipal,
+  AuthenticatedUser,
+} from '../auth/interfaces/auth-principal.interface';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -26,20 +30,34 @@ const orderInclude = {
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: PaginationQueryDto) {
-    const orders = await this.prisma.order.findMany({
-      where: query.search
-        ? {
-            OR: [
-              { orderNumber: { contains: query.search, mode: 'insensitive' } },
-              {
-                user: {
-                  email: { contains: query.search, mode: 'insensitive' },
+  async findAll(query: PaginationQueryDto, auth: AuthPrincipal) {
+    const filters: Prisma.OrderWhereInput[] = [];
+
+    if (auth.type === 'user') {
+      filters.push({ userId: auth.userId });
+    }
+
+    if (query.search) {
+      filters.push(
+        auth.type === 'admin'
+          ? {
+              OR: [
+                { orderNumber: { contains: query.search, mode: 'insensitive' } },
+                {
+                  user: {
+                    email: { contains: query.search, mode: 'insensitive' },
+                  },
                 },
-              },
-            ],
-          }
-        : undefined,
+              ],
+            }
+          : {
+              orderNumber: { contains: query.search, mode: 'insensitive' },
+            },
+      );
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: filters.length ? { AND: filters } : undefined,
       include: orderInclude,
       orderBy: { createdAt: 'desc' },
       skip: (query.page - 1) * query.limit,
@@ -49,7 +67,7 @@ export class OrdersService {
     return orders.map((order) => this.toOrderResponse(order));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, auth: AuthPrincipal) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: orderInclude,
@@ -59,14 +77,20 @@ export class OrdersService {
       throw new NotFoundException(`Order ${id} not found.`);
     }
 
+    if (auth.type === 'user' && order.userId !== auth.userId) {
+      throw new ForbiddenException(`Order ${id} does not belong to the current user.`);
+    }
+
     return this.toOrderResponse(order);
   }
 
-  async create(dto: CreateOrderDto) {
-    await this.ensureUserExists(dto.userId);
+  async create(dto: CreateOrderDto, user: AuthenticatedUser) {
+    const userId = user.userId;
+
+    await this.ensureUserExists(userId);
 
     if (dto.templateId) {
-      await this.ensureTemplateExists(dto.templateId);
+      await this.ensureTemplateExists(dto.templateId, userId);
     }
 
     const discount = dto.appliedDiscountId
@@ -134,7 +158,7 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         orderNumber: this.generateOrderNumber(),
-        userId: dto.userId,
+        userId,
         templateId: dto.templateId,
         appliedDiscountId: dto.appliedDiscountId,
         deliveryMethod: dto.deliveryMethod,
@@ -208,14 +232,18 @@ export class OrdersService {
     }
   }
 
-  private async ensureTemplateExists(id: string) {
+  private async ensureTemplateExists(id: string, userId?: string) {
     const template = await this.prisma.orderTemplate.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
 
     if (!template) {
       throw new NotFoundException(`Order template ${id} not found.`);
+    }
+
+    if (userId && template.userId !== userId) {
+      throw new ForbiddenException(`Order template ${id} does not belong to the current user.`);
     }
   }
 

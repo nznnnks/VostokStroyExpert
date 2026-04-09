@@ -52,6 +52,7 @@ export class CreateEmbeddedPaymentDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
   @IsUUID()
   userId!: string;
 

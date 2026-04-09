@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { PasswordService } from '../auth/password.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
@@ -7,7 +8,10 @@ import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 
 @Injectable()
 export class AdminUsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly passwordService: PasswordService,
+  ) {}
 
   async findAll(query: PaginationQueryDto) {
     const admins = await this.prisma.adminUser.findMany({
@@ -51,7 +55,12 @@ export class AdminUsersService {
   }
 
   async create(dto: CreateAdminUserDto) {
-    const admin = await this.prisma.adminUser.create({ data: dto });
+    const admin = await this.prisma.adminUser.create({
+      data: {
+        ...dto,
+        passwordHash: await this.passwordService.preparePasswordHash(dto.passwordHash),
+      },
+    });
     return this.toResponse(admin);
   }
 
@@ -59,7 +68,12 @@ export class AdminUsersService {
     await this.ensureExists(id);
     const admin = await this.prisma.adminUser.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        passwordHash: dto.passwordHash
+          ? await this.passwordService.preparePasswordHash(dto.passwordHash)
+          : undefined,
+      },
     });
     return this.toResponse(admin);
   }

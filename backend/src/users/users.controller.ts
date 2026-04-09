@@ -8,7 +8,12 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { AdminRole } from '@prisma/client';
 
+import { AdminAccess } from '../auth/decorators/admin-access.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UserAccess } from '../auth/decorators/user-access.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/auth-principal.interface';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -18,27 +23,44 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('me')
+  @UserAccess()
+  findCurrent(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.findCurrent(user.userId);
+  }
+
+  @Patch('me')
+  @UserAccess()
+  updateCurrent(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateUserDto) {
+    return this.usersService.updateCurrent(user.userId, dto);
+  }
+
   @Get()
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   findAll(@Query() query: PaginationQueryDto) {
     return this.usersService.findAll(query);
   }
 
   @Get(':id')
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
   @Post()
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Patch(':id')
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

@@ -66,10 +66,11 @@ export class NewsService {
     return news;
   }
 
-  create(dto: CreateNewsDto) {
+  create(dto: CreateNewsDto, authorId?: string) {
     return this.prisma.news.create({
       data: {
         ...dto,
+        authorId: dto.authorId ?? authorId,
         publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : undefined,
       },
       include: {

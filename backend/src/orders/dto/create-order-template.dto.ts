@@ -1,6 +1,7 @@
 import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOrderTemplateDto {
+  @IsOptional()
   @IsUUID()
   userId!: string;
 

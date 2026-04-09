@@ -9,6 +9,9 @@ import {
   Query,
 } from '@nestjs/common';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UserAccess } from '../auth/decorators/user-access.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/auth-principal.interface';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CreateOrderTemplateDto } from './dto/create-order-template.dto';
 import { UpdateOrderTemplateDto } from './dto/update-order-template.dto';
@@ -19,27 +22,36 @@ export class OrderTemplatesController {
   constructor(private readonly orderTemplatesService: OrderTemplatesService) {}
 
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
-    return this.orderTemplatesService.findAll(query);
+  @UserAccess()
+  findAll(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.orderTemplatesService.findAll(query, user.userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.orderTemplatesService.findOne(id);
+  @UserAccess()
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.orderTemplatesService.findOne(id, user.userId);
   }
 
   @Post()
-  create(@Body() dto: CreateOrderTemplateDto) {
-    return this.orderTemplatesService.create(dto);
+  @UserAccess()
+  create(@Body() dto: CreateOrderTemplateDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.orderTemplatesService.create(dto, user.userId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateOrderTemplateDto) {
-    return this.orderTemplatesService.update(id, dto);
+  @UserAccess()
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderTemplateDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.orderTemplatesService.update(id, dto, user.userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.orderTemplatesService.remove(id);
+  @UserAccess()
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.orderTemplatesService.remove(id, user.userId);
   }
 }

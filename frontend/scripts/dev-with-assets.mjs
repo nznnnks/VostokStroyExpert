@@ -2,12 +2,17 @@ import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { platform } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const syncScript = resolve(__dirname, "sync-stayse-assets.mjs");
 const targetFile = resolve(root, "dist/assets/stayse/logos/regent.svg");
-const astroBin = resolve(root, "node_modules/.bin/astro");
+const astroBin = resolve(
+  root,
+  platform() === "win32" ? "node_modules/.bin/astro.cmd" : "node_modules/.bin/astro",
+);
+const isWindows = platform() === "win32";
 const args = process.argv.slice(2);
 
 async function syncAssets() {
@@ -21,7 +26,7 @@ await syncAssets();
 const child = spawn(astroBin, args, {
   cwd: root,
   stdio: "inherit",
-  shell: false,
+  shell: isWindows,
 });
 
 const interval = setInterval(async () => {

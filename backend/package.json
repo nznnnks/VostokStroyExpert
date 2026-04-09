@@ -4,7 +4,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "npm run prisma:generate && node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && nest build",
+    "dev": "npm run start:dev",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
@@ -20,6 +21,7 @@
     "@prisma/client": "^6.6.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "jsonwebtoken": "^9.0.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -27,6 +29,7 @@
     "@nestjs/cli": "^11.0.7",
     "@nestjs/schematics": "^11.0.4",
     "@nestjs/testing": "^11.1.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.14.1",
     "prisma": "^6.6.0",
     "ts-node": "^10.9.2",

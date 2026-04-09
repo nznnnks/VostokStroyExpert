@@ -8,7 +8,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { AdminRole } from '@prisma/client';
 
+import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CreateServiceOfferingDto } from './dto/create-service-offering.dto';
 import { UpdateServiceOfferingDto } from './dto/update-service-offering.dto';
@@ -29,16 +31,19 @@ export class ServiceOfferingsController {
   }
 
   @Post()
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   create(@Body() dto: CreateServiceOfferingDto) {
     return this.serviceOfferingsService.create(dto);
   }
 
   @Patch(':id')
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   update(@Param('id') id: string, @Body() dto: UpdateServiceOfferingDto) {
     return this.serviceOfferingsService.update(id, dto);
   }
 
   @Delete(':id')
+  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
   remove(@Param('id') id: string) {
     return this.serviceOfferingsService.remove(id);
   }

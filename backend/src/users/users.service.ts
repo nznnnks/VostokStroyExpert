@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { PasswordService } from '../auth/password.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientProfileDto } from './dto/create-client-profile.dto';
@@ -14,7 +15,10 @@ const userInclude = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly passwordService: PasswordService,
+  ) {}
 
   async findAll(query: PaginationQueryDto) {
     const where: Prisma.UserWhereInput | undefined = query.search
@@ -51,11 +55,13 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
+    const passwordHash = await this.passwordService.preparePasswordHash(dto.passwordHash);
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         phone: dto.phone,
-        passwordHash: dto.passwordHash,
+        passwordHash,
         role: dto.role,
         status: dto.status,
         clientProfile: dto.clientProfile
@@ -78,7 +84,9 @@ export class UsersService {
       data: {
         email: dto.email,
         phone: dto.phone,
-        passwordHash: dto.passwordHash,
+        passwordHash: dto.passwordHash
+          ? await this.passwordService.preparePasswordHash(dto.passwordHash)
+          : undefined,
         role: dto.role,
         status: dto.status,
       },
@@ -86,26 +94,35 @@ export class UsersService {
     });
 
     if (dto.clientProfile) {
-      const profile = await this.prisma.clientProfile.findUnique({
-        where: { userId: id },
-      });
-
-      if (profile) {
-        await this.prisma.clientProfile.update({
-          where: { id: profile.id },
-          data: dto.clientProfile,
-        });
-      } else {
-        await this.prisma.clientProfile.create({
-          data: {
-            userId: id,
-            ...dto.clientProfile,
-          },
-        });
-      }
+      await this.upsertUserClientProfile(id, dto.clientProfile);
     }
 
     return this.findOne(user.id);
+  }
+
+  findCurrent(userId: string) {
+    return this.findOne(userId);
+  }
+
+  async updateCurrent(userId: string, dto: UpdateUserDto) {
+    await this.ensureUserExists(userId);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: dto.email,
+        phone: dto.phone,
+        passwordHash: dto.passwordHash
+          ? await this.passwordService.preparePasswordHash(dto.passwordHash)
+          : undefined,
+      },
+    });
+
+    if (dto.clientProfile) {
+      await this.upsertUserClientProfile(userId, dto.clientProfile);
+    }
+
+    return this.findOne(userId);
   }
 
   async remove(id: string) {
@@ -231,6 +248,37 @@ export class UsersService {
     if (!exists) {
       throw new NotFoundException(`Client profile ${id} not found.`);
     }
+  }
+
+  private async upsertUserClientProfile(
+    userId: string,
+    profileData: NonNullable<UpdateUserDto['clientProfile']>,
+  ) {
+    const profile = await this.prisma.clientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (profile) {
+      await this.prisma.clientProfile.update({
+        where: { id: profile.id },
+        data: profileData,
+      });
+      return;
+    }
+
+    if (!profileData.firstName) {
+      throw new BadRequestException('firstName is required when creating client profile.');
+    }
+
+    const { firstName, ...optionalProfileData } = profileData;
+
+    await this.prisma.clientProfile.create({
+      data: {
+        userId,
+        firstName,
+        ...optionalProfileData,
+      },
+    });
   }
 
   private toUserResponse(
