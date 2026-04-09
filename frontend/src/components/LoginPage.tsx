@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { loginAdmin, loginUser } from "../lib/auth";
 
@@ -8,6 +8,11 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    setMode(url.searchParams.get("admin") === "1" ? "admin" : "user");
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,23 +35,29 @@ export function LoginPage() {
     }
   }
 
+  const title = mode === "admin" ? "Вход в админ-панель" : "Вход в личный кабинет";
+  const description =
+    mode === "admin"
+      ? "Авторизация администратора через существующий backend endpoint."
+      : "Авторизация пользователя через существующий backend endpoint.";
+
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
         <div className="mx-auto flex max-w-[1580px] items-center gap-4">
           <a href="/" className="text-[28px] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
-            Р’РѕСЃС‚РѕРєРЎС‚СЂРѕР№Р­РєСЃРїРµСЂС‚
+            ВостокСтройЭксперт
           </a>
           <nav className="ml-auto hidden items-center gap-10 text-[14px] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/">РіР»Р°РІРЅР°СЏ</a>
-            <a href="/about">Рѕ РЅР°СЃ</a>
-            <a href="/services">СѓСЃР»СѓРіРё</a>
-            <a href="/news">РїСЂРѕРµРєС‚С‹</a>
-            <a href="/catalog">РєР°С‚Р°Р»РѕРі</a>
-            <a href="/news">Р±Р»РѕРі</a>
+            <a href="/">главная</a>
+            <a href="/about">о нас</a>
+            <a href="/services">услуги</a>
+            <a href="/news">проекты</a>
+            <a href="/catalog">каталог</a>
+            <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/Р»СѓРїР°.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
           </div>
         </div>
@@ -56,8 +67,8 @@ export function LoginPage() {
         <div className="grid xl:grid-cols-[1.8fr_1fr]">
           <div className="border-r border-[#ece8e1]">
             <img
-              src="/РІС…РѕРґ/С„РѕС‚Рѕ СЃ РІС…РѕРґР°.png"
-              alt="РџСЂРѕРјС‹С€Р»РµРЅРЅР°СЏ СЃРёСЃС‚РµРјР°"
+              src="/вход/фото с входа.png"
+              alt="Промышленная система"
               width="1600"
               height="2100"
               loading="eager"
@@ -69,30 +80,13 @@ export function LoginPage() {
 
           <div className="flex items-center px-6 py-16 md:px-12 xl:px-20">
             <div className="mx-auto w-full max-w-[480px]">
-              <h1 className="text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">Р’С…РѕРґ РІ СЃРёСЃС‚РµРјСѓ</h1>
-              <p className="mt-6 max-w-[460px] text-[18px] leading-[1.55] text-[#7d7d78] md:text-[22px]">
-                Используйте существующий backend login для пользовательской или административной роли.
-              </p>
-
-              <div className="mt-10 flex gap-3">
-                {(["user", "admin"] as const).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setMode(item)}
-                    className={`inline-flex h-12 items-center justify-center px-6 text-[14px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
-                      mode === item ? "bg-[#111] text-white" : "border border-[#d9d4cc] text-[#6f6f69]"
-                    }`}
-                  >
-                    {item === "user" ? "client" : "admin"}
-                  </button>
-                ))}
-              </div>
+              <h1 className="text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">{title}</h1>
+              <p className="mt-6 max-w-[460px] text-[18px] leading-[1.55] text-[#7d7d78] md:text-[22px]">{description}</p>
 
               <form className="mt-16 space-y-10" onSubmit={handleSubmit}>
                 <label className="block">
                   <span className="text-[16px] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    Р­Р»РµРєС‚СЂРѕРЅРЅР°СЏ РїРѕС‡С‚Р°
+                    Электронная почта
                   </span>
                   <input
                     type="email"
@@ -123,7 +117,7 @@ export function LoginPage() {
                 <button disabled={loading} className="inline-flex h-20 w-full items-center justify-between bg-[#111] px-10 text-[20px] uppercase tracking-[4px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   <span>{loading ? "вход..." : "войти"}</span>
                   <img
-                    src="/РІС…РѕРґ/СЃС‚СЂРµР»РѕС‡РєР°.svg"
+                    src="/вход/стрелочка.svg"
                     alt=""
                     aria-hidden="true"
                     width="18"
@@ -135,9 +129,26 @@ export function LoginPage() {
                 </button>
               </form>
 
-              <p className="mt-12 max-w-[470px] text-[15px] leading-[1.65] text-[#7d7d78] md:text-[18px]">
-                Регистрация и вход по коду пока не переведены на backend, потому что соответствующих endpoints в текущем API нет.
-              </p>
+              <div className="mt-12 space-y-3 text-[15px] leading-[1.65] text-[#7d7d78] md:text-[18px]">
+                {mode === "user" ? (
+                  <p>
+                    Для входа в админ-панель используйте{" "}
+                    <a href="/login?admin=1" className="underline underline-offset-4">
+                      отдельный режим администратора
+                    </a>
+                    .
+                  </p>
+                ) : (
+                  <p>
+                    Для обычного входа пользователя вернитесь на{" "}
+                    <a href="/login" className="underline underline-offset-4">
+                      страницу входа
+                    </a>
+                    .
+                  </p>
+                )}
+                <p>Регистрация и вход по коду пока не переведены на backend, потому что соответствующих endpoints в текущем API нет.</p>
+              </div>
             </div>
           </div>
         </div>

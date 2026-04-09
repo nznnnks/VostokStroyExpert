@@ -5,8 +5,8 @@ import { ApiError } from "../lib/api-client";
 import { addProductToCurrentCartBySlug, loadCurrentCart, removeCurrentCartItem, updateCurrentCartItem, type CartView } from "../lib/backend-api";
 
 const perks = [
-  ["/РєРѕСЂР·РёРЅР°/РіР°Р»РѕС‡РєР°.svg", "Р“Р°СЂР°РЅС‚РёСЏ 5 Р»РµС‚ РЅР° РІСЃРµ СЃРёСЃС‚РµРјС‹"],
-  ["/РєРѕСЂР·РёРЅР°/РјР°С€РёРЅРєР°.svg", "Р‘РµСЂРµР¶РЅР°СЏ РґРѕСЃС‚Р°РІРєР° РѕР±РѕСЂСѓРґРѕРІР°РЅРёСЏ"],
+  ["/корзина/галочка.svg", "Гарантия 5 лет на все системы"],
+  ["/корзина/машинка.svg", "Бережная доставка оборудования"],
 ];
 
 function StateMessage({ title, description }: { title: string; description: string }) {
@@ -102,9 +102,9 @@ export function CartPage() {
   const vat = Math.round(Math.max(subtotal - discount, 0) * 0.2);
   const total = cart?.total ?? 0;
   const totals = [
-    ["РџСЂРѕРјРµР¶СѓС‚РѕС‡РЅС‹Р№ РёС‚РѕРі", formatPrice(subtotal)],
-    ["РЎРєРёРґРєР°", formatPrice(discount)],
-    ["РќР”РЎ (20%)", formatPrice(vat)],
+    ["Промежуточный итог", formatPrice(subtotal)],
+    ["Скидка", formatPrice(discount)],
+    ["НДС (20%)", formatPrice(vat)],
   ];
 
   return (
@@ -112,21 +112,21 @@ export function CartPage() {
       <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
         <div className="mx-auto flex max-w-[1480px] items-center gap-4">
           <a href="/" className="text-[28px] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
-            Р’РѕСЃС‚РѕРєРЎС‚СЂРѕР№Р­РєСЃРїРµСЂС‚
+            ВостокСтройЭксперт
           </a>
           <nav className="ml-auto hidden items-center gap-10 text-[14px] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/">РіР»Р°РІРЅР°СЏ</a>
-            <a href="/about">Рѕ РЅР°СЃ</a>
-            <a href="/services">СѓСЃР»СѓРіРё</a>
-            <a href="/news">РїСЂРѕРµРєС‚С‹</a>
-            <a href="/catalog">РєР°С‚Р°Р»РѕРі</a>
-            <a href="/news">Р±Р»РѕРі</a>
+            <a href="/">главная</a>
+            <a href="/about">о нас</a>
+            <a href="/services">услуги</a>
+            <a href="/news">проекты</a>
+            <a href="/catalog">каталог</a>
+            <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/Р»СѓРїР°.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <a href="/login" className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              РІРѕР№С‚Рё
+              войти
             </a>
           </div>
         </div>
@@ -135,7 +135,7 @@ export function CartPage() {
       <section className="px-4 py-12 md:px-10 md:py-16">
         <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_500px]">
           <div>
-            <h1 className="text-[56px] leading-none md:text-[86px] [font-family:'Cormorant_Garamond',serif]">РљРѕСЂР·РёРЅР°</h1>
+            <h1 className="text-[56px] leading-none md:text-[86px] [font-family:'Cormorant_Garamond',serif]">Корзина</h1>
 
             {loading ? <StateMessage title="Загрузка" description="Загружаю текущую корзину пользователя." /> : null}
             {!loading && authRequired ? (
@@ -146,9 +146,9 @@ export function CartPage() {
             {!loading && !error ? (
               <>
                 <div className="mt-16 grid grid-cols-[1.2fr_180px_160px_60px] items-center border-b border-[#e8e3db] pb-5 text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                  <span>РР·РґРµР»РёРµ</span>
-                  <span>РљРѕР»-РІРѕ</span>
-                  <span>Р¦РµРЅР°</span>
+                  <span>Изделие</span>
+                  <span>Кол-во</span>
+                  <span>Цена</span>
                   <span />
                 </div>
 
@@ -174,16 +174,16 @@ export function CartPage() {
                       </div>
                       <div className="flex h-14 items-center justify-between border border-[#e8e3db] px-5 text-[20px] [font-family:DM_Sans,Manrope,sans-serif]">
                         <button type="button" disabled={actionLoading || item.qty <= 1} onClick={() => changeQuantity(item.id, Math.max(1, item.qty - 1))}>
-                          <img src="/РєРѕСЂР·РёРЅР°/РјРёРЅСѓСЃ.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
+                          <img src="/корзина/минус.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
                         </button>
                         <span>{String(item.qty).padStart(2, "0")}</span>
                         <button type="button" disabled={actionLoading} onClick={() => changeQuantity(item.id, item.qty + 1)}>
-                          <img src="/РєРѕСЂР·РёРЅР°/РїР»СЋСЃ.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
+                          <img src="/корзина/плюс.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       <p className="text-[28px] [font-family:'Cormorant_Garamond',serif]">{formatPrice(item.totalPrice)}</p>
                       <button type="button" disabled={actionLoading} onClick={() => removeItem(item.id)} className="flex items-center justify-center">
-                        <img src="/РєРѕСЂР·РёРЅР°/РєСЂРµСЃС‚.svg" alt="РЈРґР°Р»РёС‚СЊ С‚РѕРІР°СЂ" width="28" height="28" className="h-7 w-7" />
+                        <img src="/корзина/крест.svg" alt="Удалить товар" width="28" height="28" className="h-7 w-7" />
                       </button>
                     </article>
                   ))}
@@ -194,13 +194,13 @@ export function CartPage() {
             ) : null}
 
             <a href="/catalog" className="mt-12 inline-flex items-center gap-4 text-[18px] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              <img src="/РєРѕСЂР·РёРЅР°/СЃС‚СЂРµР»РѕС‡РєР° РЅР°Р·Р°Рґ.svg" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
-              РІРµСЂРЅСѓС‚СЊСЃСЏ РІ РєР°С‚Р°Р»РѕРі
+              <img src="/корзина/стрелочка назад.svg" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+              вернуться в каталог
             </a>
           </div>
 
           <aside className="border border-[#e8e3db] p-10 md:p-14">
-            <h2 className="text-[50px] leading-none [font-family:'Cormorant_Garamond',serif]">РС‚РѕРіРѕ</h2>
+            <h2 className="text-[50px] leading-none [font-family:'Cormorant_Garamond',serif]">Итого</h2>
 
             <div className="mt-12 space-y-8">
               {totals.map(([label, value]) => (
@@ -213,12 +213,12 @@ export function CartPage() {
 
             <div className="mt-12 border-t border-[#e8e3db] pt-12">
               <div className="flex items-end justify-between gap-6">
-                <span className="text-[26px] [font-family:'Cormorant_Garamond',serif]">Рљ РѕРїР»Р°С‚Рµ</span>
+                <span className="text-[26px] [font-family:'Cormorant_Garamond',serif]">К оплате</span>
                 <span className="text-[46px] leading-none [font-family:'Cormorant_Garamond',serif]">{formatPrice(total)}</span>
               </div>
 
               <a href="/checkout" className="mt-12 inline-flex h-20 w-full items-center justify-center bg-[#111] text-[20px] uppercase tracking-[3px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                РѕС„РѕСЂРјРёС‚СЊ Р·Р°РєР°Р·
+                оформить заказ
               </a>
 
               <div className="mt-10 space-y-6">

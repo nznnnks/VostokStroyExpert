@@ -3,9 +3,9 @@ import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
 
 const metrics = [
-  ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/админка/денюжки выручка.svg", "/админка/выручка полосочка.svg"],
-  ["Заказы", "+ 2", "заказа", "+7%", "/админка/для блоков заказы и заявки в дашборд.svg", "/админка/для блоков заказы и заявки в дашборд.svg"],
-  ["Заявки", "4", "заявки", "", "/админка/для блоков заказы и заявки в дашборд.svg", "/админка/для блоков заказы и заявки в дашборд.svg"],
+  ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/Р°РґРјРёРЅРєР°/РґРµРЅСЋР¶РєРё РІС‹СЂСѓС‡РєР°.svg", "/Р°РґРјРёРЅРєР°/РІС‹СЂСѓС‡РєР° РїРѕР»РѕСЃРѕС‡РєР°.svg"],
+  ["Заказы", "+ 2", "заказа", "+7%", "/Р°РґРјРёРЅРєР°/РґР»СЏ Р±Р»РѕРєРѕРІ Р·Р°РєР°Р·С‹ Рё Р·Р°СЏРІРєРё РІ РґР°С€Р±РѕСЂРґ.svg", "/Р°РґРјРёРЅРєР°/РґР»СЏ Р±Р»РѕРєРѕРІ Р·Р°РєР°Р·С‹ Рё Р·Р°СЏРІРєРё РІ РґР°С€Р±РѕСЂРґ.svg"],
+  ["Заявки", "4", "заявки", "", "/Р°РґРјРёРЅРєР°/РґР»СЏ Р±Р»РѕРєРѕРІ Р·Р°РєР°Р·С‹ Рё Р·Р°СЏРІРєРё РІ РґР°С€Р±РѕСЂРґ.svg", "/Р°РґРјРёРЅРєР°/РґР»СЏ Р±Р»РѕРєРѕРІ Р·Р°РєР°Р·С‹ Рё Р·Р°СЏРІРєРё РІ РґР°С€Р±РѕСЂРґ.svg"],
 ];
 
 const daySummary = [
@@ -89,36 +89,36 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
             {adminNav.map((item) => {
               const active = item.key === activeKey;
               return (
-              <a
-                key={item.key}
-                href={item.href}
-                className={`flex min-h-[68px] items-center gap-5 px-6 text-[18px] ${
-                  active ? "border-l-4 border-white bg-white/4" : "text-white/70"
-                }`}
-              >
-                <img
-                  src={item.icon}
-                  alt=""
-                  aria-hidden="true"
-                  width="22"
-                  height="22"
-                  loading="lazy"
-                  decoding="async"
-                  className="h-5 w-5 object-contain"
-                />
-                <span className={active ? "text-white" : ""}>{item.label}</span>
-                {item.badge ? (
-                  <span className="ml-auto inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-white px-2 text-[16px] font-semibold text-[#111]">
-                    {item.badge}
-                  </span>
-                ) : null}
-              </a>
+                <a
+                  key={item.key}
+                  href={item.href}
+                  className={`flex min-h-[68px] items-center gap-5 px-6 text-[18px] ${
+                    active ? "border-l-4 border-white bg-white/4" : "text-white/70"
+                  }`}
+                >
+                  <img
+                    src={item.icon}
+                    alt=""
+                    aria-hidden="true"
+                    width="22"
+                    height="22"
+                    loading="lazy"
+                    decoding="async"
+                    className="h-5 w-5 object-contain"
+                  />
+                  <span className={active ? "text-white" : ""}>{item.label}</span>
+                  {item.badge ? (
+                    <span className="ml-auto inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-white px-2 text-[16px] font-semibold text-[#111]">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </a>
               );
             })}
           </nav>
 
           <div className="mt-auto border-t border-white/10 px-8 py-8">
-            <a href="/login" className="flex items-center gap-4 text-[18px] text-white/70">
+            <a href="/login?admin=1" className="flex items-center gap-4 text-[18px] text-white/70">
               <img
                 src="/админка/выход.svg"
                 alt=""
@@ -181,7 +181,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
               </div>
 
               <div className="mt-8 grid gap-6 xl:grid-cols-3">
-                {metrics.map(([label, value, suffix, delta, icon, bars], index) => (
+                {metrics.map(([label, value, suffix, delta, icon], index) => (
                   <article key={label as string} style={{ animationDelay: `${index * 80}ms` }} className="admin-card-in border border-[#e8e3db] bg-white p-8 md:p-9">
                     <div className="flex items-start justify-between gap-6">
                       <p className="text-[14px] uppercase tracking-[4px] text-[#c2c2bf] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</p>

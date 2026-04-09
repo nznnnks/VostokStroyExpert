@@ -165,10 +165,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         <aside className="hidden min-h-screen flex-col bg-[#211d1a] text-white xl:flex">
           <div className="border-b border-white/10 px-8 py-12">
             <p className="max-w-full text-[26px] italic uppercase leading-none tracking-[-0.04em] text-white 2xl:text-[30px] [font-family:'Cormorant_Garamond',serif]">
-              Р’РћРЎРўРћРљРЎРўР РћР™Р­РљРЎРџР•Р Рў
+              ВОСТОКСТРОЙЭКСПЕРТ
             </p>
             <p className="mt-6 text-[14px] uppercase tracking-[4px] text-white/50 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              РїР°РЅРµР»СЊ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°
+              панель администратора
             </p>
           </div>
 
@@ -193,7 +193,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         <div className="min-w-0">
           <header className="border-b border-[#e8e3db] bg-white px-6 py-5 md:px-10">
             <div className="flex items-center justify-end gap-6">
-              <img src="/Р°РґРјРёРЅРєР°/СѓРІРµРґРѕРјР»РµРЅРёРµ.svg" alt="" aria-hidden="true" width="18" height="18" loading="lazy" decoding="async" className="h-[18px] w-[18px] object-contain" />
+              <img src="/админка/уведомление.svg" alt="" aria-hidden="true" width="18" height="18" loading="lazy" decoding="async" className="h-[18px] w-[18px] object-contain" />
               <div className="h-10 w-px bg-[#ece8e1]" />
               <span className="text-[18px]">{adminName}</span>
             </div>
@@ -238,7 +238,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
               {!loading && !error && activeKey === "clients" ? (
                 <div className="mt-10">
                   <AdminTable
-                    columns={["РљР»РёРµРЅС‚", "РЎРµРіРјРµРЅС‚", "РњРµРЅРµРґР¶РµСЂ", "Р—Р°РєР°Р·С‹", "РЎС‚Р°С‚СѓСЃ"]}
+                    columns={["Клиент", "Сегмент", "Менеджер", "Заказы", "Статус"]}
                     rows={filteredClients.map((item) => [
                       item.name,
                       item.segment,
@@ -253,7 +253,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
               {!loading && !error && activeKey === "orders" ? (
                 <div className="mt-10">
                   <AdminTable
-                    columns={["РќРѕРјРµСЂ", "РљР»РёРµРЅС‚", "РџРѕР·РёС†РёРё", "РЎСѓРјРјР°", "РЎС‚Р°С‚СѓСЃ", "Р”Р°С‚Р°"]}
+                    columns={["Номер", "Клиент", "Позиции", "Сумма", "Статус", "Дата"]}
                     rows={filteredOrders.map((item) => [
                       item.id,
                       item.client,
@@ -306,7 +306,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
 
               {!["clients", "orders", "news", "catalog"].includes(activeKey) ? (
                 <SectionMessage
-                  title="Раздел не подключён"
+                  title="Раздел не подключен"
                   description="Для этого раздела в текущем backend нет подходящего endpoint, либо он не входит в текущий этап интеграции. Экран оставлен без полной API-интеграции."
                 />
               ) : null}
