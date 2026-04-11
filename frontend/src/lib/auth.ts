@@ -168,3 +168,29 @@ export async function loginAdmin(email: string, password: string) {
   setStoredAuthSession(session);
   return session;
 }
+
+export async function registerUser(fullName: string, email: string, password: string, phone?: string) {
+  const response = await apiRequest<LoginResponse>("/api/auth/user/register", {
+    method: "POST",
+    body: { fullName, email, password, phone },
+  });
+
+  const session: StoredAuthSession = {
+    type: "user",
+    accessToken: response.accessToken,
+    tokenType: response.tokenType,
+    expiresIn: response.expiresIn,
+    user: response.user
+      ? {
+          id: response.user.id,
+          email: response.user.email,
+          role: response.user.role,
+          firstName: response.user.clientProfile?.firstName ?? null,
+          lastName: response.user.clientProfile?.lastName ?? null,
+        }
+      : null,
+  };
+
+  setStoredAuthSession(session);
+  return session;
+}

@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 
 import { ApiError } from "../lib/api-client";
-import { loadAccountSnapshot, type AccountProfileView, type OrderTemplateView } from "../lib/backend-api";
+import {
+  createOrderTemplate,
+  deleteOrderTemplate,
+  loadAccountSnapshot,
+  updateOrderTemplate,
+  type AccountProfileView,
+  type OrderTemplateView,
+} from "../lib/backend-api";
 
 const navItems = [
   ["/личный кабинет/данныеклиента.png", "Данные клиента", "/account", false],
   ["/личный кабинет/заказы.svg", "Заказы", "/account/orders", false],
   ["/личный кабинет/транзакции.png", "Шаблоны заказа", "/account/templates", true],
-  ["/личный кабинет/поддержка.svg", "Поддержка", "/account#support", false],
+  ["/личный кабинет/поддержка.svg", "Поддержка", "/account/support", false],
 ];
 
 function StateMessage({ title, description }: { title: string; description: string }) {
@@ -24,6 +31,17 @@ export function AccountTemplatesPage() {
   const [templates, setTemplates] = useState<OrderTemplateView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [form, setForm] = useState({
+    id: "",
+    title: "",
+    contact: "",
+    phone: "",
+    address: "",
+    comment: "",
+    isDefault: false,
+  });
 
   useEffect(() => {
     let active = true;
@@ -60,6 +78,70 @@ export function AccountTemplatesPage() {
   }, []);
 
   const authRequired = error instanceof ApiError && error.status === 401;
+
+  async function refreshTemplates() {
+    const data = await loadAccountSnapshot();
+    setProfile(data.profile);
+    setTemplates(data.templates);
+  }
+
+  async function handleSubmit() {
+    const title = form.title.trim();
+    const contactName = form.contact.trim();
+    const phone = form.phone.trim();
+    const address = form.address.trim();
+
+    if (!title || !contactName || !phone || !address) {
+      setActionError("Заполните название, контакт, телефон и адрес.");
+      return;
+    }
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      const payload = {
+        title,
+        contactName,
+        phone,
+        address,
+        comment: form.comment.trim() || undefined,
+        isDefault: form.isDefault,
+      };
+
+      if (form.id) {
+        await updateOrderTemplate(form.id, payload);
+      } else {
+        await createOrderTemplate(payload);
+      }
+
+      await refreshTemplates();
+      setForm({ id: "", title: "", contact: "", phone: "", address: "", comment: "", isDefault: false });
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Не удалось сохранить шаблон.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!form.id) {
+      return;
+    }
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      await deleteOrderTemplate(form.id);
+      await refreshTemplates();
+      setForm({ id: "", title: "", contact: "", phone: "", address: "", comment: "", isDefault: false });
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Не удалось удалить шаблон.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -100,7 +182,96 @@ export function AccountTemplatesPage() {
             {!loading && error && !authRequired ? <StateMessage title="Ошибка загрузки" description={error.message || "Не удалось загрузить шаблоны."} /> : null}
 
             {!loading && !error ? (
-              <div className="mt-10 grid gap-6 lg:grid-cols-2">
+              <div className="mt-10 grid gap-8">
+                <div className="border border-[#ece8e1] bg-white p-10">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <label className="text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Название шаблона
+                      <input
+                        className="mt-2 w-full border border-[#e8e3db] px-4 py-3 text-[16px]"
+                        value={form.title}
+                        onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                        placeholder="Дом для клиента А"
+                      />
+                    </label>
+                    <label className="text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Контактное лицо
+                      <input
+                        className="mt-2 w-full border border-[#e8e3db] px-4 py-3 text-[16px]"
+                        value={form.contact}
+                        onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
+                        placeholder="Алексей Иванов"
+                      />
+                    </label>
+                    <label className="text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Телефон
+                      <input
+                        className="mt-2 w-full border border-[#e8e3db] px-4 py-3 text-[16px]"
+                        value={form.phone}
+                        onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+                        placeholder="+7 999 123 45 67"
+                      />
+                    </label>
+                    <label className="text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Адрес
+                      <input
+                        className="mt-2 w-full border border-[#e8e3db] px-4 py-3 text-[16px]"
+                        value={form.address}
+                        onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
+                        placeholder="Москва, Калужская, 12"
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-6 block text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Комментарий
+                    <textarea
+                      className="mt-2 w-full border border-[#e8e3db] px-4 py-3 text-[16px]"
+                      value={form.comment}
+                      onChange={(event) => setForm((prev) => ({ ...prev, comment: event.target.value }))}
+                      placeholder="Дополнительные условия"
+                    />
+                  </label>
+                  <label className="mt-6 flex items-center gap-3 text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    <input
+                      type="checkbox"
+                      checked={form.isDefault}
+                      onChange={(event) => setForm((prev) => ({ ...prev, isDefault: event.target.checked }))}
+                      className="h-4 w-4"
+                    />
+                    Сделать по умолчанию
+                  </label>
+                  {actionError ? <p className="mt-4 text-[16px] text-[#9b3d2f]">{actionError}</p> : null}
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button
+                      className="inline-flex h-12 items-center justify-center bg-[#111] px-6 text-[14px] uppercase tracking-[1.4px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={actionLoading}
+                    >
+                      {form.id ? "Сохранить" : "Создать"}
+                    </button>
+                    <button
+                      className="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[14px] uppercase tracking-[1.4px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                      type="button"
+                      onClick={() => setForm({ id: "", title: "", contact: "", phone: "", address: "", comment: "", isDefault: false })}
+                      disabled={actionLoading}
+                    >
+                      Очистить
+                    </button>
+                    {form.id ? (
+                      <button
+                        className="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[14px] uppercase tracking-[1.4px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={actionLoading}
+                      >
+                        Удалить
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
                 {templates.map((template) => (
                   <article key={template.id} className="border border-[#ece8e1] bg-white p-10">
                     <h2 className="text-[34px] [font-family:'Cormorant_Garamond',serif]">{template.title}</h2>
@@ -116,10 +287,28 @@ export function AccountTemplatesPage() {
                       ) : (
                         <span className="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[14px] uppercase tracking-[1.4px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">Сохраненный шаблон</span>
                       )}
+                      <button
+                        className="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[14px] uppercase tracking-[1.4px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        type="button"
+                        onClick={() =>
+                          setForm({
+                            id: template.id,
+                            title: template.title,
+                            contact: template.contact,
+                            phone: template.phone,
+                            address: template.address,
+                            comment: template.comment,
+                            isDefault: template.isDefault,
+                          })
+                        }
+                      >
+                        Редактировать
+                      </button>
                     </div>
                   </article>
                 ))}
                 {templates.length === 0 ? <div className="text-[18px] text-[#6f6f69]">Сохраненных шаблонов пока нет.</div> : null}
+              </div>
               </div>
             ) : null}
           </div>

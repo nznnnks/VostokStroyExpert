@@ -7,7 +7,7 @@ const navItems = [
   ["/личный кабинет/данныеклиента.png", "Данные клиента", "/account", false],
   ["/личный кабинет/заказы.svg", "Заказы", "/account/orders", true],
   ["/личный кабинет/транзакции.png", "Шаблоны заказа", "/account/templates", false],
-  ["/личный кабинет/поддержка.svg", "Поддержка", "/account#support", false],
+  ["/личный кабинет/поддержка.svg", "Поддержка", "/account/support", false],
 ];
 
 function StateMessage({ title, description }: { title: string; description: string }) {

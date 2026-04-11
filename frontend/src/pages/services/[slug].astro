@@ -29,7 +29,7 @@ const { service } = Astro.props;
   </head>
   <body>
     <main class="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
-      <SiteHeader />
+      <SiteHeader client:load />
       <section class="px-4 py-10 md:px-10 md:py-14">
         <div class="mx-auto max-w-[1480px]">
           <p class="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Услуги / {service.title}</p>

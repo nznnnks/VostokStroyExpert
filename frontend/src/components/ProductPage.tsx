@@ -1,4 +1,5 @@
 import { featuredProduct, formatPrice, products, type Product } from "../data/products";
+import AuthHeaderButton from "./AuthHeaderButton";
 
 const perks = [
   ["/страница товара/галочка.svg", "10 лет гарантии", "Полная поддержка производителя"],
@@ -49,9 +50,7 @@ export function ProductPage({ product = featuredProduct, relatedProducts }: Prod
           <div className="flex items-center gap-4">
             <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <a href="/login" className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              войти
-            </a>
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>

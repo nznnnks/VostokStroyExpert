@@ -1,3 +1,4 @@
+import AuthHeaderButton from "./AuthHeaderButton";
 import { navLinks } from "../data/site";
 
 type SiteHeaderProps = {
@@ -25,14 +26,11 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
           <a href="/cart" aria-label="Корзина">
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
           </a>
-          <a
-            href="/login"
+          <AuthHeaderButton
             className={`inline-flex h-12 items-center justify-center px-7 text-[14px] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
               light ? "bg-[#050505] text-white" : "border border-white/20 bg-white/10 text-white"
             }`}
-          >
-            войти
-          </a>
+          />
         </div>
       </div>
     </header>

@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AdminRole, UserRole, UserStatus } from '@prisma/client';
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
 import {
   AuthPrincipal,
   AuthTokenPayload,
@@ -89,6 +90,53 @@ export class AuthService {
       tokenType: 'Bearer',
       expiresIn: this.getJwtExpiresIn(),
       admin: this.toSafeAdmin(admin),
+    };
+  }
+
+  async registerUser(dto: RegisterUserDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('User with this email already exists.');
+    }
+
+    const passwordHash = await this.passwordService.hashPassword(dto.password);
+    const nameParts = dto.fullName.trim().split(/\s+/).filter(Boolean);
+    const firstName = nameParts.shift() ?? dto.fullName.trim();
+    const lastName = nameParts.length > 0 ? nameParts.join(' ') : undefined;
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        phone: dto.phone ?? null,
+        passwordHash,
+        status: UserStatus.ACTIVE,
+        role: UserRole.CLIENT,
+        clientProfile: {
+          create: {
+            firstName,
+            lastName,
+            contactPhone: dto.phone ?? null,
+          },
+        },
+      },
+      include: { clientProfile: true },
+    });
+
+    const principal: AuthenticatedUser = {
+      type: 'user',
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+    };
+
+    return {
+      accessToken: this.signAccessToken(principal),
+      tokenType: 'Bearer',
+      expiresIn: this.getJwtExpiresIn(),
+      user: this.toSafeUser(user),
     };
   }
 

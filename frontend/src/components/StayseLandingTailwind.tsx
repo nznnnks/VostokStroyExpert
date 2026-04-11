@@ -1,3 +1,5 @@
+import AuthHeaderButton from "./AuthHeaderButton";
+
 const stats = [
   ["100+", "реализованных проектов"],
   ["10+", "лет на рынке инженерных решений"],
@@ -101,9 +103,7 @@ export function StayseLandingTailwind() {
             <a href="/cart" aria-label="Корзина">
               <img src="/image/cart.png" alt="" aria-hidden="true" loading="eager" decoding="async" width="18" height="18" className="h-3.5 w-3.5 object-contain sm:h-4 sm:w-4" />
             </a>
-            <a href="/login" className="inline-flex h-10 items-center justify-center bg-[#050505] px-6 text-[11px] text-white [font-family:'JetBrains_Mono',monospace]">
-              войти
-            </a>
+            <AuthHeaderButton className="inline-flex h-10 items-center justify-center bg-[#050505] px-6 text-[11px] text-white [font-family:'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>

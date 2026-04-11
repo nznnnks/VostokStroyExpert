@@ -11,15 +11,27 @@ type ApiCategory = {
   slug: string;
 };
 
+export type AdminCategoryView = ApiCategory;
+
 type ApiDiscount = {
   id: string;
   name: string;
   type: "PERCENT" | "FIXED";
   value: number;
+  scope?: "ORDER" | "PRODUCT" | "CATEGORY" | "CLIENT";
+  code?: string | null;
+  description?: string | null;
+  isActive?: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  productId?: string | null;
+  categoryId?: string | null;
+  clientProfileId?: string | null;
 } | null;
 
 type ApiProduct = {
   id: string;
+  categoryId: string;
   slug: string;
   sku: string;
   name: string;
@@ -86,6 +98,54 @@ type ApiAccountProfile = {
   clientProfile?: ApiClientProfile | null;
 };
 
+type ApiService = {
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription?: string | null;
+  description?: string | null;
+  heroTitle?: string | null;
+  lead?: string | null;
+  bullets?: string[];
+  imageUrl?: string | null;
+  basePrice?: number | null;
+  durationHours?: number | null;
+  isActive?: boolean;
+};
+
+type ApiAdminUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName?: string | null;
+  role: "SUPERADMIN" | "MANAGER" | "EDITOR";
+  isActive?: boolean;
+};
+
+type ApiUser = {
+  id: string;
+  email: string;
+  phone?: string | null;
+  role: "CLIENT" | "MANAGER";
+  status: "ACTIVE" | "BLOCKED";
+  clientProfile?: {
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+};
+
+type ApiPayment = {
+  id: string;
+  orderId: string;
+  method: "CARD" | "SBP" | "INVOICE" | "CASH";
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  amount: number;
+  provider?: string | null;
+  transactionId?: string | null;
+  currency?: string | null;
+  paidAt?: string | null;
+};
+
 type ApiAccountDiscount = {
   personalDiscountPercent?: number | string | null;
 };
@@ -139,6 +199,15 @@ type ApiOrderTemplate = {
   comment?: string | null;
   isDefault: boolean;
 };
+
+export type AdminOrderStatus =
+  | "NEW"
+  | "PENDING_PAYMENT"
+  | "PAID"
+  | "ASSEMBLY"
+  | "SHIPPING"
+  | "DELIVERED"
+  | "CANCELLED";
 
 type ApiCartItem = {
   id: string;
@@ -228,6 +297,9 @@ export type CartView = {
     qty: number;
     totalPrice: number;
     kind: "product" | "service";
+    productId?: string;
+    serviceId?: string;
+    brandLabel?: string | null;
   }>;
   subtotal: number;
   discountTotal: number;
@@ -250,6 +322,9 @@ function mapCartResponse(cart: ApiCart): CartView {
         qty: item.quantity,
         totalPrice: item.totalPrice,
         kind: product ? ("product" as const) : ("service" as const),
+        productId: product?.id,
+        serviceId: service?.id,
+        brandLabel: product?.brandLabel ?? product?.brand ?? null,
       };
     }),
     subtotal: cart.summary.subtotal,
@@ -269,6 +344,7 @@ export type AdminClientView = {
 
 export type AdminOrderView = {
   id: string;
+  orderNumber: string;
   client: string;
   items: string;
   amount: string;
@@ -479,6 +555,25 @@ async function loadPublicProductsRaw() {
   });
 }
 
+export async function resolveProductIdsBySlugs(slugs: string[]) {
+  const uniqueSlugs = Array.from(new Set(slugs)).filter(Boolean);
+
+  if (uniqueSlugs.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const data = await loadPublicProductsRaw();
+  const map = new Map<string, string>();
+
+  for (const product of data) {
+    if (uniqueSlugs.includes(product.slug)) {
+      map.set(product.slug, product.id);
+    }
+  }
+
+  return map;
+}
+
 async function loadPublicNewsRaw() {
   return apiRequest<ApiNews[]>("/api/news", {
     query: { limit: 100 },
@@ -627,6 +722,68 @@ export async function loadAccountOrder(orderId: string) {
   };
 }
 
+export async function createOrderTemplate(payload: {
+  title: string;
+  contactName: string;
+  phone: string;
+  address: string;
+  city?: string;
+  postalCode?: string;
+  comment?: string;
+  isDefault?: boolean;
+}) {
+  const authToken = getStoredAccessToken("user");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация пользователя.", 401);
+  }
+
+  return apiRequest<ApiOrderTemplate>("/api/order-templates", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateOrderTemplate(
+  id: string,
+  payload: {
+    title?: string;
+    contactName?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    comment?: string;
+    isDefault?: boolean;
+  },
+) {
+  const authToken = getStoredAccessToken("user");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация пользователя.", 401);
+  }
+
+  return apiRequest<ApiOrderTemplate>(`/api/order-templates/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteOrderTemplate(id: string) {
+  const authToken = getStoredAccessToken("user");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация пользователя.", 401);
+  }
+
+  await apiRequest(`/api/order-templates/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
 export async function loadCurrentCart() {
   const authToken = getStoredAccessToken("user");
 
@@ -706,19 +863,19 @@ export async function loadAdminSectionData() {
   const [clients, orders, news, catalog] = await Promise.all([
     apiRequest<Array<ApiClientProfile & { user?: { email?: string | null } | null }>>("/api/client-profiles", {
       authToken,
-      query: { limit: 100 },
+      query: { limit: 50 },
     }),
     apiRequest<ApiOrder[]>("/api/orders", {
       authToken,
-      query: { limit: 100 },
+      query: { limit: 50 },
     }),
     apiRequest<ApiNews[]>("/api/news", {
       authToken,
-      query: { limit: 100 },
+      query: { limit: 50 },
     }),
     apiRequest<ApiProduct[]>("/api/products", {
       authToken,
-      query: { limit: 100 },
+      query: { limit: 50 },
     }),
   ]);
 
@@ -732,7 +889,8 @@ export async function loadAdminSectionData() {
       status: "Активен",
     })) satisfies AdminClientView[],
     orders: orders.map((item) => ({
-      id: item.orderNumber,
+      id: item.id,
+      orderNumber: item.orderNumber,
       client: profileName(item.user?.clientProfile, item.user?.email ?? null),
       items: `${item.summary.itemsCount} поз.`,
       amount: formatPrice(item.summary.total),
@@ -754,6 +912,750 @@ export async function loadAdminSectionData() {
       stock: typeof item.stock === "number" && item.stock > 0 ? "В наличии" : "Под заказ",
     })) satisfies AdminCatalogView[],
   };
+}
+
+export async function loadAdminCategories() {
+  const authToken = getStoredAccessToken("admin");
+
+  return apiRequest<ApiCategory[]>("/api/categories", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function loadAdminServices() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiService[]>("/api/services", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function loadAdminDiscounts() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiDiscount[]>("/api/discounts", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function loadAdminPayments() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiPayment[]>("/api/payments", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function loadAdminUsers() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiAdminUser[]>("/api/admin-users", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function loadUsers() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiUser[]>("/api/users", {
+    authToken,
+    query: { limit: 50 },
+  });
+}
+
+export async function createUser(payload: {
+  email: string;
+  phone?: string;
+  passwordHash: string;
+  role?: "CLIENT" | "MANAGER";
+  status?: "ACTIVE" | "BLOCKED";
+  clientProfile?: {
+    firstName: string;
+    lastName?: string;
+  };
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiUser>("/api/users", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateUser(
+  id: string,
+  payload: {
+    email?: string;
+    phone?: string;
+    passwordHash?: string;
+    role?: "CLIENT" | "MANAGER";
+    status?: "ACTIVE" | "BLOCKED";
+    clientProfile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiUser>(`/api/users/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteUser(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/users/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminService(payload: {
+  slug: string;
+  name: string;
+  shortDescription?: string;
+  description?: string;
+  heroTitle?: string;
+  lead?: string;
+  bullets?: string[];
+  imageUrl?: string;
+  basePrice?: number;
+  durationHours?: number;
+  isActive?: boolean;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiService>("/api/services", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminService(
+  id: string,
+  payload: {
+    slug?: string;
+    name?: string;
+    shortDescription?: string;
+    description?: string;
+    heroTitle?: string;
+    lead?: string;
+    bullets?: string[];
+    imageUrl?: string;
+    basePrice?: number;
+    durationHours?: number;
+    isActive?: boolean;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiService>(`/api/services/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminService(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/services/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminDiscount(payload: {
+  name: string;
+  code?: string;
+  description?: string;
+  type: "PERCENT" | "FIXED";
+  scope?: "ORDER" | "PRODUCT" | "CATEGORY" | "CLIENT";
+  value: number;
+  isActive?: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  productId?: string;
+  categoryId?: string;
+  clientProfileId?: string;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiDiscount>("/api/discounts", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminDiscount(
+  id: string,
+  payload: {
+    name?: string;
+    code?: string;
+    description?: string;
+    type?: "PERCENT" | "FIXED";
+    scope?: "ORDER" | "PRODUCT" | "CATEGORY" | "CLIENT";
+    value?: number;
+    isActive?: boolean;
+    startsAt?: string;
+    endsAt?: string;
+    productId?: string;
+    categoryId?: string;
+    clientProfileId?: string;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiDiscount>(`/api/discounts/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminDiscount(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/discounts/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminUser(payload: {
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName?: string;
+  role?: "SUPERADMIN" | "MANAGER" | "EDITOR";
+  isActive?: boolean;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiAdminUser>("/api/admin-users", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminUser(
+  id: string,
+  payload: {
+    email?: string;
+    passwordHash?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: "SUPERADMIN" | "MANAGER" | "EDITOR";
+    isActive?: boolean;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiAdminUser>(`/api/admin-users/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminUser(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/admin-users/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminPayment(payload: {
+  orderId: string;
+  method: "CARD" | "SBP" | "INVOICE" | "CASH";
+  status?: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  amount: number;
+  provider?: string;
+  transactionId?: string;
+  currency?: string;
+  paidAt?: string;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiPayment>("/api/payments", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminPayment(
+  id: string,
+  payload: {
+    orderId?: string;
+    method?: "CARD" | "SBP" | "INVOICE" | "CASH";
+    status?: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+    amount?: number;
+    provider?: string;
+    transactionId?: string;
+    currency?: string;
+    paidAt?: string;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiPayment>(`/api/payments/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminPayment(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/payments/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function updateAdminOrderStatus(id: string, status: AdminOrderStatus) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiOrder>(`/api/orders/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: { status },
+  });
+}
+
+export async function deleteAdminOrder(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/orders/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createOrder(payload: {
+  contactName?: string;
+  contactPhone?: string;
+  deliveryAddress?: string;
+  deliveryMethod?: string;
+  comment?: string;
+  items: Array<{ productId: string; quantity: number }>;
+  payment?: {
+    method: "CARD" | "SBP" | "INVOICE" | "CASH";
+    provider?: string;
+    transactionId?: string;
+    currency?: string;
+    paidAt?: string;
+  };
+}) {
+  const authToken = getStoredAccessToken("user");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация пользователя.", 401);
+  }
+
+  return apiRequest<ApiOrder>("/api/orders", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function createAdminClientProfile(payload: {
+  userId: string;
+  firstName: string;
+  lastName?: string;
+  companyName?: string;
+  inn?: string;
+  contactPhone?: string;
+  addressLine1?: string;
+  city?: string;
+  postalCode?: string;
+  comment?: string;
+  personalDiscountPercent?: number;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiClientProfile>("/api/client-profiles", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminClientProfile(
+  id: string,
+  payload: {
+    firstName?: string;
+    lastName?: string;
+    companyName?: string;
+    inn?: string;
+    contactPhone?: string;
+    addressLine1?: string;
+    city?: string;
+    postalCode?: string;
+    comment?: string;
+    personalDiscountPercent?: number;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiClientProfile>(`/api/client-profiles/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminClientProfile(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/client-profiles/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminCategory(payload: {
+  name: string;
+  slug: string;
+  description?: string;
+  imageUrl?: string;
+  parentId?: string;
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiCategory>("/api/categories", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminCategory(
+  id: string,
+  payload: {
+    name?: string;
+    slug?: string;
+    description?: string;
+    imageUrl?: string;
+    parentId?: string;
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiCategory>(`/api/categories/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminCategory(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/categories/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function createAdminNews(payload: {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  category?: string;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiNews>("/api/news", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminNews(
+  id: string,
+  payload: {
+    title?: string;
+    slug?: string;
+    excerpt?: string;
+    category?: string;
+    status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiNews>(`/api/news/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminNews(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/news/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function loadAdminNewsById(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiNews>(`/api/news/${id}`.replace(/\/+/g, "/"), {
+    authToken,
+  });
+}
+
+export async function createAdminProduct(payload: {
+  categoryId: string;
+  slug: string;
+  sku: string;
+  name: string;
+  price: number;
+  oldPrice?: number;
+  brand?: string;
+  brandLabel?: string;
+  country?: string;
+  type?: string;
+  shortDescription?: string;
+  description?: string;
+  efficiency?: string;
+  efficiencyClass?: string;
+  coverage?: string;
+  acoustics?: string;
+  filtration?: string;
+  power?: number;
+  volume?: number;
+  images?: string[];
+  stock?: number;
+  status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
+}) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiProduct>("/api/products", {
+    method: "POST",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function updateAdminProduct(
+  id: string,
+  payload: {
+    categoryId?: string;
+    slug?: string;
+    sku?: string;
+    name?: string;
+    price?: number;
+    oldPrice?: number;
+    brand?: string;
+    brandLabel?: string;
+    country?: string;
+    type?: string;
+    shortDescription?: string;
+    description?: string;
+    efficiency?: string;
+    efficiencyClass?: string;
+    coverage?: string;
+    acoustics?: string;
+    filtration?: string;
+    power?: number;
+    volume?: number;
+    images?: string[];
+    stock?: number;
+    status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
+  },
+) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiProduct>(`/api/products/${id}`.replace(/\/+/g, "/"), {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
+}
+
+export async function deleteAdminProduct(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  await apiRequest(`/api/products/${id}`.replace(/\/+/g, "/"), {
+    method: "DELETE",
+    authToken,
+  });
+}
+
+export async function loadAdminProductById(id: string) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiProduct>(`/api/products/${id}`.replace(/\/+/g, "/"), {
+    authToken,
+  });
 }
 
 export const fallbackAccountData = {

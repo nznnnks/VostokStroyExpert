@@ -20,6 +20,6 @@ const newsPosts = await loadNewsPosts();
     />
   </head>
   <body>
-    <AboutPage newsPosts={newsPosts} />
+    <AboutPage client:load newsPosts={newsPosts} />
   </body>
 </html>

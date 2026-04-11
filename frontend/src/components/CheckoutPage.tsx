@@ -1,61 +1,147 @@
 import { useEffect, useMemo, useState } from "react";
-import { featuredProduct, formatPrice, products, type Product } from "../data/products";
-
-type CartItem = {
-  slug: string;
-  qty: number;
-};
+import { formatPrice } from "../data/products";
+import { ApiError } from "../lib/api-client";
+import { addProductToCurrentCartBySlug, createOrder, loadCurrentCart, type CartView } from "../lib/backend-api";
+import AuthHeaderButton from "./AuthHeaderButton";
 
 const paymentOptions = [
   ["card", "Банковская карта/СБП", "", "/офрмление заказа/карта.svg"],
   ["installment", "B2B - рассрочка", "Временно недоступно", "/офрмление заказа/банк.svg"],
 ];
 
-function resolveProduct(slug: string) {
-  return products.find((entry) => entry.slug === slug) ?? (slug === featuredProduct.slug ? featuredProduct : undefined);
-}
-
 export function CheckoutPage() {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartView | null>(null);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState<Error | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<string>(paymentOptions[0][0]);
+  const [submitError, setSubmitError] = useState<string>("");
+  const [submitSuccess, setSubmitSuccess] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const storageKey = "stayse-cart";
-    const url = new URL(window.location.href);
-    const quickProduct = url.searchParams.get("product");
-    const saved = window.localStorage.getItem(storageKey);
-    const parsed = saved ? JSON.parse(saved) : [];
-    let nextItems = Array.isArray(parsed) ? parsed : [];
+    let active = true;
 
-    if (quickProduct && resolveProduct(quickProduct)) {
-      nextItems = [{ slug: quickProduct, qty: 1 }];
-      window.history.replaceState({}, "", "/checkout");
-    } else if (nextItems.length === 0) {
-      nextItems = [{ slug: featuredProduct.slug, qty: 1 }];
+    async function run() {
+      try {
+        const url = new URL(window.location.href);
+        const quickProduct = url.searchParams.get("product");
+        const nextCart = quickProduct ? await addProductToCurrentCartBySlug(quickProduct) : await loadCurrentCart();
+
+        if (quickProduct) {
+          window.history.replaceState({}, "", "/checkout");
+        }
+
+        if (!active) {
+          return;
+        }
+
+        setCart(nextCart);
+        setCartError(null);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setCartError(error instanceof Error ? error : new Error("Не удалось загрузить корзину."));
+      } finally {
+        if (active) {
+          setCartLoading(false);
+        }
+      }
     }
 
-    window.localStorage.setItem(storageKey, JSON.stringify(nextItems));
-    setItems(nextItems);
+    run();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const hydratedItems = useMemo(() => {
-    return items
-      .map((item) => {
-        const product = resolveProduct(item.slug);
-        if (!product) return null;
-        return { ...item, product };
-      })
-      .filter(Boolean) as Array<CartItem & { product: Product }>;
-  }, [items]);
-
+  const hydratedItems = useMemo(() => cart?.items ?? [], [cart]);
   const primaryItem = hydratedItems[0];
-  const subtotal = hydratedItems.reduce((sum, item) => sum + item.product.price * item.qty, 0);
+  const subtotal = cart?.subtotal ?? 0;
   const vat = Math.round(subtotal * 0.2);
-  const total = subtotal + vat;
+  const total = cart?.total ?? subtotal + vat;
   const summaryRows = [
     ["Стоимость товара", formatPrice(subtotal)],
     ["Доставка", subtotal > 0 ? "Рассчитывается далее" : "0 ₽"],
     ["НДС (20%)", formatPrice(vat)],
   ];
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    if (cartLoading) {
+      setSubmitError("Корзина еще загружается. Повторите попытку.");
+      return;
+    }
+
+    if (cartError) {
+      setSubmitError(cartError.message);
+      return;
+    }
+
+    if (hydratedItems.length === 0) {
+      setSubmitError("Добавьте товары в корзину.");
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const contactName = `${formData.get("first_name") ?? ""} ${formData.get("last_name") ?? ""}`.trim();
+    const contactPhone = String(formData.get("phone") ?? "").trim();
+    const addressParts = [
+      formData.get("city"),
+      formData.get("postal_code"),
+      formData.get("address"),
+    ]
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+    const deliveryAddress = addressParts.join(", ");
+
+    setIsSubmitting(true);
+    try {
+      const itemsPayload = hydratedItems
+        .map((item) => {
+          if (item.kind === "service") {
+            if (!item.serviceId) return null;
+            return { serviceId: item.serviceId, quantity: item.qty };
+          }
+          if (!item.productId) return null;
+          return { productId: item.productId, quantity: item.qty };
+        })
+        .filter(Boolean) as Array<{ productId?: string; serviceId?: string; quantity: number }>;
+
+      if (itemsPayload.length === 0) {
+        throw new ApiError("Товары не найдены в каталоге. Обновите страницу.", 400);
+      }
+
+      await createOrder({
+        contactName: contactName || undefined,
+        contactPhone: contactPhone || undefined,
+        deliveryAddress: deliveryAddress || undefined,
+        deliveryMethod: "Курьерская доставка",
+        items: itemsPayload,
+        payment: {
+          method: selectedPayment === "card" ? "CARD" : "INVOICE",
+        },
+      });
+
+      setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
+      setSubmitSuccess("Заказ отправлен. Мы свяжемся с вами для подтверждения.");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setSubmitError("Войдите в аккаунт, чтобы подтвердить заказ.");
+      } else if (error instanceof ApiError) {
+        setSubmitError(error.message || "Не удалось отправить заказ.");
+      } else {
+        setSubmitError("Не удалось отправить заказ. Проверьте данные и попробуйте снова.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -77,9 +163,7 @@ export function CheckoutPage() {
             <a href="/cart">
               <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             </a>
-            <a href="/login" className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              войти
-            </a>
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>
@@ -94,7 +178,7 @@ export function CheckoutPage() {
               Пожалуйста, заполните данные для доставки и оплаты вашей системы ВостокСтройЭксперт.
             </p>
 
-            <div className="mt-20">
+            <form className="mt-20" onSubmit={handleSubmit}>
               <div className="flex items-center gap-5 text-[#111]">
                 <span className="text-[16px] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">01</span>
                 <h2 className="text-[32px] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Контактные данные</h2>
@@ -113,7 +197,7 @@ export function CheckoutPage() {
                 <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Телефон</span>
                 <input name="phone" autoComplete="tel" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
               </label>
-            </div>
+            
 
             <div className="mt-20">
               <div className="flex items-center gap-5 text-[#111]">
@@ -151,14 +235,22 @@ export function CheckoutPage() {
                     className="flex min-h-[92px] cursor-pointer items-center justify-between border border-[#e8e3db] px-7 py-6"
                   >
                     <span className="flex items-center gap-5">
-                      <input id={id as string} type="radio" name="payment" defaultChecked={index === 0} disabled={Boolean(note)} className="peer sr-only" />
+                      <input
+                        id={id as string}
+                        type="radio"
+                        name="payment"
+                        checked={selectedPayment === id}
+                        onChange={() => setSelectedPayment(id as string)}
+                        disabled={Boolean(note)}
+                        className="peer sr-only"
+                      />
                       <span
                         aria-hidden="true"
                         className={`flex h-7 w-7 items-center justify-center rounded-full border ${
-                          index === 0 ? "border-[#111]" : "border-[#d7d2ca]"
+                          selectedPayment === id ? "border-[#111]" : "border-[#d7d2ca]"
                         }`}
                       >
-                        <span className={`h-3.5 w-3.5 rounded-full ${index === 0 ? "bg-[#111]" : "bg-transparent"}`} />
+                        <span className={`h-3.5 w-3.5 rounded-full ${selectedPayment === id ? "bg-[#111]" : "bg-transparent"}`} />
                       </span>
                       <span className="flex flex-wrap items-center gap-6">
                         <span className="text-[20px] uppercase tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</span>
@@ -185,13 +277,28 @@ export function CheckoutPage() {
             </div>
 
             <div className="mt-20 max-w-[860px]">
-              <button className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[22px] uppercase tracking-[4px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              {submitError ? (
+                <p className="mb-6 text-[14px] uppercase tracking-[2px] text-[#b24a3a] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  {submitError}
+                </p>
+              ) : null}
+              {submitSuccess ? (
+                <p className="mb-6 text-[14px] uppercase tracking-[2px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  {submitSuccess}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={isSubmitting || cartLoading || Boolean(cartError)}
+                className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[22px] uppercase tracking-[4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
+              >
                 подтвердить заказ
               </button>
               <p className="mt-10 text-center text-[13px] uppercase tracking-[3px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 нажимая кнопку, вы соглашаетесь с условиями оферты
               </p>
             </div>
+            </form>
           </div>
 
           <aside className="self-start border border-[#e8e3db] p-8 md:p-12">
@@ -199,10 +306,10 @@ export function CheckoutPage() {
 
             {primaryItem ? (
               <div className="mt-12 flex items-center gap-5">
-                <a href={`/catalog/${primaryItem.product.slug}`}>
+                <a href={primaryItem.kind === "product" ? `/catalog/${primaryItem.slug}` : "/services"}>
                   <img
-                    src={primaryItem.product.image}
-                    alt={primaryItem.product.title}
+                    src={primaryItem.image}
+                    alt={primaryItem.title}
                     width="120"
                     height="120"
                     loading="lazy"
@@ -211,15 +318,17 @@ export function CheckoutPage() {
                   />
                 </a>
                 <div>
-                  <p className="text-[20px] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">{primaryItem.product.brandLabel}</p>
+                  <p className="text-[20px] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    {primaryItem.brandLabel ?? "AERIS PRECISION"}
+                  </p>
                   <p className="mt-1 text-[16px] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {primaryItem.product.title}
+                    {primaryItem.title}
                   </p>
                   <p className="mt-2 text-[14px] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {primaryItem.qty} шт.
                   </p>
                   <p className="mt-4 text-[26px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {formatPrice(primaryItem.product.price * primaryItem.qty)}
+                    {formatPrice(primaryItem.totalPrice)}
                   </p>
                 </div>
               </div>

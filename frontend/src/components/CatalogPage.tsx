@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
 import { formatPrice, type Product } from "../data/products";
+import AuthHeaderButton from "./AuthHeaderButton";
 
 type CatalogPageProps = {
   products: Product[];
@@ -139,7 +140,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
             <span>Цена</span>
             <span className="flex items-center gap-3 text-right text-[#8a8a85]">
               Отображено {visiblePercent}% товаров
-              <img src="/РєР°С‚Р°Р»РѕРі/РіСЂСѓСЃС‚С‹РЅС‹РёМ† СЃРјР°РёМ†Р»РёРє.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+              <img src="/каталог/грустыный смайлик.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-4 border-t border-[#e7e1d9] pt-5">
@@ -241,11 +242,9 @@ export function CatalogPage({ products }: CatalogPageProps) {
             <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/Р»СѓРїР°.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <a href="/login" className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              войти
-            </a>
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>
@@ -305,7 +304,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
                   фильтры
                 </button>
                 <div className="flex h-16 w-16 items-center justify-center border border-[#e7e1d9]">
-                  <img src="/РєР°С‚Р°Р»РѕРі/СЃРїРёСЃРѕС‡РµРє.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
+                  <img src="/каталог/списочек.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
                 </div>
                 <div className="flex h-16 flex-1 items-center justify-between border border-[#e7e1d9] px-5">
                   <input
@@ -318,7 +317,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
                     placeholder="Поиск по каталогу"
                     className="w-full border-0 bg-transparent text-[26px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none [font-family:DM_Sans,Manrope,sans-serif]"
                   />
-                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІ РїРѕРёСЃРєРµ.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain" />
+                  <img src="/каталог/стрелка в поиске.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain" />
                 </div>
               </div>
 
@@ -382,7 +381,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
                   disabled={safePage === 1}
                   className="flex items-center gap-4 text-[#555] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІР»РµРІРѕ.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
+                  <img src="/каталог/стрелка влево.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
                   <span>назад</span>
                 </button>
                 <div className="flex items-center gap-8 text-[#8a8a85]">
@@ -404,7 +403,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
                   className="flex items-center gap-4 text-[#111] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span>далее</span>
-                  <img src="/РєР°С‚Р°Р»РѕРі/СЃС‚СЂРµР»РєР° РІРїСЂР°РІРѕ.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
+                  <img src="/каталог/стрелка вправо.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
                 </button>
               </div>
             </div>

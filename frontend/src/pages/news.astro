@@ -20,6 +20,6 @@ const posts = await loadNewsPosts();
     />
   </head>
   <body>
-    <NewsPage posts={posts} />
+    <NewsPage client:load posts={posts} />
   </body>
 </html>

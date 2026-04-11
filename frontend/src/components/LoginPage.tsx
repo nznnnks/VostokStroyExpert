@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 
+import AuthHeaderButton from "./AuthHeaderButton";
 import { loginAdmin, loginUser } from "../lib/auth";
 
 export function LoginPage() {
@@ -59,6 +60,7 @@ export function LoginPage() {
           <div className="flex items-center gap-4">
             <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>
@@ -147,7 +149,15 @@ export function LoginPage() {
                     .
                   </p>
                 )}
-                <p>Регистрация и вход по коду пока не переведены на backend, потому что соответствующих endpoints в текущем API нет.</p>
+                {mode === "user" ? (
+                  <p>
+                    Нет аккаунта?{" "}
+                    <a href="/register" className="underline underline-offset-4">
+                      Зарегистрироваться
+                    </a>
+                    .
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
