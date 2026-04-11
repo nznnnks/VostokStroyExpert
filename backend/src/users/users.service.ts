@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { ADMIN_USER_ROLES, isAdminUserRole } from '../auth/constants/auth.constants';
 import { PasswordService } from '../auth/password.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,12 +24,19 @@ export class UsersService {
   async findAll(query: PaginationQueryDto) {
     const where: Prisma.UserWhereInput | undefined = query.search
       ? {
-          OR: [
-            { email: { contains: query.search, mode: 'insensitive' } },
-            { phone: { contains: query.search, mode: 'insensitive' } },
+          AND: [
+            { role: { notIn: [...ADMIN_USER_ROLES] } },
+            {
+              OR: [
+                { email: { contains: query.search, mode: 'insensitive' } },
+                { phone: { contains: query.search, mode: 'insensitive' } },
+                { firstName: { contains: query.search, mode: 'insensitive' } },
+                { lastName: { contains: query.search, mode: 'insensitive' } },
+              ],
+            },
           ],
         }
-      : undefined;
+      : { role: { notIn: [...ADMIN_USER_ROLES] } };
 
     const users = await this.prisma.user.findMany({
       where,
@@ -47,7 +55,7 @@ export class UsersService {
       include: userInclude,
     });
 
-    if (!user) {
+    if (!user || isAdminUserRole(user.role)) {
       throw new NotFoundException(`User ${id} not found.`);
     }
 
@@ -55,6 +63,10 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
+    if (dto.role && isAdminUserRole(dto.role)) {
+      throw new BadRequestException('Use the admin-users endpoint for elevated roles.');
+    }
+
     const passwordHash = await this.passwordService.preparePasswordHash(dto.passwordHash);
 
     const user = await this.prisma.user.create({
@@ -62,6 +74,8 @@ export class UsersService {
         email: dto.email,
         phone: dto.phone,
         passwordHash,
+        firstName: dto.clientProfile?.firstName,
+        lastName: dto.clientProfile?.lastName,
         role: dto.role,
         status: dto.status,
         clientProfile: dto.clientProfile
@@ -77,13 +91,19 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    await this.ensureUserExists(id);
+    await this.ensureRegularUserExists(id);
+
+    if (dto.role && isAdminUserRole(dto.role)) {
+      throw new BadRequestException('Use the admin-users endpoint for elevated roles.');
+    }
 
     const user = await this.prisma.user.update({
       where: { id },
       data: {
         email: dto.email,
         phone: dto.phone,
+        firstName: dto.clientProfile?.firstName,
+        lastName: dto.clientProfile?.lastName,
         passwordHash: dto.passwordHash
           ? await this.passwordService.preparePasswordHash(dto.passwordHash)
           : undefined,
@@ -112,6 +132,8 @@ export class UsersService {
       data: {
         email: dto.email,
         phone: dto.phone,
+        firstName: dto.clientProfile?.firstName,
+        lastName: dto.clientProfile?.lastName,
         passwordHash: dto.passwordHash
           ? await this.passwordService.preparePasswordHash(dto.passwordHash)
           : undefined,
@@ -126,7 +148,7 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    await this.ensureUserExists(id);
+    await this.ensureRegularUserExists(id);
     await this.prisma.user.delete({ where: { id } });
     return { deleted: true, id };
   }
@@ -235,6 +257,17 @@ export class UsersService {
     const exists = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
 
     if (!exists) {
+      throw new NotFoundException(`User ${id} not found.`);
+    }
+  }
+
+  private async ensureRegularUserExists(id: string) {
+    const exists = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+
+    if (!exists || isAdminUserRole(exists.role)) {
       throw new NotFoundException(`User ${id} not found.`);
     }
   }

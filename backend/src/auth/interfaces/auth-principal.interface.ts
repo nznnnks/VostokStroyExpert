@@ -1,4 +1,4 @@
-import { AdminRole, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 export interface AuthenticatedUser {
   type: 'user';
@@ -10,7 +10,7 @@ export interface AuthenticatedUser {
 export interface AuthenticatedAdmin {
   type: 'admin';
   adminId: string;
-  role: AdminRole;
+  role: UserRole;
   email: string;
 }
 
@@ -19,6 +19,6 @@ export type AuthPrincipal = AuthenticatedUser | AuthenticatedAdmin;
 export interface AuthTokenPayload {
   sub: string;
   type: AuthPrincipal['type'];
-  role: UserRole | AdminRole;
+  role: UserRole;
   email: string;
 }

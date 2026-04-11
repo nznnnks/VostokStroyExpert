@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { AdminRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { CurrentAdmin } from '../auth/decorators/current-admin.decorator';
@@ -33,19 +33,19 @@ export class NewsController {
   }
 
   @Post()
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER, AdminRole.EDITOR)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER, UserRole.EDITOR)
   create(@Body() dto: CreateNewsDto, @CurrentAdmin() admin: AuthenticatedAdmin) {
     return this.newsService.create(dto, admin.adminId);
   }
 
   @Patch(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER, AdminRole.EDITOR)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER, UserRole.EDITOR)
   update(@Param('id') id: string, @Body() dto: UpdateNewsDto) {
     return this.newsService.update(id, dto);
   }
 
   @Delete(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER, AdminRole.EDITOR)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER, UserRole.EDITOR)
   remove(@Param('id') id: string) {
     return this.newsService.remove(id);
   }

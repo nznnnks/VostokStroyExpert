@@ -118,7 +118,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
           </nav>
 
           <div className="mt-auto border-t border-white/10 px-8 py-8">
-            <a href="/login?admin=1" className="flex items-center gap-4 text-[18px] text-white/70">
+            <a href="/login" className="flex items-center gap-4 text-[18px] text-white/70">
               <img
                 src="/админка/выход.svg"
                 alt=""

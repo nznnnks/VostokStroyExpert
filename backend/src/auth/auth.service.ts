@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { AdminRole, UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus } from '@prisma/client';
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { isAdminUserRole } from './constants/auth.constants';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -45,12 +46,7 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const principal: AuthenticatedUser = {
-      type: 'user',
-      userId: user.id,
-      role: user.role,
-      email: user.email,
-    };
+    const principal = this.toAuthPrincipal(user);
 
     return {
       accessToken: this.signAccessToken(principal),
@@ -61,11 +57,12 @@ export class AuthService {
   }
 
   async loginAdmin(dto: LoginAdminDto) {
-    const admin = await this.prisma.adminUser.findUnique({
+    const admin = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: { clientProfile: true },
     });
 
-    if (!admin || !admin.isActive) {
+    if (!admin || admin.status !== UserStatus.ACTIVE || !isAdminUserRole(admin.role)) {
       throw new UnauthorizedException('Invalid admin credentials.');
     }
 
@@ -78,12 +75,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid admin credentials.');
     }
 
-    const principal: AuthenticatedAdmin = {
-      type: 'admin',
-      adminId: admin.id,
-      role: admin.role,
-      email: admin.email,
-    };
+    await this.prisma.user.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const principal: AuthenticatedAdmin = this.toAuthPrincipal(admin) as AuthenticatedAdmin;
 
     return {
       accessToken: this.signAccessToken(principal),
@@ -112,6 +109,8 @@ export class AuthService {
         email: dto.email,
         phone: dto.phone ?? null,
         passwordHash,
+        firstName,
+        lastName,
         status: UserStatus.ACTIVE,
         role: UserRole.CLIENT,
         clientProfile: {
@@ -125,12 +124,7 @@ export class AuthService {
       include: { clientProfile: true },
     });
 
-    const principal: AuthenticatedUser = {
-      type: 'user',
-      userId: user.id,
-      role: user.role,
-      email: user.email,
-    };
+    const principal: AuthenticatedUser = this.toAuthPrincipal(user) as AuthenticatedUser;
 
     return {
       accessToken: this.signAccessToken(principal),
@@ -157,12 +151,12 @@ export class AuthService {
         };
       }
 
-      return {
-        type: 'admin',
-        adminId: payload.sub,
-        role: payload.role as AdminRole,
-        email: payload.email,
-      };
+        return {
+          type: 'admin',
+          adminId: payload.sub,
+          role: payload.role as UserRole,
+          email: payload.email,
+        };
     } catch {
       throw new UnauthorizedException('Invalid access token.');
     }
@@ -195,6 +189,28 @@ export class AuthService {
 
   private getJwtExpiresIn() {
     return process.env.JWT_EXPIRES_IN ?? '12h';
+  }
+
+  private toAuthPrincipal(user: {
+    id: string;
+    email: string;
+    role: UserRole;
+  }): AuthPrincipal {
+    if (isAdminUserRole(user.role)) {
+      return {
+        type: 'admin',
+        adminId: user.id,
+        role: user.role,
+        email: user.email,
+      };
+    }
+
+    return {
+      type: 'user',
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+    };
   }
 
   private toSafeUser<T extends { passwordHash: string }>(user: T) {

@@ -10,6 +10,8 @@ datasource db {
 enum UserRole {
   CLIENT
   MANAGER
+  EDITOR
+  SUPERADMIN
 }
 
 enum UserStatus {
@@ -76,26 +78,23 @@ enum NewsStatus {
   ARCHIVED
 }
 
-enum AdminRole {
-  SUPERADMIN
-  MANAGER
-  EDITOR
-}
-
 model User {
-  id           String         @id @default(uuid()) @db.Uuid
-  email        String         @unique
-  phone        String?        @unique
-  passwordHash String
-  role         UserRole       @default(CLIENT)
-  status       UserStatus     @default(ACTIVE)
-  lastLoginAt  DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique
+  phone         String?        @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  role          UserRole       @default(CLIENT)
+  status        UserStatus     @default(ACTIVE)
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   clientProfile ClientProfile?
-  cart         Cart?
-  orders       Order[]
+  cart          Cart?
+  orders        Order[]
   orderTemplates OrderTemplate[]
+  news          News[]
 }
 
 model ClientProfile {
@@ -329,18 +328,5 @@ model News {
   authorId      String?     @db.Uuid
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  author        AdminUser?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
-}
-
-model AdminUser {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
-  passwordHash String
-  firstName    String
-  lastName     String?
-  role         AdminRole @default(MANAGER)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  news         News[]
+  author        User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
 }

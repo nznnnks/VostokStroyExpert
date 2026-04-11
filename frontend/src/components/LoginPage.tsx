@@ -1,19 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import AuthHeaderButton from "./AuthHeaderButton";
-import { loginAdmin, loginUser } from "../lib/auth";
+import { loginUser } from "../lib/auth";
 
 export function LoginPage() {
-  const [mode, setMode] = useState<"user" | "admin">("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    setMode(url.searchParams.get("admin") === "1" ? "admin" : "user");
-  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,26 +15,14 @@ export function LoginPage() {
     setError(null);
 
     try {
-      if (mode === "admin") {
-        await loginAdmin(email, password);
-        window.location.href = "/admin";
-        return;
-      }
-
-      await loginUser(email, password);
-      window.location.href = "/account";
+      const session = await loginUser(email, password);
+      window.location.href = session.type === "admin" ? "/admin" : "/account";
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось выполнить вход.");
     } finally {
       setLoading(false);
     }
   }
-
-  const title = mode === "admin" ? "Вход в админ-панель" : "Вход в личный кабинет";
-  const description =
-    mode === "admin"
-      ? "Авторизация администратора через существующий backend endpoint."
-      : "Авторизация пользователя через существующий backend endpoint.";
 
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -82,8 +64,10 @@ export function LoginPage() {
 
           <div className="flex items-center px-6 py-16 md:px-12 xl:px-20">
             <div className="mx-auto w-full max-w-[480px]">
-              <h1 className="text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">{title}</h1>
-              <p className="mt-6 max-w-[460px] text-[18px] leading-[1.55] text-[#7d7d78] md:text-[22px]">{description}</p>
+              <h1 className="text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">Вход в личный кабинет</h1>
+              <p className="mt-6 max-w-[460px] text-[18px] leading-[1.55] text-[#7d7d78] md:text-[22px]">
+                Авторизация пользователя через backend API.
+              </p>
 
               <form className="mt-16 space-y-10" onSubmit={handleSubmit}>
                 <label className="block">
@@ -132,32 +116,13 @@ export function LoginPage() {
               </form>
 
               <div className="mt-12 space-y-3 text-[15px] leading-[1.65] text-[#7d7d78] md:text-[18px]">
-                {mode === "user" ? (
-                  <p>
-                    Для входа в админ-панель используйте{" "}
-                    <a href="/login?admin=1" className="underline underline-offset-4">
-                      отдельный режим администратора
-                    </a>
-                    .
-                  </p>
-                ) : (
-                  <p>
-                    Для обычного входа пользователя вернитесь на{" "}
-                    <a href="/login" className="underline underline-offset-4">
-                      страницу входа
-                    </a>
-                    .
-                  </p>
-                )}
-                {mode === "user" ? (
-                  <p>
-                    Нет аккаунта?{" "}
-                    <a href="/register" className="underline underline-offset-4">
-                      Зарегистрироваться
-                    </a>
-                    .
-                  </p>
-                ) : null}
+                <p>
+                  Нет аккаунта?{" "}
+                  <a href="/register" className="underline underline-offset-4">
+                    Зарегистрируйтесь
+                  </a>
+                  .
+                </p>
               </div>
             </div>
           </div>

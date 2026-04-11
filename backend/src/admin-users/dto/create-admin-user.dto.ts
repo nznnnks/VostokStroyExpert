@@ -1,5 +1,5 @@
 import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
-import { AdminRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 export class CreateAdminUserDto {
   @IsEmail()
@@ -16,8 +16,8 @@ export class CreateAdminUserDto {
   lastName?: string;
 
   @IsOptional()
-  @IsEnum(AdminRole)
-  role?: AdminRole;
+  @IsEnum(UserRole)
+  role?: UserRole;
 
   @IsOptional()
   @IsBoolean()

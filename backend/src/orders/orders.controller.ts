@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { AdminRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { AuthenticatedAccess } from '../auth/decorators/authenticated-access.decorator';
@@ -47,13 +47,13 @@ export class OrdersController {
   }
 
   @Patch(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
     return this.ordersService.update(id, dto);
   }
 
   @Delete(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   remove(@Param('id') id: string) {
     return this.ordersService.remove(id);
   }

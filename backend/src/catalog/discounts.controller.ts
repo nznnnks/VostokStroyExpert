@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { AdminRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -21,31 +21,31 @@ export class DiscountsController {
   constructor(private readonly discountsService: DiscountsService) {}
 
   @Get()
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   findAll(@Query() query: PaginationQueryDto) {
     return this.discountsService.findAll(query);
   }
 
   @Get(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   findOne(@Param('id') id: string) {
     return this.discountsService.findOne(id);
   }
 
   @Post()
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   create(@Body() dto: CreateDiscountDto) {
     return this.discountsService.create(dto);
   }
 
   @Patch(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   update(@Param('id') id: string, @Body() dto: UpdateDiscountDto) {
     return this.discountsService.update(id, dto);
   }
 
   @Delete(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   remove(@Param('id') id: string) {
     return this.discountsService.remove(id);
   }

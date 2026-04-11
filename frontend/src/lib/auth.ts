@@ -35,6 +35,8 @@ type LoginResponse = {
     id: string;
     email: string;
     role: string;
+    firstName?: string | null;
+    lastName?: string | null;
     clientProfile?: {
       firstName?: string | null;
       lastName?: string | null;
@@ -50,6 +52,10 @@ type LoginResponse = {
 };
 
 const AUTH_STORAGE_KEY = "vostokstroyexpert-auth";
+
+function isAdminRole(role?: string | null) {
+  return role === "SUPERADMIN" || role === "MANAGER" || role === "EDITOR";
+}
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -123,21 +129,31 @@ export async function loginUser(email: string, password: string) {
     body: { email, password },
   });
 
-  const session: StoredAuthSession = {
-    type: "user",
-    accessToken: response.accessToken,
-    tokenType: response.tokenType,
-    expiresIn: response.expiresIn,
-    user: response.user
-      ? {
-          id: response.user.id,
-          email: response.user.email,
-          role: response.user.role,
-          firstName: response.user.clientProfile?.firstName ?? null,
-          lastName: response.user.clientProfile?.lastName ?? null,
-        }
-      : null,
-  };
+  const sharedPerson = response.user
+    ? {
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role,
+        firstName: response.user.firstName ?? response.user.clientProfile?.firstName ?? null,
+        lastName: response.user.lastName ?? response.user.clientProfile?.lastName ?? null,
+      }
+    : null;
+
+  const session: StoredAuthSession = isAdminRole(response.user?.role)
+    ? {
+        type: "admin",
+        accessToken: response.accessToken,
+        tokenType: response.tokenType,
+        expiresIn: response.expiresIn,
+        admin: sharedPerson,
+      }
+    : {
+        type: "user",
+        accessToken: response.accessToken,
+        tokenType: response.tokenType,
+        expiresIn: response.expiresIn,
+        user: sharedPerson,
+      };
 
   setStoredAuthSession(session);
   return session;
@@ -185,8 +201,8 @@ export async function registerUser(fullName: string, email: string, password: st
           id: response.user.id,
           email: response.user.email,
           role: response.user.role,
-          firstName: response.user.clientProfile?.firstName ?? null,
-          lastName: response.user.clientProfile?.lastName ?? null,
+          firstName: response.user.firstName ?? response.user.clientProfile?.firstName ?? null,
+          lastName: response.user.lastName ?? response.user.clientProfile?.lastName ?? null,
         }
       : null,
   };

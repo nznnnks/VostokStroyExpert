@@ -5,10 +5,11 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "npm run prisma:generate && node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && nest build",
+    "admin:create": "ts-node prisma/create-admin.ts",
     "dev": "npm run start:dev",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main.js",
+    "start:prod": "node dist/src/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"

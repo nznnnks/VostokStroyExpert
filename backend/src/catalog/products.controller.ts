@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { AdminRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -31,19 +31,19 @@ export class ProductsController {
   }
 
   @Post()
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
   @Patch(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
   @Delete(':id')
-  @AdminAccess(AdminRole.SUPERADMIN, AdminRole.MANAGER)
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }

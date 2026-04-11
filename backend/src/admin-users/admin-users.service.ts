@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 
+import { ADMIN_USER_ROLES, isAdminUserRole } from '../auth/constants/auth.constants';
 import { PasswordService } from '../auth/password.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,16 +16,21 @@ export class AdminUsersService {
   ) {}
 
   async findAll(query: PaginationQueryDto) {
-    const admins = await this.prisma.adminUser.findMany({
+    const admins = await this.prisma.user.findMany({
       where: query.search
         ? {
-            OR: [
-              { email: { contains: query.search, mode: 'insensitive' } },
-              { firstName: { contains: query.search, mode: 'insensitive' } },
-              { lastName: { contains: query.search, mode: 'insensitive' } },
+            AND: [
+              { role: { in: [...ADMIN_USER_ROLES] } },
+              {
+                OR: [
+                  { email: { contains: query.search, mode: 'insensitive' } },
+                  { firstName: { contains: query.search, mode: 'insensitive' } },
+                  { lastName: { contains: query.search, mode: 'insensitive' } },
+                ],
+              },
             ],
           }
-        : undefined,
+        : { role: { in: [...ADMIN_USER_ROLES] } },
       include: {
         _count: {
           select: {
@@ -40,8 +47,11 @@ export class AdminUsersService {
   }
 
   async findOne(id: string) {
-    const admin = await this.prisma.adminUser.findUnique({
-      where: { id },
+    const admin = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: { in: [...ADMIN_USER_ROLES] },
+      },
       include: {
         news: true,
       },
@@ -55,10 +65,20 @@ export class AdminUsersService {
   }
 
   async create(dto: CreateAdminUserDto) {
-    const admin = await this.prisma.adminUser.create({
+    const role = dto.role ?? UserRole.MANAGER;
+
+    if (!isAdminUserRole(role)) {
+      throw new BadRequestException('Elevated role is required for admin users.');
+    }
+
+    const admin = await this.prisma.user.create({
       data: {
-        ...dto,
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         passwordHash: await this.passwordService.preparePasswordHash(dto.passwordHash),
+        role,
+        status: dto.isActive === false ? UserStatus.BLOCKED : UserStatus.ACTIVE,
       },
     });
     return this.toResponse(admin);
@@ -66,13 +86,27 @@ export class AdminUsersService {
 
   async update(id: string, dto: UpdateAdminUserDto) {
     await this.ensureExists(id);
-    const admin = await this.prisma.adminUser.update({
+
+    if (dto.role && !isAdminUserRole(dto.role)) {
+      throw new BadRequestException('Elevated role is required for admin users.');
+    }
+
+    const admin = await this.prisma.user.update({
       where: { id },
       data: {
-        ...dto,
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         passwordHash: dto.passwordHash
           ? await this.passwordService.preparePasswordHash(dto.passwordHash)
           : undefined,
+        role: dto.role,
+        status:
+          dto.isActive === undefined
+            ? undefined
+            : dto.isActive
+              ? UserStatus.ACTIVE
+              : UserStatus.BLOCKED,
       },
     });
     return this.toResponse(admin);
@@ -80,13 +114,16 @@ export class AdminUsersService {
 
   async remove(id: string) {
     await this.ensureExists(id);
-    await this.prisma.adminUser.delete({ where: { id } });
+    await this.prisma.user.delete({ where: { id } });
     return { deleted: true, id };
   }
 
   private async ensureExists(id: string) {
-    const admin = await this.prisma.adminUser.findUnique({
-      where: { id },
+    const admin = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: { in: [...ADMIN_USER_ROLES] },
+      },
       select: { id: true },
     });
 
@@ -95,8 +132,15 @@ export class AdminUsersService {
     }
   }
 
-  private toResponse<T extends { passwordHash: string }>(admin: T) {
-    const { passwordHash: _passwordHash, ...safeAdmin } = admin;
-    return safeAdmin;
+  private toResponse<
+    T extends Prisma.UserGetPayload<{
+      include?: { _count?: { select: { news: true } } };
+    }>
+  >(admin: T) {
+    const { passwordHash: _passwordHash, status, ...safeAdmin } = admin;
+    return {
+      ...safeAdmin,
+      isActive: status === UserStatus.ACTIVE,
+    };
   }
 }
