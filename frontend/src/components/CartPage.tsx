@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { formatPrice } from "../data/products";
-import AuthHeaderButton from "./AuthHeaderButton";
 import type { CartView } from "../lib/backend-api";
 import { addProductToSessionCartBySlug, loadSessionCart, removeSessionCartItem, updateSessionCartItem } from "../lib/session-cart";
+import { getStoredAccessToken } from "../lib/auth";
+import SiteHeader from "./SiteHeader";
 
 const perks = [
   ["/cart/check.svg", "Гарантия 5 лет на все системы"],
@@ -107,28 +108,20 @@ export function CartPage() {
     ["НДС (20%)", formatPrice(vat)],
   ];
 
+  function handleCheckoutClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    const token = getStoredAccessToken("user");
+
+    if (token) {
+      return;
+    }
+
+    event.preventDefault();
+    window.location.href = "/login?next=/checkout";
+  }
+
   return (
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
-      <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
-        <div className="mx-auto flex max-w-[1480px] items-center gap-4">
-          <a href="/" className="text-[clamp(1.4rem,1.6vw,2rem)] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
-            ВостокСтройЭксперт
-          </a>
-          <nav className="ml-auto hidden items-center gap-10 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/">главная</a>
-            <a href="/about">о нас</a>
-            <a href="/services">услуги</a>
-            <a href="/news">проекты</a>
-            <a href="/catalog">каталог</a>
-            <a href="/news">блог</a>
-          </nav>
-          <div className="flex items-center gap-4">
-            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="px-4 py-10 md:px-10 md:py-16">
         <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_500px]">
@@ -238,7 +231,11 @@ export function CartPage() {
                 <span className="text-[clamp(2rem,3.2vw,2.9rem)] leading-none [font-family:'Cormorant_Garamond',serif]">{formatPrice(total)}</span>
               </div>
 
-              <a href="/checkout" className="mt-10 inline-flex h-16 w-full items-center justify-center bg-[#111] text-[clamp(0.9rem,0.9vw,1.25rem)] uppercase tracking-[2px] text-white md:mt-12 md:h-20 md:tracking-[3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <a
+                href="/checkout"
+                onClick={handleCheckoutClick}
+                className="mt-10 inline-flex h-16 w-full items-center justify-center bg-[#111] text-[clamp(0.9rem,0.9vw,1.25rem)] uppercase tracking-[2px] text-white md:mt-12 md:h-20 md:tracking-[3px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+              >
                 оформить заказ
               </a>
 

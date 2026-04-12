@@ -3,7 +3,7 @@ import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
 import { createOrder, type CartView } from "../lib/backend-api";
 import { addProductToSessionCartBySlug, clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
-import AuthHeaderButton from "./AuthHeaderButton";
+import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
 const paymentOptions = [
@@ -140,28 +140,7 @@ export function CheckoutPage() {
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <div className="flex-1">
-        <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
-          <div className="mx-auto flex max-w-[1480px] items-center gap-4">
-          <a href="/" className="text-[clamp(1.4rem,1.6vw,2rem)] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
-            ВостокСтройЭксперт
-          </a>
-          <nav className="ml-auto hidden items-center gap-10 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/">главная</a>
-            <a href="/about">о нас</a>
-            <a href="/services">услуги</a>
-            <a href="/news">проекты</a>
-            <a href="/catalog">каталог</a>
-            <a href="/news">блог</a>
-          </nav>
-          <div className="flex items-center gap-4">
-            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <a href="/cart">
-              <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            </a>
-            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
-          </div>
-        </div>
-        </header>
+        <SiteHeader />
 
         <section className="px-4 py-10 md:px-10 md:py-14">
           <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_520px]">

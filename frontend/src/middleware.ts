@@ -43,7 +43,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
-  if (!accessToken) {
+  if (!accessToken || authType !== "admin") {
     return context.redirect(`/login?next=${encodeURIComponent(requestedPath)}`);
   }
 

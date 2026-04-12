@@ -1,6 +1,21 @@
-import { useEffect, useState } from "react";
-import AuthHeaderButton from "./AuthHeaderButton";
+import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
+
+const formatPhone = (raw: string) => {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  let normalized = digits;
+  if (normalized.startsWith("8")) normalized = `7${normalized.slice(1)}`;
+  if (normalized.startsWith("7")) normalized = normalized.slice(1);
+  const slice = normalized.slice(0, 10);
+  let result = "+7";
+  if (slice.length > 0) result += ` (${slice.slice(0, 3)}`;
+  if (slice.length >= 3) result += ")";
+  if (slice.length > 3) result += ` ${slice.slice(3, 6)}`;
+  if (slice.length > 6) result += `-${slice.slice(6, 8)}`;
+  if (slice.length > 8) result += `-${slice.slice(8, 10)}`;
+  return result;
+};
 
 const stats = [
   ["100+", "реализованных проектов"],
@@ -45,23 +60,23 @@ const steps = [
 
 const blog = [
   {
-    image: "/image/новостнойблок1.png",
+    image: "/image/news-1.png",
     title: "Почему инженерия должна быть частью тихого интерьера",
     text: "Разбираем, как оборудование высокого класса интегрируется в пространство без визуального и акустического давления.",
     wide: true,
   },
   {
-    image: "/image/новостнойблок2.png",
+    image: "/image/news-2.png",
     title: "Сервис и контроль системы после запуска",
     text: "Что важно предусмотреть заранее, чтобы климатическая система не требовала постоянного внимания.",
   },
   {
-    image: "/image/новостнойблок3.png",
+    image: "/image/news-3.png",
     title: "Что нужно знать про VRF-решения",
     text: "Коротко о сценариях применения и тонкостях подбора для объектов разного масштаба.",
   },
   {
-    image: "/image/новостнойблок4.png",
+    image: "/image/news-4.png",
     title: "Надёжность как главный критерий премиальной инженерии",
     text: "Почему стабильная работа системы важнее перегруженного набора характеристик в спецификации.",
   },
@@ -83,98 +98,12 @@ const reviews = [
 ];
 
 export function StayseLandingTailwind() {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen]);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#0f0f0e] [font-family:Manrope,'Liberation_Sans',sans-serif]">
       <div className="flex-1">
-        <header className="border-b border-[#efefec] px-3 py-3 md:px-10">
-        <div className="mx-auto flex max-w-[1480px] items-center gap-3 text-[clamp(10px,0.35vw+9px,13px)] uppercase tracking-[1.2px] text-[#6b6b67] md:gap-8 2xl:max-w-[1860px] [font-family:'JetBrains_Mono',monospace]">
-          <a href="/" className="shrink-0 text-[#050505] [font-family:'Cormorant_Garamond',serif] text-[clamp(24px,1.1vw+18px,36px)] normal-case tracking-[-0.03em]">
-            ВостокСтройЭксперт
-          </a>
-          <nav className="hidden flex-1 items-center justify-center gap-[clamp(24px,2.2vw,46px)] md:flex">
-            <a href="/">главная</a>
-            <a href="/about">о нас</a>
-            <a href="/services">услуги</a>
-            <a href="/news">проекты</a>
-            <a href="/catalog">каталог</a>
-            <a href="/news">блог</a>
-          </nav>
-          <div className="ml-auto flex items-center gap-3">
-            <a href="/catalog" aria-label="Поиск по каталогу" className="hidden sm:inline-flex">
-              <img src="/image/search.png" alt="" aria-hidden="true" loading="eager" decoding="async" width="18" height="18" className="h-3.5 w-3.5 object-contain sm:h-4 sm:w-4" />
-            </a>
-            <a href="/cart" aria-label="Корзина" className="hidden sm:inline-flex">
-              <img src="/image/cart.png" alt="" aria-hidden="true" loading="eager" decoding="async" width="18" height="18" className="h-3.5 w-3.5 object-contain sm:h-4 sm:w-4" />
-            </a>
-            <AuthHeaderButton className="hidden h-[clamp(40px,3.2vw,52px)] items-center justify-center bg-[#050505] px-[clamp(18px,2vw,32px)] text-[clamp(11px,0.45vw+10px,14px)] text-white sm:inline-flex [font-family:'JetBrains_Mono',monospace]" />
-            <button
-              type="button"
-              aria-label="Открыть меню"
-              onClick={() => setMenuOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center border border-[#e6e0d7] sm:hidden"
-            >
-              <span className="relative h-[12px] w-[20px]">
-                <span className="absolute left-0 top-0 h-[2px] w-full bg-[#111]" />
-                <span className="absolute left-0 top-[5px] h-[2px] w-full bg-[#111]" />
-                <span className="absolute left-0 top-[10px] h-[2px] w-full bg-[#111]" />
-              </span>
-            </button>
-          </div>
-        </div>
-        </header>
+        <SiteHeader />
 
-        {menuOpen ? (
-        <div className="fixed inset-0 z-50 sm:hidden">
-          <button type="button" aria-label="Закрыть меню" className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-          <aside className="absolute right-0 top-0 h-full w-[85vw] max-w-[340px] bg-white px-6 py-6 text-[#111]">
-            <div className="flex items-center justify-between">
-              <span className="text-[20px] italic [font-family:'Cormorant_Garamond',serif]">ВостокСтройЭксперт</span>
-              <button type="button" aria-label="Закрыть меню" className="h-10 w-10 border border-[#e6e0d7]" onClick={() => setMenuOpen(false)}>
-                ✕
-              </button>
-            </div>
-            <nav className="mt-8 flex flex-col gap-5 text-[12px] uppercase tracking-[2px] text-[#6b6b67] [font-family:'JetBrains_Mono',monospace]">
-              <a href="/" onClick={() => setMenuOpen(false)}>главная</a>
-              <a href="/about" onClick={() => setMenuOpen(false)}>о нас</a>
-              <a href="/services" onClick={() => setMenuOpen(false)}>услуги</a>
-              <a href="/news" onClick={() => setMenuOpen(false)}>проекты</a>
-              <a href="/catalog" onClick={() => setMenuOpen(false)}>каталог</a>
-              <a href="/news" onClick={() => setMenuOpen(false)}>блог</a>
-            </nav>
-            <div className="mt-8 grid gap-3">
-              <AuthHeaderButton className="inline-flex h-11 items-center justify-center bg-[#050505] px-6 text-[12px] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]" />
-              <div className="flex gap-3">
-                <a href="/catalog" className="inline-flex h-11 flex-1 items-center justify-center border border-[#e6e0d7] text-[12px] uppercase tracking-[1.2px] text-[#111] [font-family:'JetBrains_Mono',monospace]">
-                  Поиск
-                </a>
-                <a href="/cart" className="inline-flex h-11 flex-1 items-center justify-center border border-[#e6e0d7] text-[12px] uppercase tracking-[1.2px] text-[#111] [font-family:'JetBrains_Mono',monospace]">
-                  Корзина
-                </a>
-              </div>
-            </div>
-          </aside>
-        </div>
-        ) : null}
-
-        <section id="hero" className="relative isolate overflow-hidden bg-[#050505] text-white">
+        <section id="hero" className="relative isolate min-h-screen overflow-hidden bg-[#050505] text-white">
         <img
           src="/image/hero-menu.png"
           alt=""
@@ -187,18 +116,18 @@ export function StayseLandingTailwind() {
           className="absolute inset-0 -z-20 h-full w-full object-cover object-[72%_center] md:object-right"
         />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(4,4,5,0.98)_0%,rgba(4,4,5,0.92)_24%,rgba(4,4,5,0.62)_46%,rgba(4,4,5,0.18)_72%)]" />
-        <div className="mx-auto flex min-h-[620px] max-w-[1480px] flex-col justify-between px-3 pb-5 pt-10 sm:px-5 md:min-h-[790px] md:px-10 md:pb-10 md:pt-24 2xl:min-h-[860px] 2xl:max-w-[1680px]">
+        <div className="mx-auto flex min-h-screen max-w-[1480px] flex-col justify-between px-3 pb-6 pt-10 sm:px-5 md:px-10 md:pb-12 md:pt-24 2xl:max-w-[1680px]">
           <div className="max-w-[700px]">
-            <h1 className="max-w-[760px] text-[clamp(44px,4.8vw,132px)] leading-[0.88] tracking-[-0.05em] [font-family:'Cormorant_Garamond',serif]">
+            <h1 className="max-w-[760px] text-[clamp(52px,6vw,156px)] leading-[0.88] tracking-[-0.05em] [font-family:'Cormorant_Garamond',serif]">
               Атмосферное
               <br />
               Совершенство
             </h1>
-            <p className="mt-4 max-w-[900px] text-[clamp(15px,1.1vw+12px,34px)] font-[200] leading-[1.55] text-[#f4f4f1] md:mt-6">
+            <p className="mt-4 max-w-[900px] text-[clamp(17px,1.4vw+12px,36px)] font-[200] leading-[1.55] text-[#f4f4f1] md:mt-6">
               Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
               Когда тишина становится ощутимой.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-6 text-[clamp(10px,0.35vw+9px,13px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
+            <div className="mt-8 flex flex-wrap items-center gap-6 text-[clamp(11px,0.5vw+10px,15px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
               <a href="/services" className="inline-flex h-11 min-w-[152px] items-center justify-center bg-[#1a1a1a] px-5 text-white">
                 услуги
               </a>
@@ -208,10 +137,10 @@ export function StayseLandingTailwind() {
             </div>
           </div>
 
-          <ul className="mt-10 grid gap-6 border-t border-white/10 pt-5 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.7px] text-[#f4f4f1d6] sm:grid-cols-3 [font-family:'JetBrains_Mono',monospace]">
+          <ul className="mt-10 grid gap-6 border-t border-white/10 pt-5 text-[clamp(11px,0.45vw+9px,14px)] uppercase tracking-[1.7px] text-[#f4f4f1d6] sm:grid-cols-3 [font-family:'JetBrains_Mono',monospace]">
             {stats.map(([value, label]) => (
               <li key={label} className="flex flex-col gap-2">
-                <strong className="text-[clamp(14px,0.6vw+11px,20px)] font-normal leading-none tracking-[0.18em] text-white">{value}</strong>
+                <strong className="text-[clamp(16px,0.8vw+12px,24px)] font-normal leading-none tracking-[0.18em] text-white">{value}</strong>
                 <span className="max-w-[420px] leading-5">{label}</span>
               </li>
             ))}
@@ -237,13 +166,13 @@ export function StayseLandingTailwind() {
 
       <section className="px-3 py-5 sm:px-5 md:px-10 md:py-8">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
-          <h2 className="text-[clamp(34px,3.4vw,76px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Нам доверяют:</h2>
+          <h2 className="text-[clamp(36px,3.6vw,82px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Нам доверяют:</h2>
           <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
             {trusted.map(([image, title, note]) => (
-              <article key={title} className="flex min-h-[170px] flex-col justify-between border border-[#f0ede7] bg-white p-3 text-center md:min-h-[220px] md:p-3 2xl:min-h-[260px]">
-                <img src={image} alt={title} loading="lazy" decoding="async" width="240" height="221" className="mx-auto h-[92px] w-full object-contain md:h-[132px] 2xl:h-[150px]" />
+              <article key={title} className="flex min-h-[190px] flex-col justify-between border border-[#f0ede7] bg-white p-3 text-center md:min-h-[240px] md:p-3 2xl:min-h-[280px]">
+                <img src={image} alt={title} loading="lazy" decoding="async" width="240" height="221" className="mx-auto h-[110px] w-full object-contain md:h-[150px] 2xl:h-[170px]" />
                 <div className="mt-3">
-                  <p className="mx-auto max-w-[220px] text-[clamp(11px,0.4vw+9px,13px)] font-semibold leading-[1.2] text-[#050505]">{note}</p>
+                  <p className="mx-auto max-w-[240px] text-[clamp(12px,0.5vw+10px,15px)] font-semibold leading-[1.2] text-[#050505]">{note}</p>
                 </div>
               </article>
             ))}
@@ -361,19 +290,46 @@ export function StayseLandingTailwind() {
           <form className="grid gap-5 md:grid-cols-2">
             <label className="grid gap-2">
               <span className="text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Имя</span>
-              <input className="h-20 border border-[#e5e3df] bg-[#fbfaf8] px-6 text-[clamp(18px,1vw+14px,26px)] text-[#6b6b67] [font-family:'Liberation_Sans',Manrope,sans-serif]" type="text" defaultValue="АЛЬФА ДЕВЕЛОПМЕНТ" />
+              <input
+                className="h-20 border border-[#e5e3df] bg-[#fbfaf8] px-6 text-[clamp(18px,1vw+14px,26px)] text-[#6b6b67] [font-family:'Liberation_Sans',Manrope,sans-serif]"
+                type="text"
+                name="name"
+                required
+                placeholder="Ваше имя"
+              />
             </label>
             <label className="grid gap-2">
               <span className="text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Телефон</span>
-              <input className="h-20 border border-[#e5e3df] bg-[#fbfaf8] px-6 text-[clamp(18px,1vw+14px,26px)] text-[#6b6b67] [font-family:'Liberation_Sans',Manrope,sans-serif]" type="tel" defaultValue="+7 (985) 386-22-22" />
+              <input
+                className="h-20 border border-[#e5e3df] bg-[#fbfaf8] px-6 text-[clamp(18px,1vw+14px,26px)] text-[#6b6b67] [font-family:'Liberation_Sans',Manrope,sans-serif]"
+                type="tel"
+                name="phone"
+                inputMode="tel"
+                required
+                placeholder="+7 (777) 777-77-77"
+                onInput={(event) => {
+                  const input = event.currentTarget;
+                  input.value = formatPhone(input.value);
+                  input.setCustomValidity("");
+                }}
+                onBlur={(event) => {
+                  const input = event.currentTarget;
+                  if (!input.value) return;
+                  const valid = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(input.value);
+                  input.setCustomValidity(valid ? "" : "Введите телефон в формате +7 (777) 777-77-77");
+                }}
+              />
             </label>
             <label className="grid gap-2 md:col-span-2">
               <span className="text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">О проекте</span>
               <div className="relative">
-                <select className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(18px,1vw+14px,28px)] text-[#181816] [font-family:'Cormorant_Garamond',serif]" defaultValue="other">
-                  <option value="other">Жилой / Коммерческий / Другой</option>
+                <select className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(18px,1vw+14px,28px)] text-[#181816] [font-family:'Cormorant_Garamond',serif]" defaultValue="" name="projectType" required>
+                  <option value="" disabled>
+                    Жилой / Коммерческий / Другой
+                  </option>
                   <option value="residence">Жилой</option>
                   <option value="commercial">Коммерческий</option>
+                  <option value="other">Другой</option>
                 </select>
                 <span className="pointer-events-none absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 border-b-2 border-r-2 border-[#111] rotate-45" />
               </div>

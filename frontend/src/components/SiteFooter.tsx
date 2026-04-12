@@ -1,26 +1,27 @@
 import { footerColumns } from "../data/site";
 
 export function SiteFooter() {
+  const columnTitles = ["Карта сайта", "Клиенту", "Услуги"];
   return (
     <footer className="mt-16 border-t border-[#e8e3db] bg-[#f7f5f1] px-4 py-12 md:px-10 2xl:px-16">
-      <div className="mx-auto grid max-w-[1480px] gap-10 md:grid-cols-[1.1fr_1.2fr_1fr] 2xl:max-w-[1860px] 2xl:gap-14">
+      <div className="mx-auto grid max-w-[1480px] gap-10 md:grid-cols-[1.1fr_1.2fr_1fr] md:items-start 2xl:max-w-[1860px] 2xl:gap-14">
         <div>
           <p className="text-[24px] italic [font-family:'Cormorant_Garamond',serif] md:text-[26px] 2xl:text-[30px]">ВостокСтройЭксперт</p>
           <p className="mt-8 max-w-[360px] text-[14px] uppercase leading-9 tracking-[1.8px] text-[#7d7d78] md:mt-10 md:text-[15px] md:leading-10 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             архитектурная климатическая интеграция для нового поколения антропогенной среды.
           </p>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 md:pt-[2px]">
           {footerColumns.map((column, index) => (
-            <div key={index}>
-              {index === 0 ? (
-                <h3 className="text-[16px] uppercase [font-family:'Cormorant_Garamond',serif] md:text-[18px] 2xl:text-[20px]">Карта сайта</h3>
-              ) : null}
+            <div key={index} className="min-w-0">
+              <h3 className="text-[16px] uppercase [font-family:'Cormorant_Garamond',serif] md:text-[18px] 2xl:text-[20px]">
+                {columnTitles[index] ?? "Раздел"}
+              </h3>
               <div
-                className={`${index === 0 ? "mt-5 md:mt-6" : "pt-8 md:pt-[36px]"} space-y-4 text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] md:space-y-5 md:text-[15px] 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+                className="mt-5 space-y-4 text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] md:mt-6 md:space-y-5 md:text-[14px] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
               >
                 {column.map((link) => (
-                  <a key={link.href + link.label} href={link.href} className="block">
+                  <a key={link.href + link.label} href={link.href} className="block whitespace-nowrap md:whitespace-normal">
                     {link.label}
                   </a>
                 ))}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
 import LogoutLink from "./LogoutLink";
@@ -44,6 +44,13 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
   const [eventFilter, setEventFilter] = useState<(typeof eventFilters)[number][0]>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (!session || session.type !== "admin") {
+      const nextPath = `${window.location.pathname}${window.location.search}`;
+      window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+    }
+  }, [session]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => eventFilter === "all" || event[8] === eventFilter);

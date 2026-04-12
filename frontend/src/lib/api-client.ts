@@ -72,11 +72,17 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     }
   }
 
-  const response = await fetch(buildApiUrl(path, query), {
-    ...rest,
-    headers: requestHeaders,
-    body: requestBody,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(buildApiUrl(path, query), {
+      ...rest,
+      headers: requestHeaders,
+      body: requestBody,
+    });
+  } catch (error) {
+    throw new ApiError("Backend is unavailable. Start the backend server and try again.", 0, error);
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");

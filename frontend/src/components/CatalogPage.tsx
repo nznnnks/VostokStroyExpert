@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 
 import { formatPrice, type Product } from "../data/products";
-import AuthHeaderButton from "./AuthHeaderButton";
+import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
 type CatalogPageProps = {
@@ -10,6 +10,7 @@ type CatalogPageProps = {
 };
 
 export function CatalogPage({ products }: CatalogPageProps) {
+  const resultsTopRef = useRef<HTMLDivElement>(null);
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -45,6 +46,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -91,6 +93,11 @@ export function CatalogPage({ products }: CatalogPageProps) {
     safePage,
   ].join("|");
 
+  useEffect(() => {
+    if (!resultsTopRef.current) return;
+    resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [safePage]);
+
   function toggleValue(value: string, selected: string[], setter: (values: string[]) => void) {
     setter(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
     setPage(1);
@@ -107,6 +114,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
   }
 
   function renderFilters(idPrefix: string) {
+    const mood = visiblePercent >= 80 ? "happy" : visiblePercent >= 40 ? "neutral" : "sad";
     return (
       <div className="space-y-8">
         <section>
@@ -141,7 +149,27 @@ export function CatalogPage({ products }: CatalogPageProps) {
             <span>Цена</span>
             <span className="flex items-center gap-3 text-right text-[#8a8a85]">
               Отображено {visiblePercent}% товаров
-              <img src="/catalog/sad-smile.png" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d9d3ca] text-[#7a7a75]">
+                {mood === "happy" ? (
+                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
+                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
+                    <path d="M5.4 11c1.6 2 7.6 2 9.2 0" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  </svg>
+                ) : mood === "neutral" ? (
+                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
+                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
+                    <path d="M6 12h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
+                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
+                    <path d="M5.4 13c1.6-2 7.6-2 9.2 0" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  </svg>
+                )}
+              </span>
             </span>
           </div>
           <div className="mt-4 border-t border-[#e7e1d9] pt-5">
@@ -230,26 +258,7 @@ export function CatalogPage({ products }: CatalogPageProps) {
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <div className="flex-1">
-        <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
-          <div className="mx-auto flex max-w-[1480px] items-center gap-4 2xl:max-w-[1860px]">
-          <a href="/" className="text-[28px] italic tracking-[-0.03em] text-[#050505] 2xl:text-[34px] [font-family:'Cormorant_Garamond',serif]">
-            ВостокСтройЭксперт
-          </a>
-          <nav className="ml-auto hidden items-center gap-10 text-[14px] uppercase tracking-[1.5px] text-[#6d6d67] md:flex 2xl:gap-12 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/">главная</a>
-            <a href="/about">о нас</a>
-            <a href="/services">услуги</a>
-            <a href="/news">проекты</a>
-            <a href="/catalog">каталог</a>
-            <a href="/news">блог</a>
-          </nav>
-          <div className="flex items-center gap-4 2xl:gap-5">
-            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white 2xl:h-14 2xl:px-8 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]" />
-          </div>
-        </div>
-        </header>
+        <SiteHeader />
 
         <section className="px-4 py-10 md:px-10 md:py-14">
           <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
@@ -309,12 +318,18 @@ export function CatalogPage({ products }: CatalogPageProps) {
                 >
                   фильтры
                 </button>
-                <div className="flex h-16 w-16 items-center justify-center border border-[#e7e1d9] 2xl:h-[72px] 2xl:w-[72px]">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((prev) => !prev)}
+                  className="flex h-16 w-16 items-center justify-center border border-[#e7e1d9] transition-colors hover:border-[#d3b46a] 2xl:h-[72px] 2xl:w-[72px]"
+                  aria-pressed={showAdvanced}
+                  aria-label="Показать расширенные фильтры и сортировку"
+                >
                   <img src="/catalog/list-icon.png" alt="" aria-hidden="true" width="28" height="28" className="h-7 w-7 object-contain" />
-                </div>
+                </button>
                 <div className="flex h-16 flex-1 items-center justify-between border border-[#e7e1d9] px-5 2xl:h-[72px] 2xl:px-6">
                   <input
-                    type="search"
+                    type="text"
                     value={query}
                     onChange={(event) => {
                       setQuery(event.target.value);
@@ -323,56 +338,114 @@ export function CatalogPage({ products }: CatalogPageProps) {
                     placeholder="Поиск по каталогу"
                     className="w-full border-0 bg-transparent text-[26px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none 2xl:text-[30px] [font-family:DM_Sans,Manrope,sans-serif]"
                   />
-                  <img src="/catalog/search-arrow.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain 2xl:h-9 2xl:w-9" />
+                  {query ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery("");
+                        setPage(1);
+                      }}
+                      className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
+                      aria-label="Очистить поиск"
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
+                        <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <img src="/catalog/search-arrow.png" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8 object-contain 2xl:h-9 2xl:w-9" />
+                  )}
                 </div>
               </div>
 
-              <div key={resultsAnimationKey} className="catalog-results mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3 2xl:gap-8">
-                {pageProducts.map((product, index) => (
-                  <article
-                    key={product.slug}
-                    style={{ animationDelay: `${index * 60}ms` }}
-                    className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] 2xl:p-9"
-                  >
-                    <a href={`/catalog/${product.slug}`}>
-                      <img
-                        src={product.image}
-                        alt={product.title}
-                        width="600"
-                        height="600"
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                      />
-                    </a>
-                    <div className="mt-8">
-                      <p className="text-[14px] uppercase tracking-[2.4px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.brandLabel}</p>
-                      <h3 className="mt-4 text-[32px] leading-[1.15] 2xl:text-[36px] [font-family:DM_Sans,Manrope,sans-serif]">
-                        <a href={`/catalog/${product.slug}`}>{product.title}</a>
-                      </h3>
-                      <div className="mt-5 space-y-1 text-[17px] leading-7 text-[#7a7a75] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                        <p>{product.rating}</p>
-                        <p>{product.efficiency}</p>
-                      </div>
-                      <p className="mt-8 text-[48px] leading-none 2xl:text-[56px] [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(product.price)}</p>
-                      <div className="mt-8 grid gap-3">
-                        <a
-                          href={`/cart?add=${product.slug}`}
-                          className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                        >
-                          в корзину
-                        </a>
-                        <a
-                          href={`/catalog/${product.slug}`}
-                          className="inline-flex h-16 items-center justify-center border border-[#111] text-[18px] uppercase tracking-[2px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                        >
-                          характеристики
-                        </a>
-                      </div>
+              <div ref={resultsTopRef} id="catalog-results-top" />
+              {showAdvanced ? (
+                <div className="mt-10 border border-[#ebe5de] bg-white p-8 2xl:p-10">
+                  <div className="flex flex-wrap items-center justify-between gap-6 border-b border-[#e7e1d9] pb-6">
+                    <div>
+                      <p className="text-[14px] uppercase tracking-[2px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Сортировка</p>
+                      <p className="mt-2 text-[28px] [font-family:'Cormorant_Garamond',serif]">Выберите порядок показа товаров</p>
                     </div>
-                  </article>
-                ))}
-              </div>
+                    <div className="flex flex-wrap gap-3 text-[14px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      {["Популярные", "Сначала новые", "По цене ↑", "По цене ↓"].map((label) => (
+                        <button key={label} type="button" className="border border-[#111] px-4 py-2 text-[#111] hover:border-[#d3b46a] hover:text-[#7f6522]">
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-8 grid gap-8 md:grid-cols-2">
+                    <div>
+                      <p className="text-[14px] uppercase tracking-[2px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Дополнительные фильтры</p>
+                      <p className="mt-3 text-[18px] leading-7 text-[#5f5f5a]">
+                        Здесь можно включить расширенные параметры подбора: шум, класс эффективности, сценарии установки и дополнительные опции.
+                      </p>
+                    </div>
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
+                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
+                        Тихий режим (до 19 дБ)
+                      </label>
+                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
+                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
+                        Премиальная фильтрация
+                      </label>
+                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
+                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
+                        Монтаж под ключ
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div key={resultsAnimationKey} className="catalog-results mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3 2xl:gap-8">
+                  {pageProducts.map((product, index) => (
+                    <article
+                      key={product.slug}
+                      style={{ animationDelay: `${index * 60}ms` }}
+                      className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] 2xl:p-9"
+                    >
+                      <a href={`/catalog/${product.slug}`}>
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          width="600"
+                          height="600"
+                          loading="lazy"
+                          decoding="async"
+                          className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        />
+                      </a>
+                      <div className="mt-8">
+                        <p className="text-[14px] uppercase tracking-[2.4px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.brandLabel}</p>
+                        <h3 className="mt-4 text-[32px] leading-[1.15] 2xl:text-[36px] [font-family:DM_Sans,Manrope,sans-serif]">
+                          <a href={`/catalog/${product.slug}`}>{product.title}</a>
+                        </h3>
+                        <div className="mt-5 space-y-1 text-[17px] leading-7 text-[#7a7a75] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                          <p>{product.rating}</p>
+                          <p>{product.efficiency}</p>
+                        </div>
+                        <p className="mt-8 text-[48px] leading-none 2xl:text-[56px] [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(product.price)}</p>
+                        <div className="mt-8 grid gap-3">
+                          <a
+                            href={`/cart?add=${product.slug}`}
+                            className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                          >
+                            в корзину
+                          </a>
+                          <a
+                            href={`/checkout?buy=${product.slug}`}
+                            className="inline-flex h-16 items-center justify-center border border-[#111] text-[18px] uppercase tracking-[2px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                          >
+                            купить в 1 клик
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
 
               {pageProducts.length === 0 ? (
                 <div className="mt-10 border border-[#ebe5de] px-8 py-14 text-center text-[24px] text-[#6f6f69] 2xl:text-[28px] [font-family:DM_Sans,Manrope,sans-serif]">
@@ -436,6 +509,22 @@ type DoubleRangeProps = {
 
 function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange }: DoubleRangeProps) {
   const [from, to] = value;
+  if (min === max) {
+    return (
+      <div className="catalog-double-range catalog-double-range--static mt-5">
+        <div className="mb-3 flex items-center justify-between text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <span>{formatValue(min)}</span>
+          <span>{formatValue(max)}</span>
+        </div>
+        <div className="catalog-double-range__static">
+          <span className="catalog-double-range__static-dot" />
+        </div>
+        <div className="mt-3 text-center text-[14px] text-[#b1aba2] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          Н/Д
+        </div>
+      </div>
+    );
+  }
   const distance = max - min || 1;
   const minPercent = ((from - min) / distance) * 100;
   const maxPercent = ((to - min) / distance) * 100;
@@ -455,8 +544,26 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
         <span>{formatValue(to)}</span>
       </div>
       <div className="catalog-double-range__control">
-        <input type="range" min={min} max={max} step={step} value={from} aria-label={ariaLabelMin} onChange={(event) => updateMin(Number(event.target.value))} />
-        <input type="range" min={min} max={max} step={step} value={to} aria-label={ariaLabelMax} onChange={(event) => updateMax(Number(event.target.value))} />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={from}
+          aria-label={ariaLabelMin}
+          data-range="min"
+          onChange={(event) => updateMin(Number(event.target.value))}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={to}
+          aria-label={ariaLabelMax}
+          data-range="max"
+          onChange={(event) => updateMax(Number(event.target.value))}
+        />
       </div>
       <div className="mt-3 text-center text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
         {Math.round(maxPercent - minPercent)}%

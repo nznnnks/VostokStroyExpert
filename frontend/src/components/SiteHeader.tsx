@@ -27,35 +27,49 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
 
   return (
     <header className={`border-b px-4 py-4 md:px-10 ${light ? "border-[#ece8e1] bg-white" : "border-white/10 bg-transparent"}`}>
-      <div className="mx-auto flex max-w-[1480px] items-center gap-4 2xl:max-w-[1860px]">
+      <div className="mx-auto grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[auto_1fr_auto] md:gap-4 2xl:max-w-[1860px]">
         <a
           href="/"
-          className={`text-[clamp(22px,1.1vw+18px,36px)] italic tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif] ${
+          className={`text-[clamp(18px,3.6vw,36px)] italic tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif] ${
             light ? "text-[#050505]" : "text-white"
           }`}
         >
           ВостокСтройЭксперт
         </a>
         <nav
-          className={`ml-auto hidden items-center gap-[clamp(24px,2.2vw,48px)] text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.5px] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+          className={`hidden w-full items-center justify-center gap-[clamp(18px,1.8vw,40px)] text-[clamp(11px,0.5vw+10px,16px)] uppercase tracking-[1.4px] lg:flex lg:justify-self-center [font-family:Jaldi,'JetBrains_Mono',monospace] ${
             light ? "text-[#6d6d67]" : "text-white/80"
           }`}
         >
           {navLinks.map((link) => (
-            <a key={link.href + link.label} href={link.href}>
+            <a key={link.href + link.label} href={link.href} className="whitespace-nowrap">
               {link.label}
             </a>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3 md:ml-0 md:gap-4">
+        <div className="flex items-center justify-end gap-3 md:gap-4">
           <a href="/catalog" aria-label="Поиск по каталогу" className="hidden md:inline-flex">
-            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <svg viewBox="0 0 24 24" width="18" height="18" className={`${light ? "text-[#111]" : "text-white"}`} aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.6" fill="none" />
+              <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
           </a>
           <a href="/cart" aria-label="Корзина" className="hidden md:inline-flex">
-            <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <svg viewBox="0 0 24 24" width="18" height="18" className={`${light ? "text-[#111]" : "text-white"}`} aria-hidden="true">
+              <path
+                d="M6 7h13l-1.5 8.5a2 2 0 0 1-2 1.5H9a2 2 0 0 1-2-1.5L5 4H2"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="9.5" cy="19.5" r="1.4" fill="currentColor" />
+              <circle cx="16.5" cy="19.5" r="1.4" fill="currentColor" />
+            </svg>
           </a>
           <AuthHeaderButton
-            className={`hidden h-[clamp(44px,3.4vw,56px)] items-center justify-center px-[clamp(20px,2.2vw,36px)] text-[clamp(12px,0.5vw+10px,15px)] uppercase tracking-[1.2px] md:inline-flex [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+            className={`hidden h-[clamp(40px,3.2vw,56px)] items-center justify-center px-[clamp(18px,2vw,34px)] text-[clamp(11px,0.5vw+10px,14px)] uppercase tracking-[1.2px] sm:inline-flex [font-family:Jaldi,'JetBrains_Mono',monospace] ${
               light ? "bg-[#050505] text-white" : "border border-white/20 bg-white/10 text-white"
             }`}
           />
@@ -64,7 +78,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
             aria-label="Открыть меню"
             aria-expanded={isOpen}
             onClick={() => setIsOpen(true)}
-            className={`inline-flex h-11 w-11 items-center justify-center border md:hidden ${light ? "border-[#e6e0d7]" : "border-white/20 text-white"}`}
+            className={`inline-flex h-11 w-11 items-center justify-center border lg:hidden ${light ? "border-[#e6e0d7]" : "border-white/20 text-white"}`}
           >
             <span className="relative h-[12px] w-[20px]">
               <span className={`absolute left-0 top-0 h-[2px] w-full ${light ? "bg-[#111]" : "bg-white"}`} />

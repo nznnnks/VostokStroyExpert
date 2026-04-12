@@ -51,6 +51,37 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
           </div>
         </section>
 
+        <section className="px-4 py-6 md:px-10 md:py-10">
+          <div className="mx-auto max-w-[1480px] border border-[#e8e3db] bg-[#fbfaf8] p-8 md:p-10">
+            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  Наши достижения
+                </p>
+                <h2 className="mt-4 text-[clamp(2rem,3.2vw,3.6rem)] leading-[1] [font-family:'Cormorant_Garamond',serif]">
+                  Репутация, собранная на реальных объектах
+                </h2>
+                <p className="mt-4 max-w-[720px] text-[clamp(1rem,1.2vw,1.35rem)] leading-[1.7] text-[#5f5f5a]">
+                  Мы измеряем результат не количеством проектов, а качеством среды, которую создаём. За последние годы мы сформировали устойчивую
+                  практику инженерной интеграции для резиденций, бутиков, гостиниц и коммерческих пространств высокого класса.
+                </p>
+              </div>
+              <div className="grid min-w-[260px] gap-4">
+                {[
+                  ["120+", "проектов с полным циклом интеграции"],
+                  ["25+", "лет экспертизы команды в климатическом инжиниринге"],
+                  ["98%", "клиентов продолжают сервисное сопровождение"],
+                ].map(([value, label]) => (
+                  <div key={label} className="border border-[#e8e3db] bg-white p-4">
+                    <p className="text-[clamp(1.4rem,2.2vw,2.2rem)] [font-family:'Cormorant_Garamond',serif]">{value}</p>
+                    <p className="mt-2 text-[clamp(0.85rem,0.8vw,1rem)] leading-6 text-[#5f5f5a]">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="px-4 py-8 md:px-10 md:py-12">
           <div className="mx-auto max-w-[1480px]">
           <div className="flex items-end justify-between gap-4">
