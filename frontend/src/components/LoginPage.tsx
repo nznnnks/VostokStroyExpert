@@ -16,7 +16,10 @@ export function LoginPage() {
 
     try {
       const session = await loginUser(email, password);
-      window.location.href = session.type === "admin" ? "/admin" : "/account";
+      const next = new URLSearchParams(window.location.search).get("next");
+      const safeNext = next && next.startsWith("/") ? next : null;
+
+      window.location.href = session.type === "admin" ? "/admin" : safeNext || "/account";
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось выполнить вход.");
     } finally {

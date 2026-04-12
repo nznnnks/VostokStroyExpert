@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
-import { addProductToCurrentCartBySlug, createOrder, loadCurrentCart, type CartView } from "../lib/backend-api";
+import { createOrder, type CartView } from "../lib/backend-api";
+import { addProductToSessionCartBySlug, clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
 import AuthHeaderButton from "./AuthHeaderButton";
 import SiteFooter from "./SiteFooter";
 
@@ -26,7 +27,7 @@ export function CheckoutPage() {
       try {
         const url = new URL(window.location.href);
         const quickProduct = url.searchParams.get("product");
-        const nextCart = quickProduct ? await addProductToCurrentCartBySlug(quickProduct) : await loadCurrentCart();
+        const nextCart = quickProduct ? await addProductToSessionCartBySlug(quickProduct) : await loadSessionCart();
 
         if (quickProduct) {
           window.history.replaceState({}, "", "/checkout");
@@ -103,16 +104,7 @@ export function CheckoutPage() {
 
     setIsSubmitting(true);
     try {
-      const itemsPayload = hydratedItems
-        .map((item) => {
-          if (item.kind === "service") {
-            if (!item.serviceId) return null;
-            return { serviceId: item.serviceId, quantity: item.qty };
-          }
-          if (!item.productId) return null;
-          return { productId: item.productId, quantity: item.qty };
-        })
-        .filter(Boolean) as Array<{ productId?: string; serviceId?: string; quantity: number }>;
+      const itemsPayload = await resolveSessionCartOrderItems(cart);
 
       if (itemsPayload.length === 0) {
         throw new ApiError("Товары не найдены в каталоге. Обновите страницу.", 400);
@@ -129,6 +121,7 @@ export function CheckoutPage() {
         },
       });
 
+      clearSessionCart();
       setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
       setSubmitSuccess("Заказ отправлен. Мы свяжемся с вами для подтверждения.");
     } catch (error) {

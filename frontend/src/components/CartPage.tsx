@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 import { formatPrice } from "../data/products";
 import AuthHeaderButton from "./AuthHeaderButton";
-import { ApiError } from "../lib/api-client";
-import { addProductToCurrentCartBySlug, loadCurrentCart, removeCurrentCartItem, updateCurrentCartItem, type CartView } from "../lib/backend-api";
+import type { CartView } from "../lib/backend-api";
+import { addProductToSessionCartBySlug, loadSessionCart, removeSessionCartItem, updateSessionCartItem } from "../lib/session-cart";
 
 const perks = [
   ["/cart/check.svg", "Гарантия 5 лет на все системы"],
@@ -32,7 +32,7 @@ export function CartPage() {
       try {
         const url = new URL(window.location.href);
         const slugToAdd = url.searchParams.get("add");
-        const data = slugToAdd ? await addProductToCurrentCartBySlug(slugToAdd) : await loadCurrentCart();
+        const data = slugToAdd ? await addProductToSessionCartBySlug(slugToAdd) : await loadSessionCart();
 
         if (slugToAdd) {
           window.history.replaceState({}, "", "/cart");
@@ -72,7 +72,7 @@ export function CartPage() {
     setActionLoading(true);
 
     try {
-      const nextCart = await updateCurrentCartItem(itemId, quantity);
+      const nextCart = await updateSessionCartItem(itemId, quantity);
       setCart(nextCart);
       setError(null);
     } catch (nextError) {
@@ -86,7 +86,7 @@ export function CartPage() {
     setActionLoading(true);
 
     try {
-      const nextCart = await removeCurrentCartItem(itemId);
+      const nextCart = await removeSessionCartItem(itemId);
       setCart(nextCart);
       setError(null);
     } catch (nextError) {
@@ -96,7 +96,6 @@ export function CartPage() {
     }
   }
 
-  const authRequired = error instanceof ApiError && error.status === 401;
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
   const discount = cart?.discountTotal ?? 0;
@@ -142,10 +141,7 @@ export function CartPage() {
             <h1 className="mt-8 text-[clamp(2.4rem,4.8vw,5.4rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Корзина</h1>
 
             {loading ? <StateMessage title="Загрузка" description="Загружаю текущую корзину пользователя." /> : null}
-            {!loading && authRequired ? (
-              <StateMessage title="Нужен вход" description="Корзина привязана к авторизованному пользователю. Войдите, чтобы увидеть товары и управлять ими." />
-            ) : null}
-            {!loading && error && !authRequired ? <StateMessage title="Ошибка загрузки" description={error.message || "Не удалось загрузить корзину."} /> : null}
+            {!loading && error ? <StateMessage title="Ошибка загрузки" description={error.message || "Не удалось загрузить корзину."} /> : null}
 
             {!loading && !error ? (
               <>
