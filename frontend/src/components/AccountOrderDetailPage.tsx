@@ -67,14 +67,14 @@ export function AccountOrderDetailPage({ orderId }: Props) {
             <a href="/">главная</a><a href="/about">о нас</a><a href="/services">услуги</a><a href="/news">проекты</a><a href="/catalog">каталог</a><a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-6 text-[14px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <span>{profileName}</span>
           </div>
         </div>
       </header>
       <section className="px-4 py-12 md:px-10 xl:px-16 xl:py-20">
-        <div className="mx-auto max-w-[1200px]">
+        <div className="mx-auto max-w-[1200px] 2xl:max-w-[1480px]">
           <a href="/account/orders" className="text-[14px] uppercase tracking-[1.6px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">к списку заказов</a>
           <h1 className="mt-6 text-[52px] leading-none md:text-[80px] [font-family:'Cormorant_Garamond',serif]">Детали заказа</h1>
 

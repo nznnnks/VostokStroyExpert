@@ -32,7 +32,13 @@ const { service } = Astro.props;
       <SiteHeader client:load />
       <section class="px-4 py-10 md:px-10 md:py-14">
         <div class="mx-auto max-w-[1480px]">
-          <p class="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Услуги / {service.title}</p>
+          <p class="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            <a href="/" class="hover:text-[#111]">Главная</a>
+            <span class="mx-2 text-[#b5b2ab]">/</span>
+            <a href="/services" class="hover:text-[#111]">Услуги</a>
+            <span class="mx-2 text-[#b5b2ab]">/</span>
+            <span>{service.title}</span>
+          </p>
           <div class="mt-8 grid gap-10 xl:grid-cols-[0.9fr_1.1fr] xl:items-center">
             <img src={service.image} alt="" aria-hidden="true" width="800" height="800" class="mx-auto aspect-square w-full max-w-[420px] object-contain" />
             <div>
@@ -52,6 +58,40 @@ const { service } = Astro.props;
                 </a>
               </div>
             </div>
+          </div>
+
+          <div class="mt-20 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div>
+              <h2 class="text-[40px] leading-[1.05] md:text-[56px] [font-family:'Cormorant_Garamond',serif]">{service.detailTitle}</h2>
+              <p class="mt-6 text-[18px] leading-[1.7] text-[#5f5f5a] md:text-[22px]">{service.detailText}</p>
+              <ul class="mt-8 space-y-4 text-[16px] leading-7 text-[#6a6a65]">
+                {service.deliverables.map((item) => (
+                  <li class="flex items-start gap-3">
+                    <span class="mt-2 h-1.5 w-1.5 rounded-full bg-[#b8a06a]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div class="grid gap-6 sm:grid-cols-2">
+              {(service.detailImages ?? [service.image, service.image]).map((src, index) => (
+                <div class="overflow-hidden border border-[#e8e3db] bg-[#f7f5f1]">
+                  <img src={src} alt="" aria-hidden="true" width="600" height="600" class="h-full w-full object-cover" loading={index === 0 ? "eager" : "lazy"} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="mt-20 grid gap-10 md:grid-cols-3">
+            {service.bullets.map((bullet, index) => (
+              <div class="border border-[#e8e3db] p-7">
+                <p class="text-[14px] uppercase tracking-[2px] text-[#9a9993] [font-family:Jaldi,'JetBrains_Mono',monospace]">Шаг {index + 1}</p>
+                <h3 class="mt-4 text-[26px] leading-[1.1] [font-family:'Cormorant_Garamond',serif]">{bullet}</h3>
+                <p class="mt-4 text-[16px] leading-7 text-[#6a6a65]">
+                  Формируем результатный блок работ с учетом архитектуры, инженерных условий и будущих сценариев использования.
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

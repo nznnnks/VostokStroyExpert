@@ -3,9 +3,9 @@ import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
 
 const metrics = [
-  ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/админка/денюжки выручка.svg", "/админка/выручка полосочка.svg"],
-  ["Заказы", "+ 2", "заказа", "+7%", "/админка/для блоков заказы и заявки в дашборд.svg", "/админка/для блоков заказы и заявки в дашборд.svg"],
-  ["Заявки", "4", "заявки", "", "/админка/для блоков заказы и заявки в дашборд.svg", "/админка/для блоков заказы и заявки в дашборд.svg"],
+  ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/admin/revenue.svg", "/admin/revenue-line.svg"],
+  ["Заказы", "+ 2", "заказа", "+7%", "/admin/dashboard-blocks.svg", "/admin/dashboard-blocks.svg"],
+  ["Заявки", "4", "заявки", "", "/admin/dashboard-blocks.svg", "/admin/dashboard-blocks.svg"],
 ];
 
 const daySummary = [
@@ -42,6 +42,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
     "Администратор";
   const [eventFilter, setEventFilter] = useState<(typeof eventFilters)[number][0]>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => eventFilter === "all" || event[8] === eventFilter);
@@ -74,6 +75,53 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
 
   return (
     <main className="min-h-screen bg-[#faf8f4] text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
+      {navOpen ? (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <button type="button" aria-label="Закрыть меню" className="absolute inset-0 bg-black/40" onClick={() => setNavOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-[85vw] max-w-[340px] bg-[#211d1a] text-white">
+            <div className="border-b border-white/10 px-6 py-8">
+              <div className="flex items-center justify-between">
+                <p className="max-w-full text-[20px] italic uppercase leading-none tracking-[-0.04em] text-white [font-family:'Cormorant_Garamond',serif]">
+                  ВОСТОКСТРОЙЭКСПЕРТ
+                </p>
+                <button type="button" aria-label="Закрыть меню" className="h-10 w-10 border border-white/20 text-white" onClick={() => setNavOpen(false)}>
+                  ✕
+                </button>
+              </div>
+              <p className="mt-5 text-[12px] uppercase tracking-[4px] text-white/50 [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                панель администратора
+              </p>
+            </div>
+            <nav className="pt-4">
+              {adminNav.map((item) => {
+                const active = item.key === activeKey;
+                return (
+                  <a
+                    key={item.key}
+                    href={item.href}
+                    className={`flex min-h-[56px] items-center gap-4 px-5 text-[16px] ${active ? "border-l-4 border-white bg-white/4" : "text-white/70"}`}
+                    onClick={() => setNavOpen(false)}
+                  >
+                    <img src={item.icon} alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5 object-contain" />
+                    <span className={active ? "text-white" : ""}>{item.label}</span>
+                    {item.badge ? (
+                      <span className="ml-auto inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-[14px] font-semibold text-[#111]">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </a>
+                );
+              })}
+            </nav>
+            <div className="mt-auto border-t border-white/10 px-6 py-6">
+              <a href="/login" className="flex items-center gap-3 text-[16px] text-white/70">
+                <img src="/admin/logout.svg" alt="" aria-hidden="true" width="18" height="18" className="h-5 w-5 object-contain" />
+                Выход
+              </a>
+            </div>
+          </aside>
+        </div>
+      ) : null}
       <div className="grid min-h-screen xl:grid-cols-[360px_1fr] 2xl:grid-cols-[400px_1fr]">
         <aside className="hidden min-h-screen flex-col bg-[#211d1a] text-white xl:flex">
           <div className="border-b border-white/10 px-8 py-12">
@@ -120,7 +168,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
           <div className="mt-auto border-t border-white/10 px-8 py-8">
             <a href="/login" className="flex items-center gap-4 text-[18px] text-white/70">
               <img
-                src="/админка/выход.svg"
+                src="/admin/logout.svg"
                 alt=""
                 aria-hidden="true"
                 width="20"
@@ -136,9 +184,22 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
 
         <div className="min-w-0">
           <header className="border-b border-[#e8e3db] bg-white px-6 py-5 md:px-10">
-            <div className="flex items-center justify-end gap-6">
+            <div className="flex items-center justify-between gap-6">
+              <button
+                type="button"
+                aria-label="Открыть меню админки"
+                onClick={() => setNavOpen(true)}
+                className="inline-flex h-11 w-11 items-center justify-center border border-[#e8e3db] xl:hidden"
+              >
+                <span className="relative h-[12px] w-[20px]">
+                  <span className="absolute left-0 top-0 h-[2px] w-full bg-[#111]" />
+                  <span className="absolute left-0 top-[5px] h-[2px] w-full bg-[#111]" />
+                  <span className="absolute left-0 top-[10px] h-[2px] w-full bg-[#111]" />
+                </span>
+              </button>
+              <div className="flex items-center justify-end gap-6">
               <img
-                src="/админка/уведомление.svg"
+                src="/admin/notification.svg"
                 alt=""
                 aria-hidden="true"
                 width="18"
@@ -158,18 +219,19 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                 decoding="async"
                 className="h-12 w-12 rounded-[4px] border border-[#ece8e1] object-cover"
               />
+              </div>
             </div>
           </header>
 
           <section className="px-6 py-10 md:px-10 md:py-14">
-            <div className="mx-auto max-w-[1280px]">
-              <h1 className="text-[58px] leading-none md:text-[86px] [font-family:'Cormorant_Garamond',serif]">Обзор</h1>
-              <p className="mt-5 text-[18px] text-[#7a7a75] md:text-[22px]">Дашборд с информацией о показателях бизнеса</p>
+            <div className="mx-auto max-w-[1280px] 2xl:max-w-[1480px]">
+              <h1 className="text-[42px] leading-none md:text-[58px] xl:text-[86px] [font-family:'Cormorant_Garamond',serif]">Обзор</h1>
+              <p className="mt-5 text-[16px] text-[#7a7a75] md:text-[18px] xl:text-[22px]">Дашборд с информацией о показателях бизнеса</p>
 
-              <div className="mt-14 inline-flex items-center gap-4 text-[30px] uppercase tracking-[4px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <div className="mt-10 inline-flex items-center gap-4 text-[20px] uppercase tracking-[4px] md:mt-14 md:text-[30px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 <span>сегодня</span>
                 <img
-                  src="/админка/сегодня стрелочка.png"
+                  src="/admin/today-arrow.png"
                   alt=""
                   aria-hidden="true"
                   width="18"
@@ -180,7 +242,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                 />
               </div>
 
-              <div className="mt-8 grid gap-6 xl:grid-cols-3">
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {metrics.map(([label, value, suffix, delta, icon], index) => (
                   <article key={label as string} style={{ animationDelay: `${index * 80}ms` }} className="admin-card-in border border-[#e8e3db] bg-white p-8 md:p-9">
                     <div className="flex items-start justify-between gap-6">
@@ -224,7 +286,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                 ))}
               </div>
 
-              <div className="mt-10 grid gap-6 xl:grid-cols-[1fr_360px]">
+              <div className="mt-10 grid gap-6 xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_420px]">
                 <section className="border border-[#e8e3db] bg-white p-8 md:p-10">
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -236,11 +298,11 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                     <div className="flex items-center gap-10 text-[16px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                       <span className="flex items-center gap-3">
                         заказы
-                        <img src="/админка/заказы стрелочка вниз.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
+                        <img src="/admin/orders-arrow-down.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
                       </span>
                       <span className="flex items-center gap-3">
                         неделя
-                        <img src="/админка/неделя стрелочка вниз.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
+                        <img src="/admin/week-arrow-down.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
                       </span>
                     </div>
                   </div>

@@ -34,7 +34,13 @@ const post = await loadNewsPostBySlug(slug);
       <SiteHeader client:load />
       <section class="px-4 py-10 md:px-10 md:py-14">
         <article class="mx-auto max-w-[1180px]">
-          <p class="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post?.category ?? "Новости"} / Новость</p>
+          <p class="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            <a href="/" class="hover:text-[#111]">Главная</a>
+            <span class="mx-2 text-[#b5b2ab]">/</span>
+            <a href="/news" class="hover:text-[#111]">Новости</a>
+            <span class="mx-2 text-[#b5b2ab]">/</span>
+            <span>{post?.category ?? "Новость"}</span>
+          </p>
           <h1 class="mt-8 max-w-[900px] text-[56px] leading-[0.92] md:text-[92px] [font-family:'Cormorant_Garamond',serif]">{post?.title ?? "Материал не найден"}</h1>
           {post ? (
             <>

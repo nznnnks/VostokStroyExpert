@@ -25,7 +25,7 @@ export type Product = {
 export const products: Product[] = [
   {
     slug: "omni-flow-x1",
-    image: "/каталог/товар2.png",
+    image: "/catalog/product-2.png",
     brand: "Aeris Pro",
     brandLabel: "AERIS INDUSTRIAL",
     title: "Модульный блок Omni-Flow X1",
@@ -50,7 +50,7 @@ export const products: Product[] = [
   },
   {
     slug: "titan-core-v3",
-    image: "/каталог/товар3.png",
+    image: "/catalog/product-3.png",
     brand: "Nordic Heavy",
     brandLabel: "NORDIC HEAVY",
     title: "Обменник Titan Core V3",
@@ -75,7 +75,7 @@ export const products: Product[] = [
   },
   {
     slug: "matrix-7",
-    image: "/каталог/товар1.png",
+    image: "/catalog/product-1.png",
     brand: "Aeris Pro",
     brandLabel: "AERIS PRO",
     title: "Смарт-консоль Matrix 7",
@@ -100,7 +100,7 @@ export const products: Product[] = [
   },
   {
     slug: "vertex-roof-chiller",
-    image: "/каталог/товар4.png",
+    image: "/catalog/product-4.png",
     brand: "Zenith Industrial",
     brandLabel: "ZENITH IND.",
     title: "Крышный чиллер Vertex",
@@ -125,7 +125,7 @@ export const products: Product[] = [
   },
   {
     slug: "aura-wall-series",
-    image: "/каталог/товар5.png",
+    image: "/catalog/product-5.png",
     brand: "Aeris Pro",
     brandLabel: "AERIS PURE",
     title: "Настенная серия Aura",
@@ -150,7 +150,7 @@ export const products: Product[] = [
   },
   {
     slug: "arctic-flow-geothermal-4",
-    image: "/каталог/товар6.png",
+    image: "/catalog/product-6.png",
     brand: "Nordic Heavy",
     brandLabel: "NORDIC HEAVY",
     title: "Arctic Flow Geothermal 4",
@@ -177,13 +177,13 @@ export const products: Product[] = [
 
 export const featuredProduct: Product = {
   slug: "monolith-v2",
-  image: "/страница товара/фото товара главная 1.png",
+  image: "/product/product-hero-1.png",
   gallery: [
-    "/страница товара/фото товара главная 1.png",
-    "/страница товара/фото товара главная 2.png",
-    "/страница товара/фото товара главная 3.png",
-    "/страница товара/фото товара главная 4.png",
-    "/страница товара/фото товара главная 5.png",
+    "/product/product-hero-1.png",
+    "/product/product-hero-2.png",
+    "/product/product-hero-3.png",
+    "/product/product-hero-4.png",
+    "/product/product-hero-5.png",
   ],
   brand: "Aeris Precision",
   brandLabel: "AERIS PRECISION",
@@ -211,4 +211,3 @@ export const featuredProduct: Product = {
 export function formatPrice(price: number) {
   return new Intl.NumberFormat("ru-RU").format(price) + " ₽";
 }
-

@@ -40,7 +40,7 @@ export function LoginPage() {
             <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
@@ -51,7 +51,7 @@ export function LoginPage() {
         <div className="grid xl:grid-cols-[1.8fr_1fr]">
           <div className="border-r border-[#ece8e1]">
             <img
-              src="/вход/фото с входа.png"
+              src="/login/login-photo.png"
               alt="Промышленная система"
               width="1600"
               height="2100"
@@ -64,7 +64,12 @@ export function LoginPage() {
 
           <div className="flex items-center px-6 py-16 md:px-12 xl:px-20">
             <div className="mx-auto w-full max-w-[480px]">
-              <h1 className="text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">Вход в личный кабинет</h1>
+              <p className="text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <a href="/" className="hover:text-[#111]">Главная</a>
+                <span className="mx-2 text-[#b5b2ab]">/</span>
+                <span>Вход</span>
+              </p>
+              <h1 className="mt-6 text-[48px] leading-none md:text-[70px] [font-family:'Cormorant_Garamond',serif]">Вход в личный кабинет</h1>
               <p className="mt-6 max-w-[460px] text-[18px] leading-[1.55] text-[#7d7d78] md:text-[22px]">
                 Авторизация пользователя через backend API.
               </p>
@@ -103,7 +108,7 @@ export function LoginPage() {
                 <button disabled={loading} className="inline-flex h-20 w-full items-center justify-between bg-[#111] px-10 text-[20px] uppercase tracking-[4px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   <span>{loading ? "вход..." : "войти"}</span>
                   <img
-                    src="/вход/стрелочка.svg"
+                    src="/login/arrow.svg"
                     alt=""
                     aria-hidden="true"
                     width="18"

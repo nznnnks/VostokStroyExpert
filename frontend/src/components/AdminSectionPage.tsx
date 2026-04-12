@@ -129,6 +129,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   const [services, setServices] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [discounts, setDiscounts] = useState<Array<{ id: string; name: string; value: string }>>([]);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [navOpen, setNavOpen] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
   const [payments, setPayments] = useState<Array<{ id: string; orderId: string; amount: string }>>([]);
   const [loading, setLoading] = useState(activeKey === "clients" || activeKey === "orders" || activeKey === "news" || activeKey === "catalog");
@@ -1286,6 +1287,47 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
 
   return (
     <main className="min-h-screen bg-[#faf8f4] text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
+      {navOpen ? (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <button type="button" aria-label="Закрыть меню" className="absolute inset-0 bg-black/40" onClick={() => setNavOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-[85vw] max-w-[340px] bg-[#211d1a] text-white">
+            <div className="border-b border-white/10 px-6 py-8">
+              <div className="flex items-center justify-between">
+                <p className="max-w-full text-[20px] italic uppercase leading-none tracking-[-0.04em] text-white [font-family:'Cormorant_Garamond',serif]">
+                  ВОСТОКСТРОЙЭКСПЕРТ
+                </p>
+                <button type="button" aria-label="Закрыть меню" className="h-10 w-10 border border-white/20 text-white" onClick={() => setNavOpen(false)}>
+                  ✕
+                </button>
+              </div>
+              <p className="mt-5 text-[12px] uppercase tracking-[4px] text-white/50 [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                панель администратора
+              </p>
+            </div>
+            <nav className="pt-4">
+              {adminNav.map((item) => {
+                const active = item.key === activeKey;
+                return (
+                  <a
+                    key={item.key}
+                    href={item.href}
+                    className={`flex min-h-[56px] items-center gap-4 px-5 text-[16px] ${active ? "border-l-4 border-white bg-white/4" : "text-white/70"}`}
+                    onClick={() => setNavOpen(false)}
+                  >
+                    <img src={item.icon} alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5 object-contain" />
+                    <span className={active ? "text-white" : ""}>{item.label}</span>
+                    {item.badge ? (
+                      <span className="ml-auto inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-[14px] font-semibold text-[#111]">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </a>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      ) : null}
       <div className="grid min-h-screen xl:grid-cols-[360px_1fr] 2xl:grid-cols-[400px_1fr]">
         <aside className="hidden min-h-screen flex-col bg-[#211d1a] text-white xl:flex">
           <div className="border-b border-white/10 px-8 py-12">
@@ -1317,17 +1359,31 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
 
         <div className="min-w-0">
           <header className="border-b border-[#e8e3db] bg-white px-6 py-5 md:px-10">
-            <div className="flex items-center justify-end gap-6">
-              <img src="/админка/уведомление.svg" alt="" aria-hidden="true" width="18" height="18" loading="lazy" decoding="async" className="h-[18px] w-[18px] object-contain" />
+            <div className="flex items-center justify-between gap-6">
+              <button
+                type="button"
+                aria-label="Открыть меню админки"
+                onClick={() => setNavOpen(true)}
+                className="inline-flex h-11 w-11 items-center justify-center border border-[#e8e3db] xl:hidden"
+              >
+                <span className="relative h-[12px] w-[20px]">
+                  <span className="absolute left-0 top-0 h-[2px] w-full bg-[#111]" />
+                  <span className="absolute left-0 top-[5px] h-[2px] w-full bg-[#111]" />
+                  <span className="absolute left-0 top-[10px] h-[2px] w-full bg-[#111]" />
+                </span>
+              </button>
+              <div className="flex items-center justify-end gap-6">
+              <img src="/admin/notification.svg" alt="" aria-hidden="true" width="18" height="18" loading="lazy" decoding="async" className="h-[18px] w-[18px] object-contain" />
               <div className="h-10 w-px bg-[#ece8e1]" />
               <span className="text-[18px]">{adminName}</span>
+              </div>
             </div>
           </header>
 
           <section className="px-6 py-10 md:px-10 md:py-14">
-            <div className="mx-auto max-w-[1280px]">
-              <h1 className="text-[46px] leading-none md:text-[64px] [font-family:'Cormorant_Garamond',serif]">{title}</h1>
-              {subtitle ? <p className="mt-4 text-[18px] text-[#7a7a75] md:text-[20px]">{subtitle}</p> : null}
+            <div className="mx-auto max-w-[1280px] 2xl:max-w-[1480px]">
+              <h1 className="text-[34px] leading-none md:text-[46px] xl:text-[64px] [font-family:'Cormorant_Garamond',serif]">{title}</h1>
+              {subtitle ? <p className="mt-4 text-[16px] text-[#7a7a75] md:text-[18px] xl:text-[20px]">{subtitle}</p> : null}
 
               {["clients", "orders", "news", "catalog"].includes(activeKey) ? (
                 <div className="mt-10 flex flex-col gap-4 rounded-[8px] border border-[#e8e3db] bg-white p-5 md:flex-row md:items-end">

@@ -7,19 +7,19 @@ export type AdminNavItem = {
 };
 
 export const adminNav: AdminNavItem[] = [
-  { key: "dashboard", label: "Дашборд", href: "/admin", icon: "/админка/дашборд.svg" },
-  { key: "requests", label: "Заявки", href: "/admin/requests", icon: "/админка/заявки и проекты.svg", badge: "1" },
-  { key: "orders", label: "Заказы", href: "/admin/orders", icon: "/админка/заказы.svg", badge: "2" },
-  { key: "clients", label: "Клиенты", href: "/admin/clients", icon: "/админка/клиент новости каталог.svg" },
-  { key: "news", label: "Новости", href: "/admin/news", icon: "/админка/клиент новости каталог.svg" },
-  { key: "catalog", label: "Каталог", href: "/admin/catalog", icon: "/админка/клиент новости каталог.svg" },
-  { key: "projects", label: "Проекты", href: "/admin/projects", icon: "/админка/заявки и проекты.svg" },
-  { key: "settings", label: "Настройки", href: "/admin/settings", icon: "/админка/настройки.svg" },
+  { key: "dashboard", label: "Дашборд", href: "/admin", icon: "/admin/dashboard.svg" },
+  { key: "requests", label: "Заявки", href: "/admin/requests", icon: "/admin/requests-projects.svg", badge: "1" },
+  { key: "orders", label: "Заказы", href: "/admin/orders", icon: "/admin/orders.svg", badge: "2" },
+  { key: "clients", label: "Клиенты", href: "/admin/clients", icon: "/admin/client-news-catalog.svg" },
+  { key: "news", label: "Новости", href: "/admin/news", icon: "/admin/client-news-catalog.svg" },
+  { key: "catalog", label: "Каталог", href: "/admin/catalog", icon: "/admin/client-news-catalog.svg" },
+  { key: "projects", label: "Проекты", href: "/admin/projects", icon: "/admin/requests-projects.svg" },
+  { key: "settings", label: "Настройки", href: "/admin/settings", icon: "/admin/settings.svg" },
 ];
 
 export const adminUser = {
   name: "Александр В.",
-  avatar: "/админка/фото профиля.png",
+  avatar: "/admin/profile.png",
 };
 
 export const adminRequests = [

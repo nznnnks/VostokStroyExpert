@@ -6,15 +6,15 @@ import { ApiError } from "../lib/api-client";
 import { addProductToCurrentCartBySlug, loadCurrentCart, removeCurrentCartItem, updateCurrentCartItem, type CartView } from "../lib/backend-api";
 
 const perks = [
-  ["/корзина/галочка.svg", "Гарантия 5 лет на все системы"],
-  ["/корзина/машинка.svg", "Бережная доставка оборудования"],
+  ["/cart/check.svg", "Гарантия 5 лет на все системы"],
+  ["/cart/delivery.svg", "Бережная доставка оборудования"],
 ];
 
 function StateMessage({ title, description }: { title: string; description: string }) {
   return (
     <div className="mt-10 border border-[#e8e3db] bg-white px-8 py-10">
-      <h2 className="text-[34px] [font-family:'Cormorant_Garamond',serif]">{title}</h2>
-      <p className="mt-4 max-w-[640px] text-[18px] leading-8 text-[#6f6f69]">{description}</p>
+      <h2 className="text-[clamp(1.6rem,2.2vw,2.2rem)] [font-family:'Cormorant_Garamond',serif]">{title}</h2>
+      <p className="mt-4 max-w-[640px] text-[clamp(1rem,1.1vw,1.15rem)] leading-8 text-[#6f6f69]">{description}</p>
     </div>
   );
 }
@@ -112,10 +112,10 @@ export function CartPage() {
     <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
         <div className="mx-auto flex max-w-[1480px] items-center gap-4">
-          <a href="/" className="text-[28px] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
+          <a href="/" className="text-[clamp(1.4rem,1.6vw,2rem)] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
             ВостокСтройЭксперт
           </a>
-          <nav className="ml-auto hidden items-center gap-10 text-[14px] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <nav className="ml-auto hidden items-center gap-10 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <a href="/">главная</a>
             <a href="/about">о нас</a>
             <a href="/services">услуги</a>
@@ -124,17 +124,22 @@ export function CartPage() {
             <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
-            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
       </header>
 
-      <section className="px-4 py-12 md:px-10 md:py-16">
+      <section className="px-4 py-10 md:px-10 md:py-16">
         <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_500px]">
           <div>
-            <h1 className="text-[56px] leading-none md:text-[86px] [font-family:'Cormorant_Garamond',serif]">Корзина</h1>
+            <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <a href="/" className="hover:text-[#111]">Главная</a>
+              <span className="mx-2 text-[#b5b2ab]">/</span>
+              <span>Корзина</span>
+            </p>
+            <h1 className="mt-8 text-[clamp(2.4rem,4.8vw,5.4rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Корзина</h1>
 
             {loading ? <StateMessage title="Загрузка" description="Загружаю текущую корзину пользователя." /> : null}
             {!loading && authRequired ? (
@@ -144,7 +149,7 @@ export function CartPage() {
 
             {!loading && !error ? (
               <>
-                <div className="mt-16 grid grid-cols-[1.2fr_180px_160px_60px] items-center border-b border-[#e8e3db] pb-5 text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <div className="mt-10 hidden grid-cols-[1.2fr_180px_160px_60px] items-center border-b border-[#e8e3db] pb-5 text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] md:grid [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   <span>Изделие</span>
                   <span>Кол-во</span>
                   <span>Цена</span>
@@ -153,76 +158,97 @@ export function CartPage() {
 
                 <div className="divide-y divide-[#e8e3db]">
                   {items.map((item) => (
-                    <article key={item.id} className="grid grid-cols-[160px_1fr_180px_160px_60px] items-center gap-8 py-12">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        width="220"
-                        height="220"
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-square w-full object-cover"
-                      />
-                      <div>
-                        <h2 className="text-[34px] leading-none [font-family:'Cormorant_Garamond',serif]">
+                    <article
+                      key={item.id}
+                      className="grid grid-cols-1 gap-6 py-8 md:grid-cols-[160px_1fr_180px_160px_60px] md:items-center md:gap-8 md:py-12"
+                    >
+                      <div className="flex items-start gap-5 md:block">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          width="220"
+                          height="220"
+                          loading="lazy"
+                          decoding="async"
+                          className="aspect-square w-[140px] shrink-0 object-cover sm:w-[160px] md:w-full"
+                        />
+                        <div className="md:hidden">
+                          <h2 className="text-[clamp(1.3rem,1.8vw,1.8rem)] leading-tight [font-family:'Cormorant_Garamond',serif]">
+                            {item.kind === "product" ? <a href={`/catalog/${item.slug}`}>{item.title}</a> : item.title}
+                          </h2>
+                          <p className="mt-3 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            REF: {item.article}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="hidden md:block">
+                        <h2 className="text-[clamp(1.6rem,2.2vw,2.2rem)] leading-none [font-family:'Cormorant_Garamond',serif]">
                           {item.kind === "product" ? <a href={`/catalog/${item.slug}`}>{item.title}</a> : item.title}
                         </h2>
-                        <p className="mt-4 text-[16px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        <p className="mt-4 text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                           REF: {item.article}
                         </p>
                       </div>
-                      <div className="flex h-14 items-center justify-between border border-[#e8e3db] px-5 text-[20px] [font-family:DM_Sans,Manrope,sans-serif]">
-                        <button type="button" disabled={actionLoading || item.qty <= 1} onClick={() => changeQuantity(item.id, Math.max(1, item.qty - 1))}>
-                          <img src="/корзина/минус.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
-                        </button>
-                        <span>{String(item.qty).padStart(2, "0")}</span>
-                        <button type="button" disabled={actionLoading} onClick={() => changeQuantity(item.id, item.qty + 1)}>
-                          <img src="/корзина/плюс.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
+                      <div className="flex items-center justify-between gap-4 md:block">
+                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Кол-во</span>
+                        <div className="flex h-12 w-[160px] items-center justify-between border border-[#e8e3db] px-4 text-[clamp(1rem,1vw,1.25rem)] [font-family:DM_Sans,Manrope,sans-serif] md:h-14 md:w-auto md:px-5">
+                          <button type="button" disabled={actionLoading || item.qty <= 1} onClick={() => changeQuantity(item.id, Math.max(1, item.qty - 1))}>
+                            <img src="/cart/minus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
+                          </button>
+                          <span>{String(item.qty).padStart(2, "0")}</span>
+                          <button type="button" disabled={actionLoading} onClick={() => changeQuantity(item.id, item.qty + 1)}>
+                            <img src="/cart/plus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Цена</span>
+                        <p className="text-[clamp(1.3rem,1.7vw,1.75rem)] [font-family:'Cormorant_Garamond',serif]">{formatPrice(item.totalPrice)}</p>
+                      </div>
+                      <div className="flex items-center justify-end md:justify-center">
+                        <button type="button" disabled={actionLoading} onClick={() => removeItem(item.id)} className="flex items-center justify-center">
+                          <img src="/cart/remove.svg" alt="Удалить товар" width="28" height="28" className="h-7 w-7" />
                         </button>
                       </div>
-                      <p className="text-[28px] [font-family:'Cormorant_Garamond',serif]">{formatPrice(item.totalPrice)}</p>
-                      <button type="button" disabled={actionLoading} onClick={() => removeItem(item.id)} className="flex items-center justify-center">
-                        <img src="/корзина/крест.svg" alt="Удалить товар" width="28" height="28" className="h-7 w-7" />
-                      </button>
                     </article>
                   ))}
                 </div>
 
-                {items.length === 0 ? <div className="mt-10 text-[18px] text-[#6f6f69]">Корзина пока пуста.</div> : null}
+                {items.length === 0 ? <div className="mt-10 text-[clamp(1rem,1.1vw,1.15rem)] text-[#6f6f69]">Корзина пока пуста.</div> : null}
               </>
             ) : null}
 
-            <a href="/catalog" className="mt-12 inline-flex items-center gap-4 text-[18px] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              <img src="/корзина/стрелочка назад.svg" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
+            <a href="/catalog" className="mt-12 inline-flex items-center gap-4 text-[clamp(0.95rem,0.9vw,1.15rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <img src="/cart/back-arrow.svg" alt="" aria-hidden="true" width="18" height="18" className="h-4 w-4" />
               вернуться в каталог
             </a>
           </div>
 
-          <aside className="border border-[#e8e3db] p-10 md:p-14">
-            <h2 className="text-[50px] leading-none [font-family:'Cormorant_Garamond',serif]">Итого</h2>
+          <aside className="border border-[#e8e3db] p-8 md:p-14">
+            <h2 className="text-[clamp(2rem,3.4vw,3.1rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Итого</h2>
 
             <div className="mt-12 space-y-8">
               {totals.map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-6">
-                  <span className="text-[20px] text-[#6f6f69]">{label}</span>
-                  <span className="text-[20px]">{value}</span>
+                  <span className="text-[clamp(1rem,1vw,1.25rem)] text-[#6f6f69]">{label}</span>
+                  <span className="text-[clamp(1rem,1vw,1.25rem)]">{value}</span>
                 </div>
               ))}
             </div>
 
             <div className="mt-12 border-t border-[#e8e3db] pt-12">
               <div className="flex items-end justify-between gap-6">
-                <span className="text-[26px] [font-family:'Cormorant_Garamond',serif]">К оплате</span>
-                <span className="text-[46px] leading-none [font-family:'Cormorant_Garamond',serif]">{formatPrice(total)}</span>
+                <span className="text-[clamp(1.2rem,1.6vw,1.6rem)] [font-family:'Cormorant_Garamond',serif]">К оплате</span>
+                <span className="text-[clamp(2rem,3.2vw,2.9rem)] leading-none [font-family:'Cormorant_Garamond',serif]">{formatPrice(total)}</span>
               </div>
 
-              <a href="/checkout" className="mt-12 inline-flex h-20 w-full items-center justify-center bg-[#111] text-[20px] uppercase tracking-[3px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <a href="/checkout" className="mt-10 inline-flex h-16 w-full items-center justify-center bg-[#111] text-[clamp(0.9rem,0.9vw,1.25rem)] uppercase tracking-[2px] text-white md:mt-12 md:h-20 md:tracking-[3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 оформить заказ
               </a>
 
-              <div className="mt-10 space-y-6">
+              <div className="mt-8 space-y-4 md:mt-10 md:space-y-6">
                 {perks.map(([icon, label]) => (
-                  <div key={label as string} className="flex items-center gap-4 text-[18px] uppercase tracking-[1.6px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  <div key={label as string} className="flex items-center gap-3 text-[clamp(0.75rem,0.6vw,1.1rem)] uppercase tracking-[1.4px] text-[#6f6f69] md:gap-4 md:tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     <img src={icon as string} alt="" aria-hidden="true" width="22" height="22" className="h-5 w-5" />
                     <span>{label}</span>
                   </div>

@@ -11,10 +11,10 @@ import {
 } from "../lib/backend-api";
 
 const navItems = [
-  ["/личный кабинет/данныеклиента.png", "Данные клиента", "/account", false],
-  ["/личный кабинет/заказы.svg", "Заказы", "/account/orders", false],
-  ["/личный кабинет/транзакции.png", "Шаблоны заказа", "/account/templates", true],
-  ["/личный кабинет/поддержка.svg", "Поддержка", "/account/support", false],
+  ["/account/client-data.png", "Данные клиента", "/account", false],
+  ["/account/orders.svg", "Заказы", "/account/orders", false],
+  ["/account/templates.png", "Шаблоны заказа", "/account/templates", true],
+  ["/account/support.svg", "Поддержка", "/account/support", false],
 ];
 
 function StateMessage({ title, description }: { title: string; description: string }) {
@@ -152,7 +152,7 @@ export function AccountTemplatesPage() {
             <a href="/">главная</a><a href="/about">о нас</a><a href="/services">услуги</a><a href="/news">проекты</a><a href="/catalog">каталог</a><a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-6 text-[14px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <span>{profile?.name ?? "Личный кабинет"}</span>
           </div>
@@ -174,7 +174,7 @@ export function AccountTemplatesPage() {
           </nav>
         </aside>
         <div className="px-4 py-12 md:px-10 xl:px-16 xl:py-20">
-          <div className="mx-auto max-w-[1200px]">
+          <div className="mx-auto max-w-[1200px] 2xl:max-w-[1480px]">
             <h1 className="text-[52px] leading-none md:text-[80px] [font-family:'Cormorant_Garamond',serif]">Шаблоны заказа</h1>
 
             {loading ? <StateMessage title="Загрузка" description="Загружаю сохраненные шаблоны заказа." /> : null}

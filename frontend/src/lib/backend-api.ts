@@ -499,7 +499,7 @@ function mapApiNews(item: ApiNews): NewsPostView {
     slug: item.slug,
     title: item.title,
     excerpt: item.excerpt ?? fallback?.excerpt ?? "",
-    image: item.coverImageUrl ?? fallback?.image ?? "/image/новостнойблок1.png",
+    image: item.coverImageUrl ?? fallback?.image ?? "/image/news-1.png",
     category: item.category ?? fallback?.category ?? "Новости",
     content: item.contentBlocks?.length ? item.contentBlocks : fallback?.content ?? [],
     dateLabel: formatDate(item.publishedAt ?? item.createdAt),

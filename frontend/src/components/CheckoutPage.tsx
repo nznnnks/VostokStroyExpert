@@ -3,10 +3,11 @@ import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
 import { addProductToCurrentCartBySlug, createOrder, loadCurrentCart, type CartView } from "../lib/backend-api";
 import AuthHeaderButton from "./AuthHeaderButton";
+import SiteFooter from "./SiteFooter";
 
 const paymentOptions = [
-  ["card", "Банковская карта/СБП", "", "/офрмление заказа/карта.svg"],
-  ["installment", "B2B - рассрочка", "Временно недоступно", "/офрмление заказа/банк.svg"],
+  ["card", "Банковская карта/СБП", "", "/checkout/card.svg"],
+  ["installment", "B2B - рассрочка", "Временно недоступно", "/checkout/bank.svg"],
 ];
 
 export function CheckoutPage() {
@@ -144,13 +145,14 @@ export function CheckoutPage() {
   }
 
   return (
-    <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
-      <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
-        <div className="mx-auto flex max-w-[1480px] items-center gap-4">
-          <a href="/" className="text-[28px] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
+    <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
+      <div className="flex-1">
+        <header className="border-b border-[#ece8e1] px-4 py-4 md:px-10">
+          <div className="mx-auto flex max-w-[1480px] items-center gap-4">
+          <a href="/" className="text-[clamp(1.4rem,1.6vw,2rem)] italic tracking-[-0.03em] text-[#050505] [font-family:'Cormorant_Garamond',serif]">
             ВостокСтройЭксперт
           </a>
-          <nav className="ml-auto hidden items-center gap-10 text-[14px] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <nav className="ml-auto hidden items-center gap-10 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.5px] text-[#6d6d67] md:flex [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <a href="/">главная</a>
             <a href="/about">о нас</a>
             <a href="/services">услуги</a>
@@ -159,63 +161,70 @@ export function CheckoutPage() {
             <a href="/news">блог</a>
           </nav>
           <div className="flex items-center gap-4">
-            <img src="/image/лупа.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
+            <img src="/image/search.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             <a href="/cart">
               <img src="/image/cart.png" alt="" aria-hidden="true" width="18" height="18" className="h-[18px] w-[18px]" />
             </a>
-            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[14px] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
+            <AuthHeaderButton className="inline-flex h-12 items-center justify-center bg-[#050505] px-7 text-[clamp(0.7rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]" />
           </div>
         </div>
-      </header>
+        </header>
 
-      <section className="px-4 py-10 md:px-10 md:py-14">
-        <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_520px]">
+        <section className="px-4 py-10 md:px-10 md:py-14">
+          <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1fr_520px]">
           <div className="max-w-[920px]">
-            <h1 className="text-[54px] leading-none md:text-[80px] [font-family:'Cormorant_Garamond',serif]">
+            <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <a href="/" className="hover:text-[#111]">Главная</a>
+              <span className="mx-2 text-[#b5b2ab]">/</span>
+              <a href="/cart" className="hover:text-[#111]">Корзина</a>
+              <span className="mx-2 text-[#b5b2ab]">/</span>
+              <span>Оформление</span>
+            </p>
+            <h1 className="mt-8 text-[clamp(2.4rem,4.8vw,5rem)] leading-none [font-family:'Cormorant_Garamond',serif]">
               Оформление заказа
             </h1>
-            <p className="mt-6 max-w-[520px] text-[18px] leading-[1.45] text-[#75756f]">
+            <p className="mt-6 max-w-[520px] text-[clamp(1rem,1.1vw,1.15rem)] leading-[1.45] text-[#75756f]">
               Пожалуйста, заполните данные для доставки и оплаты вашей системы ВостокСтройЭксперт.
             </p>
 
             <form className="mt-20" onSubmit={handleSubmit}>
               <div className="flex items-center gap-5 text-[#111]">
-                <span className="text-[16px] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">01</span>
-                <h2 className="text-[32px] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Контактные данные</h2>
+                <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">01</span>
+                <h2 className="text-[clamp(1.4rem,2vw,2rem)] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Контактные данные</h2>
               </div>
               <div className="mt-14 grid gap-12 md:grid-cols-2">
                 <label className="block">
-                  <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Имя</span>
+                  <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Имя</span>
                   <input name="first_name" autoComplete="given-name" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
                 </label>
                 <label className="block">
-                  <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Фамилия</span>
+                  <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Фамилия</span>
                   <input name="last_name" autoComplete="family-name" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
                 </label>
               </div>
               <label className="mt-12 block">
-                <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Телефон</span>
+                <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Телефон</span>
                 <input name="phone" autoComplete="tel" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
               </label>
             
 
             <div className="mt-20">
               <div className="flex items-center gap-5 text-[#111]">
-                <span className="text-[16px] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">02</span>
-                <h2 className="text-[32px] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Адрес доставки</h2>
+                <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">02</span>
+                <h2 className="text-[clamp(1.4rem,2vw,2rem)] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Адрес доставки</h2>
               </div>
               <div className="mt-14 grid gap-12 md:grid-cols-[1fr_220px]">
                 <label className="block">
-                  <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Город</span>
+                  <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Город</span>
                   <input name="city" autoComplete="address-level2" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
                 </label>
                 <label className="block">
-                  <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Индекс</span>
+                  <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Индекс</span>
                   <input name="postal_code" autoComplete="postal-code" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
                 </label>
               </div>
               <label className="mt-12 block">
-                <span className="text-[16px] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   Улица, дом, квартира
                 </span>
                 <input name="address" autoComplete="street-address" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
@@ -224,8 +233,8 @@ export function CheckoutPage() {
 
             <div className="mt-20">
               <div className="flex items-center gap-5 text-[#111]">
-                <span className="text-[16px] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">03</span>
-                <h2 className="text-[32px] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Способ оплаты</h2>
+                <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">03</span>
+                <h2 className="text-[clamp(1.4rem,2vw,2rem)] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Способ оплаты</h2>
               </div>
               <div className="mt-12 space-y-5">
                 {paymentOptions.map(([id, title, note, icon], index) => (
@@ -253,9 +262,9 @@ export function CheckoutPage() {
                         <span className={`h-3.5 w-3.5 rounded-full ${selectedPayment === id ? "bg-[#111]" : "bg-transparent"}`} />
                       </span>
                       <span className="flex flex-wrap items-center gap-6">
-                        <span className="text-[20px] uppercase tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</span>
+                        <span className="text-[clamp(1rem,1.1vw,1.25rem)] uppercase tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</span>
                         {note ? (
-                          <span className="text-[18px] uppercase tracking-[1px] text-[#a6a6a1] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                          <span className="text-[clamp(0.9rem,1vw,1.1rem)] uppercase tracking-[1px] text-[#a6a6a1] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                             {note}
                           </span>
                         ) : null}
@@ -278,23 +287,23 @@ export function CheckoutPage() {
 
             <div className="mt-20 max-w-[860px]">
               {submitError ? (
-                <p className="mb-6 text-[14px] uppercase tracking-[2px] text-[#b24a3a] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <p className="mb-6 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[2px] text-[#b24a3a] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   {submitError}
                 </p>
               ) : null}
               {submitSuccess ? (
-                <p className="mb-6 text-[14px] uppercase tracking-[2px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <p className="mb-6 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[2px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   {submitSuccess}
                 </p>
               ) : null}
               <button
                 type="submit"
                 disabled={isSubmitting || cartLoading || Boolean(cartError)}
-                className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[22px] uppercase tracking-[4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
+                className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[clamp(1rem,1.2vw,1.4rem)] uppercase tracking-[4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
               >
                 подтвердить заказ
               </button>
-              <p className="mt-10 text-center text-[13px] uppercase tracking-[3px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <p className="mt-10 text-center text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[3px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 нажимая кнопку, вы соглашаетесь с условиями оферты
               </p>
             </div>
@@ -302,7 +311,7 @@ export function CheckoutPage() {
           </div>
 
           <aside className="self-start border border-[#e8e3db] p-8 md:p-12">
-            <h2 className="text-[28px] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Ваш заказ</h2>
+            <h2 className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Ваш заказ</h2>
 
             {primaryItem ? (
               <div className="mt-12 flex items-center gap-5">
@@ -318,16 +327,16 @@ export function CheckoutPage() {
                   />
                 </a>
                 <div>
-                  <p className="text-[20px] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  <p className="text-[clamp(1rem,1.1vw,1.3rem)] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {primaryItem.brandLabel ?? "AERIS PRECISION"}
                   </p>
-                  <p className="mt-1 text-[16px] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  <p className="mt-1 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {primaryItem.title}
                   </p>
-                  <p className="mt-2 text-[14px] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  <p className="mt-2 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {primaryItem.qty} шт.
                   </p>
-                  <p className="mt-4 text-[26px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                  <p className="mt-4 text-[clamp(1.2rem,1.5vw,1.65rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {formatPrice(primaryItem.totalPrice)}
                   </p>
                 </div>
@@ -338,10 +347,10 @@ export function CheckoutPage() {
               <div className="space-y-6">
                 {summaryRows.map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between gap-6">
-                    <span className="text-[18px] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    <span className="text-[clamp(0.9rem,1vw,1.1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                       {label}
                     </span>
-                    <span className="text-[18px] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{value}</span>
+                    <span className="text-[clamp(0.9rem,1vw,1.1rem)] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{value}</span>
                   </div>
                 ))}
               </div>
@@ -349,71 +358,22 @@ export function CheckoutPage() {
 
             <div className="mt-8 border-t border-[#e8e3db] pt-8">
               <div className="flex items-center justify-between gap-6">
-                <span className="text-[28px] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Итого</span>
-                <span className="text-[32px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(total)}</span>
+                <span className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Итого</span>
+                <span className="text-[clamp(1.3rem,1.7vw,2rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(total)}</span>
               </div>
             </div>
 
             <div className="mt-10 bg-[#f7f5f1] px-8 py-8">
-              <p className="max-w-[320px] text-[14px] uppercase leading-[1.8] tracking-[1.6px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <p className="max-w-[320px] text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase leading-[1.8] tracking-[1.6px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 В стоимость включена расширенная гарантия 5 лет и сезонное обслуживание в первый год эксплуатации.
               </p>
             </div>
           </aside>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
 
-      <footer className="mt-16 border-t border-[#e8e3db] bg-[#f7f5f1] px-4 py-12 md:px-10">
-        <div className="mx-auto grid max-w-[1480px] gap-10 md:grid-cols-[1.1fr_1.2fr_1fr]">
-          <div>
-            <p className="text-[26px] italic [font-family:'Cormorant_Garamond',serif]">ВостокСтройЭксперт</p>
-            <p className="mt-10 max-w-[360px] text-[15px] uppercase leading-10 tracking-[1.8px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              архитектурная климатическая интеграция для нового поколения антропогенной среды.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            <div>
-              <h3 className="text-[18px] uppercase [font-family:'Cormorant_Garamond',serif]">Карта сайта</h3>
-              <div className="mt-6 space-y-5 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                <p>Главная</p>
-                <p>О нас</p>
-                <p>Услуги</p>
-                <p>Услуги</p>
-              </div>
-            </div>
-            <div className="pt-10 md:pt-[36px]">
-              <div className="space-y-5 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                <p>Главная</p>
-                <p>О нас</p>
-                <p>Услуги</p>
-                <p>Услуги</p>
-              </div>
-            </div>
-            <div className="pt-10 md:pt-[36px]">
-              <div className="space-y-5 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                <p>Главная</p>
-                <p>О нас</p>
-                <p>Услуги</p>
-                <p>Услуги</p>
-              </div>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-[18px] uppercase [font-family:'Cormorant_Garamond',serif]">Юридическая информация</h3>
-            <div className="mt-10 space-y-8 text-[15px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              <p>Соглашение о конфиденциальности</p>
-              <p>Условия</p>
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto mt-12 flex max-w-[1480px] flex-col gap-4 border-t border-[#e8e3db] pt-6 text-[12px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace] md:flex-row md:items-center md:justify-between">
-          <p>© 2026 <span className="[font-family:'Cormorant_Garamond',serif] italic text-[#5b5b56]">ВостокСтройЭксперт</span> climate technologies. Все права защищены.</p>
-          <div className="flex items-center gap-6">
-            <img src="/корзина/мир.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5 object-contain opacity-70" />
-            <img src="/корзина/поделится.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5 object-contain opacity-70" />
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
