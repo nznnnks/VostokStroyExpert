@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
+import LogoutLink from "./LogoutLink";
 
 const metrics = [
   ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/admin/revenue.svg", "/admin/revenue-line.svg"],
@@ -166,7 +167,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
           </nav>
 
           <div className="mt-auto border-t border-white/10 px-8 py-8">
-            <a href="/login" className="flex items-center gap-4 text-[18px] text-white/70">
+            <LogoutLink className="flex items-center gap-4 text-[18px] text-white/70">
               <img
                 src="/admin/logout.svg"
                 alt=""
@@ -178,7 +179,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                 className="h-5 w-5 object-contain"
               />
               Выход
-            </a>
+            </LogoutLink>
           </div>
         </aside>
 

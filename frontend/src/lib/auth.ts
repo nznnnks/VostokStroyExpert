@@ -52,6 +52,8 @@ type LoginResponse = {
 };
 
 const AUTH_STORAGE_KEY = "vostokstroyexpert-auth";
+export const AUTH_TOKEN_COOKIE_KEY = "vostokstroyexpert-access-token";
+export const AUTH_TYPE_COOKIE_KEY = "vostokstroyexpert-auth-type";
 
 function isAdminRole(role?: string | null) {
   return role === "SUPERADMIN" || role === "MANAGER" || role === "EDITOR";
@@ -59,6 +61,27 @@ function isAdminRole(role?: string | null) {
 
 function isBrowser() {
   return typeof window !== "undefined";
+}
+
+function setCookie(name: string, value: string, maxAgeSeconds = 60 * 60 * 12) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`;
+}
+
+function clearCookie(name: string) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
+
+function syncAuthSessionCookies(session: StoredAuthSession) {
+  setCookie(AUTH_TOKEN_COOKIE_KEY, session.accessToken);
+  setCookie(AUTH_TYPE_COOKIE_KEY, session.type);
 }
 
 export function getStoredAuthSession(): StoredAuthSession | null {
@@ -73,9 +96,13 @@ export function getStoredAuthSession(): StoredAuthSession | null {
   }
 
   try {
-    return JSON.parse(raw) as StoredAuthSession;
+    const session = JSON.parse(raw) as StoredAuthSession;
+    syncAuthSessionCookies(session);
+    return session;
   } catch {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    clearCookie(AUTH_TOKEN_COOKIE_KEY);
+    clearCookie(AUTH_TYPE_COOKIE_KEY);
     return null;
   }
 }
@@ -86,6 +113,7 @@ export function setStoredAuthSession(session: StoredAuthSession) {
   }
 
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  syncAuthSessionCookies(session);
 }
 
 export function clearStoredAuthSession() {
@@ -94,6 +122,8 @@ export function clearStoredAuthSession() {
   }
 
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  clearCookie(AUTH_TOKEN_COOKIE_KEY);
+  clearCookie(AUTH_TYPE_COOKIE_KEY);
 }
 
 export function getStoredAccessToken(expectedType?: StoredAuthType) {

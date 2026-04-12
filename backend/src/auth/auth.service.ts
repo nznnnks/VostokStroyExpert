@@ -90,6 +90,18 @@ export class AuthService {
     };
   }
 
+  async getCurrentAdmin(adminId: string) {
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+    });
+
+    if (!admin || admin.status !== UserStatus.ACTIVE || !isAdminUserRole(admin.role)) {
+      throw new UnauthorizedException('Invalid admin credentials.');
+    }
+
+    return this.toSafeAdmin(admin);
+  }
+
   async registerUser(dto: RegisterUserDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
