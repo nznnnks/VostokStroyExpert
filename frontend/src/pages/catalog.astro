@@ -3,6 +3,8 @@ import { CatalogPage } from "../components/CatalogPage";
 import { loadCatalogProducts } from "../lib/catalog-api";
 import "../styles/global.css";
 
+export const prerender = false;
+
 const products = await loadCatalogProducts();
 ---
 

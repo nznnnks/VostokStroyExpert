@@ -1,27 +1,13 @@
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
-import { newsPosts as fallbackNewsPosts, services } from "../data/site";
+import { services } from "../data/site";
 import type { NewsPostView } from "../lib/backend-api";
 
 type AboutPageProps = {
   newsPosts?: NewsPostView[];
 };
 
-function getFallbackNews() {
-  return fallbackNewsPosts.map((post) => ({
-    id: post.slug,
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    image: post.image,
-    category: post.category,
-    content: [...post.content],
-    dateLabel: "—",
-    status: "Опубликовано",
-  }));
-}
-
-export function AboutPage({ newsPosts = getFallbackNews() }: AboutPageProps) {
+export function AboutPage({ newsPosts = [] }: AboutPageProps) {
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <div className="flex-1">
@@ -96,19 +82,25 @@ export function AboutPage({ newsPosts = getFallbackNews() }: AboutPageProps) {
               Весь блог
             </a>
           </div>
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {newsPosts.slice(0, 2).map((post) => (
-              <article key={post.slug} className="border border-[#e8e3db] p-6">
-                <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                <p className="mt-5 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
-                <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{post.title}</h3>
-                <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
-                <a href={`/news/${post.slug}`} className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                  Читать
-                </a>
-              </article>
-            ))}
-          </div>
+          {newsPosts.length > 0 ? (
+            <div className="mt-8 grid gap-6 md:grid-cols-2">
+              {newsPosts.slice(0, 2).map((post) => (
+                <article key={post.slug} className="border border-[#e8e3db] p-6">
+                  <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
+                  <p className="mt-5 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
+                  <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{post.title}</h3>
+                  <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
+                  <a href={`/news/${post.slug}`} className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Читать
+                  </a>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 border border-[#e8e3db] bg-white px-8 py-10 text-[18px] text-[#5f5f5a]">
+              Публикаций пока нет.
+            </div>
+          )}
           </div>
         </section>
       </div>

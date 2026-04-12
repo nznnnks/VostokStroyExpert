@@ -1,18 +1,21 @@
 ---
 import { ProductPage } from "../../components/ProductPage";
-import { loadCatalogProductBySlug, loadCatalogProducts } from "../../lib/backend-api";
+import { loadCatalogProductBySlug } from "../../lib/backend-api";
 import "../../styles/global.css";
 
-export async function getStaticPaths() {
-  const catalogProducts = await loadCatalogProducts();
-
-  return catalogProducts.map((product) => ({
-    params: { slug: product.slug },
-  }));
-}
+export const prerender = false;
 
 const slug = Astro.params.slug ?? "";
-const { product, relatedProducts } = await loadCatalogProductBySlug(slug);
+let product;
+let relatedProducts = [];
+
+try {
+  const result = await loadCatalogProductBySlug(slug);
+  product = result.product;
+  relatedProducts = result.relatedProducts;
+} catch {
+  return Astro.redirect("/catalog");
+}
 ---
 
 <!doctype html>

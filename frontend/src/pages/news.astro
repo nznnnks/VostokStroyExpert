@@ -3,6 +3,8 @@ import { NewsPage } from "../components/NewsPage";
 import { loadNewsPosts } from "../lib/backend-api";
 import "../styles/global.css";
 
+export const prerender = false;
+
 const posts = await loadNewsPosts();
 ---
 

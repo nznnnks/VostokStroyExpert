@@ -23,7 +23,6 @@ import {
   deleteAdminUser,
   deleteAdminPayment,
   deleteUser,
-  fallbackAdminSectionData,
   loadAdminSectionData,
   loadAdminCategories,
   loadAdminServices,
@@ -121,10 +120,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     session?.admin?.email ||
     "Администратор";
 
-  const [clients, setClients] = useState<AdminClientView[]>(fallbackAdminSectionData.clients);
-  const [orders, setOrders] = useState<AdminOrderView[]>(fallbackAdminSectionData.orders);
-  const [news, setNews] = useState<AdminNewsView[]>(fallbackAdminSectionData.news);
-  const [catalog, setCatalog] = useState<AdminCatalogView[]>(fallbackAdminSectionData.catalog);
+  const [clients, setClients] = useState<AdminClientView[]>([]);
+  const [orders, setOrders] = useState<AdminOrderView[]>([]);
+  const [news, setNews] = useState<AdminNewsView[]>([]);
+  const [catalog, setCatalog] = useState<AdminCatalogView[]>([]);
   const [categories, setCategories] = useState<AdminCategoryView[]>([]);
   const [services, setServices] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [discounts, setDiscounts] = useState<Array<{ id: string; name: string; value: string }>>([]);

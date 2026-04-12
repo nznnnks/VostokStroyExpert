@@ -1,4 +1,4 @@
-import { featuredProduct, formatPrice, products, type Product } from "../data/products";
+import { formatPrice, type Product } from "../data/products";
 import AuthHeaderButton from "./AuthHeaderButton";
 import SiteFooter from "./SiteFooter";
 
@@ -13,11 +13,11 @@ const reviews = [
 ];
 
 type ProductPageProps = {
-  product?: Product;
+  product: Product;
   relatedProducts?: Product[];
 };
 
-export function ProductPage({ product = featuredProduct, relatedProducts }: ProductPageProps) {
+export function ProductPage({ product, relatedProducts }: ProductPageProps) {
   const gallery = product.gallery ?? [product.image];
   const specs = [
     ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
@@ -25,12 +25,7 @@ export function ProductPage({ product = featuredProduct, relatedProducts }: Prod
     ["Акустика (тихий режим)", product.acoustics ?? "20 дБ"],
     ["Фильтрация", product.filtration ?? "HEPA 13"],
   ];
-  const related =
-    relatedProducts && relatedProducts.length > 0
-      ? relatedProducts
-      : (product.relatedSlugs ?? [])
-          .map((slug) => products.find((item) => item.slug === slug))
-          .filter((item): item is Product => Boolean(item));
+  const related = relatedProducts ?? [];
   const descriptionTitle = product.slug === "monolith-v2" ? "Создано для архитектурной интеграции" : `О модели ${product.title}`;
 
   return (

@@ -1,7 +1,4 @@
-import { featuredProduct, formatPrice, products as fallbackProducts, type Product } from "../data/products";
-import { accountOrders as fallbackAccountOrders, customerProfile as fallbackCustomerProfile, orderTemplates as fallbackOrderTemplates } from "../data/account";
-import { adminCatalog as fallbackAdminCatalog, adminClients as fallbackAdminClients, adminNews as fallbackAdminNews, adminOrders as fallbackAdminOrders } from "../data/admin";
-import { newsPosts as siteNewsPosts } from "../data/site";
+import { formatPrice, type Product } from "../data/products";
 import { ApiError, apiRequest } from "./api-client";
 import { getStoredAccessToken } from "./auth";
 
@@ -318,7 +315,7 @@ function mapCartResponse(cart: ApiCart): CartView {
         slug: product?.slug ?? service?.slug ?? item.id,
         title: product?.name ?? service?.name ?? "Позиция",
         article: product?.sku ?? "SERVICE",
-        image: product?.images?.[0] ?? service?.imageUrl ?? featuredProduct.image,
+        image: product?.images?.[0] ?? service?.imageUrl ?? "",
         qty: item.quantity,
         totalPrice: item.totalPrice,
         kind: product ? ("product" as const) : ("service" as const),
@@ -382,7 +379,7 @@ function splitDescription(description?: string | null) {
 }
 
 function resolveImage(product: ApiProduct) {
-  return product.images?.[0] || featuredProduct.image;
+  return product.images?.[0] ?? "";
 }
 
 function formatDate(value?: string | null) {
@@ -492,16 +489,14 @@ function mapApiProduct(product: ApiProduct): Product {
 }
 
 function mapApiNews(item: ApiNews): NewsPostView {
-  const fallback = siteNewsPosts.find((post) => post.slug === item.slug);
-
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    excerpt: item.excerpt ?? fallback?.excerpt ?? "",
-    image: item.coverImageUrl ?? fallback?.image ?? "/image/news-1.png",
-    category: item.category ?? fallback?.category ?? "Новости",
-    content: item.contentBlocks?.length ? item.contentBlocks : fallback?.content ?? [],
+    excerpt: item.excerpt ?? "",
+    image: item.coverImageUrl ?? "",
+    category: item.category ?? "Новости",
+    content: item.contentBlocks?.length ? item.contentBlocks : [],
     dateLabel: formatDate(item.publishedAt ?? item.createdAt),
     status: mapNewsStatus(item.status),
   };
@@ -581,87 +576,35 @@ async function loadPublicNewsRaw() {
 }
 
 export async function loadCatalogProducts(): Promise<Product[]> {
-  try {
-    const data = await loadPublicProductsRaw();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return [...fallbackProducts, featuredProduct];
-    }
-
-    return data.map(mapApiProduct);
-  } catch (error) {
-    console.warn("Catalog API is unavailable, fallback mock data is used.", error);
-    return [...fallbackProducts, featuredProduct];
-  }
+  const data = await loadPublicProductsRaw();
+  return Array.isArray(data) ? data.map(mapApiProduct) : [];
 }
 
 export async function loadCatalogProductBySlug(slug: string) {
-  try {
-    const data = await loadPublicProductsRaw();
-    const current = data.find((item) => item.slug === slug);
+  const data = await loadPublicProductsRaw();
+  const current = data.find((item) => item.slug === slug);
 
-    if (!current) {
-      throw new Error(`Product with slug ${slug} was not found.`);
-    }
-
-    const mappedCurrent = mapApiProduct(current);
-    const relatedProducts = data
-      .filter((item) => item.slug !== slug)
-      .filter((item) => item.category?.id === current.category?.id || item.brand === current.brand)
-      .slice(0, 4)
-      .map(mapApiProduct);
-
-    return {
-      product: mappedCurrent,
-      relatedProducts,
-      allProducts: data.map(mapApiProduct),
-    };
-  } catch (error) {
-    console.warn("Product detail API is unavailable, fallback mock data is used.", error);
-    const allProducts = [...fallbackProducts, featuredProduct];
-    const product = allProducts.find((item) => item.slug === slug) ?? featuredProduct;
-
-    return {
-      product,
-      relatedProducts: allProducts.filter((item) => item.slug !== product.slug).slice(0, 4),
-      allProducts,
-    };
+  if (!current) {
+    throw new Error(`Product with slug ${slug} was not found.`);
   }
+
+  const mappedCurrent = mapApiProduct(current);
+  const relatedProducts = data
+    .filter((item) => item.slug !== slug)
+    .filter((item) => item.category?.id === current.category?.id || item.brand === current.brand)
+    .slice(0, 4)
+    .map(mapApiProduct);
+
+  return {
+    product: mappedCurrent,
+    relatedProducts,
+    allProducts: data.map(mapApiProduct),
+  };
 }
 
 export async function loadNewsPosts() {
-  try {
-    const data = await loadPublicNewsRaw();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return [...siteNewsPosts].map((item) => ({
-        id: item.slug,
-        slug: item.slug,
-        title: item.title,
-        excerpt: item.excerpt,
-        image: item.image,
-        category: item.category,
-        content: [...item.content],
-        dateLabel: "—",
-        status: "Опубликовано",
-      }));
-    }
-
-    return data.map(mapApiNews);
-  } catch (error) {
-    console.warn("News API is unavailable, fallback mock data is used.", error);
-    return [...siteNewsPosts].map((item) => ({
-      id: item.slug,
-      slug: item.slug,
-      title: item.title,
-      excerpt: item.excerpt,
-      image: item.image,
-      category: item.category,
-      content: [...item.content],
-      dateLabel: "—",
-      status: "Опубликовано",
-    }));
-  }
+  const data = await loadPublicNewsRaw();
+  return Array.isArray(data) ? data.map(mapApiNews) : [];
 }
 
 export async function loadNewsPostBySlug(slug: string) {
@@ -1658,64 +1601,3 @@ export async function loadAdminProductById(id: string) {
   });
 }
 
-export const fallbackAccountData = {
-  profile: {
-    id: "mock-user",
-    name: fallbackCustomerProfile.name,
-    email: fallbackCustomerProfile.email,
-    phone: "—",
-    totalOrders: fallbackCustomerProfile.totalOrders,
-    personalDiscount: fallbackCustomerProfile.personalDiscount,
-    totalSpent: fallbackCustomerProfile.totalSpent,
-  } satisfies AccountProfileView,
-  orders: fallbackAccountOrders.map((order) => ({
-    id: order.id.toLowerCase(),
-    orderNumber: order.id,
-    date: order.date,
-    status: order.status,
-    statusColor: order.statusColor,
-    delivery: order.delivery,
-    payment: order.payment,
-    address: order.address,
-    total: order.total,
-    items: order.items.map((item, index) => ({
-      id: `${order.id}-${index}`,
-      title: item.title,
-      qty: item.qty,
-      price: item.price,
-      image: null,
-    })),
-  })) satisfies AccountOrderView[],
-  templates: fallbackOrderTemplates.map((template) => ({
-    id: template.id,
-    title: template.title,
-    contact: template.contact,
-    phone: template.phone,
-    address: template.address,
-    comment: template.comment,
-    isDefault: false,
-  })) satisfies OrderTemplateView[],
-};
-
-export const fallbackAdminSectionData = {
-  clients: fallbackAdminClients.map((item, index) => ({
-    id: String(index),
-    ...item,
-  })) satisfies AdminClientView[],
-  orders: fallbackAdminOrders.map((item) => ({
-    id: item.id,
-    client: item.client,
-    items: item.items,
-    amount: item.amount,
-    status: item.status,
-    date: item.date,
-  })) satisfies AdminOrderView[],
-  news: fallbackAdminNews.map((item, index) => ({
-    id: String(index),
-    ...item,
-  })) satisfies AdminNewsView[],
-  catalog: fallbackAdminCatalog.map((item, index) => ({
-    id: String(index),
-    ...item,
-  })) satisfies AdminCatalogView[],
-};

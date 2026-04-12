@@ -2,15 +2,9 @@
 import "../../styles/global.css";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
-import { loadNewsPostBySlug, loadNewsPosts } from "../../lib/backend-api";
+import { loadNewsPostBySlug } from "../../lib/backend-api";
 
-export async function getStaticPaths() {
-  const newsPosts = await loadNewsPosts();
-
-  return newsPosts.map((post) => ({
-    params: { slug: post.slug },
-  }));
-}
+export const prerender = false;
 
 const slug = Astro.params.slug ?? "";
 const post = await loadNewsPostBySlug(slug);
