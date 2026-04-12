@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getStoredAuthSession, getStoredDisplayName, type StoredAuthSession } from "../lib/auth";
+import { getStoredDisplayName, type StoredAuthSession, validateStoredAuthSession } from "../lib/auth";
 
 type AuthHeaderButtonProps = {
   className?: string;
@@ -11,7 +11,19 @@ export function AuthHeaderButton({ className, loggedOutLabel = "войти" }: A
   const [session, setSession] = useState<StoredAuthSession | null>(null);
 
   useEffect(() => {
-    setSession(getStoredAuthSession());
+    let cancelled = false;
+
+    void (async () => {
+      const nextSession = await validateStoredAuthSession();
+
+      if (!cancelled) {
+        setSession(nextSession);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!session) {

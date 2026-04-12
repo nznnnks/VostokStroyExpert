@@ -153,6 +153,31 @@ export function getStoredDisplayName() {
   return fullName || person?.email || null;
 }
 
+export async function validateStoredAuthSession() {
+  const session = getStoredAuthSession();
+
+  if (!session) {
+    return null;
+  }
+
+  try {
+    if (session.type === "admin") {
+      await apiRequest("/api/auth/admin/me", {
+        authToken: session.accessToken,
+      });
+    } else {
+      await apiRequest("/api/users/me", {
+        authToken: session.accessToken,
+      });
+    }
+
+    return session;
+  } catch {
+    clearStoredAuthSession();
+    return null;
+  }
+}
+
 export async function loginUser(email: string, password: string) {
   const response = await apiRequest<LoginResponse>("/api/auth/user/login", {
     method: "POST",
