@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatPrice, type Product } from "../data/products";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
@@ -15,9 +16,11 @@ const reviews = [
 type ProductPageProps = {
   product: Product;
   relatedProducts?: Product[];
+  allProducts?: Product[];
 };
 
-export function ProductPage({ product, relatedProducts }: ProductPageProps) {
+export function ProductPage({ product, relatedProducts, allProducts }: ProductPageProps) {
+  const [visibleCount, setVisibleCount] = useState(4);
   const gallery = product.gallery ?? [product.image];
   const specs = [
     ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
@@ -25,7 +28,14 @@ export function ProductPage({ product, relatedProducts }: ProductPageProps) {
     ["Акустика (тихий режим)", product.acoustics ?? "20 дБ"],
     ["Фильтрация", product.filtration ?? "HEPA 13"],
   ];
-  const related = relatedProducts ?? [];
+  const allList = (allProducts ?? []).filter((item) => item.slug !== product.slug);
+  const primaryRelated = relatedProducts && relatedProducts.length > 0 ? relatedProducts : allList;
+  const combinedRelated = [
+    ...primaryRelated,
+    ...allList.filter((item) => !primaryRelated.find((entry) => entry.slug === item.slug)),
+  ];
+  const visibleRelated = combinedRelated.slice(0, visibleCount);
+  const canLoadMore = visibleCount < combinedRelated.length;
   const descriptionTitle = product.slug === "monolith-v2" ? "Создано для архитектурной интеграции" : `О модели ${product.title}`;
 
   return (
@@ -196,8 +206,8 @@ export function ProductPage({ product, relatedProducts }: ProductPageProps) {
       <section className="px-4 py-8 md:px-10 md:py-14">
         <div className="mx-auto max-w-[1480px]">
           <h2 className="text-[clamp(2rem,3.6vw,4.2rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Возможно пригодится</h2>
-          <div className="mt-12 grid gap-x-10 gap-y-14 md:grid-cols-2">
-            {related.map((relatedProduct) => (
+          <div className="mt-12 grid gap-x-10 gap-y-14 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {visibleRelated.map((relatedProduct) => (
               <article key={relatedProduct.slug}>
                 <a href={`/catalog/${relatedProduct.slug}`}>
                   <img
@@ -222,7 +232,12 @@ export function ProductPage({ product, relatedProducts }: ProductPageProps) {
           </div>
 
           <div className="mt-16 flex justify-center">
-            <button className="inline-flex h-16 items-center justify-center bg-[#111] px-14 text-[clamp(0.95rem,0.9vw,1.15rem)] uppercase tracking-[3px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((current) => Math.min(combinedRelated.length, current + 4))}
+              disabled={!canLoadMore}
+              className="inline-flex h-16 items-center justify-center bg-[#111] px-14 text-[clamp(0.95rem,0.9vw,1.15rem)] uppercase tracking-[3px] text-white transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40 [font-family:Jaldi,'JetBrains_Mono',monospace]"
+            >
               загрузить еще
             </button>
           </div>

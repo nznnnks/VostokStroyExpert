@@ -148,8 +148,8 @@ export function StayseLandingTailwind() {
         </div>
         </section>
 
-      <section id="about" className="px-3 pb-5 pt-6 sm:px-5 md:px-10 md:pt-8">
-        <div className="mx-auto grid max-w-[1480px] gap-6 pb-6 md:grid-cols-[120px_380px_1fr] md:items-start md:gap-10 2xl:max-w-[1860px]">
+      <section id="about" className="px-3 py-10 sm:px-5 md:px-10 md:py-16">
+        <div className="mx-auto grid max-w-[1480px] gap-8 pb-6 md:grid-cols-[120px_380px_1fr] md:items-start md:gap-12 2xl:max-w-[1860px]">
           <div className="text-[clamp(56px,5.5vw,120px)] leading-[0.78] text-[#e5dfd8] [font-family:'Cormorant_Garamond',serif]">25</div>
           <div>
             <h2 className="text-[clamp(32px,3vw,72px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">О компании</h2>
@@ -164,12 +164,12 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-      <section className="px-3 py-5 sm:px-5 md:px-10 md:py-8">
+      <section className="px-3 py-10 sm:px-5 md:px-10 md:py-16">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <h2 className="text-[clamp(36px,3.6vw,82px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Нам доверяют:</h2>
-          <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
             {trusted.map(([image, title, note]) => (
-              <article key={title} className="flex min-h-[190px] flex-col justify-between border border-[#f0ede7] bg-white p-3 text-center md:min-h-[240px] md:p-3 2xl:min-h-[280px]">
+              <article key={title} className="flex min-h-[190px] flex-col justify-between border border-[#f0ede7] bg-white p-4 text-center md:min-h-[240px] md:p-5 2xl:min-h-[280px]">
                 <img src={image} alt={title} loading="lazy" decoding="async" width="240" height="221" className="mx-auto h-[110px] w-full object-contain md:h-[150px] 2xl:h-[170px]" />
                 <div className="mt-3">
                   <p className="mx-auto max-w-[240px] text-[clamp(12px,0.5vw+10px,15px)] font-semibold leading-[1.2] text-[#050505]">{note}</p>
@@ -177,7 +177,7 @@ export function StayseLandingTailwind() {
               </article>
             ))}
           </div>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-10 flex justify-center">
             <a href="/about" className="inline-flex h-12 items-center justify-center bg-[#111] px-10 text-[clamp(12px,0.5vw+11px,16px)] text-white [font-family:'Cormorant_Garamond',serif]">
               Подробнее
             </a>
@@ -185,11 +185,11 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-      <section id="services" className="px-3 py-10 sm:px-5 md:px-10 md:py-14">
+      <section id="services" className="px-3 py-12 sm:px-5 md:px-10 md:py-18">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <p className="text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.5px] text-[#cdb89b] [font-family:'JetBrains_Mono',monospace]">основные услуги</p>
           <h2 className="mt-3 text-[clamp(32px,3.2vw,72px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Наши услуги</h2>
-          <div className="mt-7 grid gap-8 md:grid-cols-3 md:gap-5">
+          <div className="mt-10 grid gap-10 md:grid-cols-3 md:gap-8">
             {services.map((service) => (
               <article key={service.title} className="flex h-full flex-col border-l border-[#ece8e1] pl-3 md:pl-5">
                 <img src={service.image} alt="" loading="lazy" decoding="async" width="560" height="560" className="mx-auto aspect-square w-[180px] object-cover sm:w-[220px] md:w-[250px]" />
@@ -205,10 +205,10 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-      <section id="steps" className="px-3 py-8 sm:px-5 md:px-10 md:py-12">
+      <section id="steps" className="px-3 py-14 sm:px-5 md:px-10 md:py-20">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Любая задача в 4 этапа</h2>
-          <div className="mt-7 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-12 grid gap-12 sm:grid-cols-2 xl:grid-cols-4">
             {steps.map(([image, title, text]) => (
               <article key={title} className="max-w-[280px]">
                 <img src={image} alt="" loading="lazy" decoding="async" width="48" height="48" className="h-12 w-12 object-contain" />
@@ -220,17 +220,17 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-      <section id="blog" className="px-3 py-8 sm:px-5 md:px-10 md:py-12">
+      <section id="blog" className="px-3 py-16 sm:px-5 md:px-10 md:py-24">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <div className="flex items-end justify-between gap-3">
             <h2 className="text-[clamp(32px,3vw,60px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Новостной блог</h2>
             <a href="/news" className="pb-2 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.2px] text-[#3e3e39] [font-family:'JetBrains_Mono',monospace]">Все новости</a>
           </div>
-          <div className="mt-7 grid gap-5 md:grid-cols-3">
+          <div className="mt-12 grid gap-10 md:grid-cols-3">
             {blog.map((article) => (
               <article key={article.title} className={`${article.wide ? "md:col-span-2" : ""}`}>
                 <img src={article.image} alt="" loading="lazy" decoding="async" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                <div className="grid gap-3 border border-t-0 border-[#ece8e1] p-3 md:grid-cols-[1fr_auto] md:items-end md:gap-4">
+                <div className="grid gap-5 border border-t-0 border-[#ece8e1] p-6 md:grid-cols-[1fr_auto] md:items-end md:gap-8">
                   <div>
                     <p className="text-[clamp(12px,0.45vw+11px,14px)] leading-5 text-[#4f4f4b]">{article.text}</p>
                   </div>
@@ -244,10 +244,10 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-        <section className="px-3 py-8 sm:px-5 md:px-10 md:py-12">
+        <section className="px-3 py-14 sm:px-5 md:px-10 md:py-20">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Мнения клиентов</h2>
-          <div className="mt-8 grid gap-8 md:grid-cols-2">
+          <div className="mt-12 grid gap-12 md:grid-cols-2">
             {reviews.map(([avatar, text, author, role]) => (
               <article key={author as string} className="grid gap-5">
                 <p className="max-w-[540px] text-[clamp(12px,0.45vw+11px,14px)] leading-6 text-[#4f4f4b]">{text}</p>
@@ -267,8 +267,8 @@ export function StayseLandingTailwind() {
         </div>
         </section>
 
-        <section id="contact" className="bg-white px-3 py-14 sm:px-5 md:px-10 md:py-20">
-        <div className="mx-auto grid max-w-[1480px] gap-12 border-b border-[#e8e3db] pb-14 lg:grid-cols-[420px_1fr] 2xl:max-w-[1860px]">
+        <section id="contact" className="bg-white px-3 py-18 sm:px-5 md:px-10 md:py-28">
+        <div className="mx-auto grid max-w-[1480px] gap-14 border-b border-[#e8e3db] pb-16 lg:grid-cols-[420px_1fr] 2xl:max-w-[1860px]">
           <div>
             <h2 className="text-[clamp(40px,3.8vw,100px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Бесплатная консультация</h2>
             <div className="mt-8 space-y-8">

@@ -24,7 +24,7 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
           <h1 className="mt-8 max-w-[900px] text-[clamp(2.6rem,5.2vw,5.75rem)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">
             Тихая инженерия для жилых, коммерческих и частных объектов высокого класса
           </h1>
-          <div className="mt-10 grid gap-10 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="mt-10 grid items-start gap-10 xl:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-8 text-[clamp(1.05rem,1.4vw,1.45rem)] leading-[1.75] text-[#565651]">
               <p>
                 ВостокСтройЭксперт проектирует и интегрирует климатические системы так, чтобы техника не спорила с архитектурой, не шумела и не усложняла эксплуатацию объекта.
@@ -37,12 +37,12 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-2">
-              <article className="border border-[#e8e3db] p-8">
+              <article className="flex h-full flex-col border border-[#e8e3db] p-8 text-left">
                 <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Опыт</p>
                 <p className="mt-5 text-[clamp(2.5rem,4.2vw,4.1rem)] leading-none [font-family:'Cormorant_Garamond',serif]">25+</p>
                 <p className="mt-3 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">лет в интеграции инженерных решений и сопровождении объектов высокого класса.</p>
               </article>
-              <article className="border border-[#e8e3db] p-8">
+              <article className="flex h-full flex-col border border-[#e8e3db] p-8 text-left">
                 <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Подход</p>
                 <p className="mt-5 text-[clamp(1.8rem,2.6vw,2.6rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">Комфорт без визуального и акустического давления</p>
               </article>

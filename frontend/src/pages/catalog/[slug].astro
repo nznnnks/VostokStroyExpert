@@ -8,11 +8,13 @@ export const prerender = false;
 const slug = Astro.params.slug ?? "";
 let product;
 let relatedProducts = [];
+let allProducts = [];
 
 try {
   const result = await loadCatalogProductBySlug(slug);
   product = result.product;
   relatedProducts = result.relatedProducts;
+  allProducts = result.allProducts ?? [];
 } catch {
   return Astro.redirect("/catalog");
 }
@@ -33,6 +35,6 @@ try {
     />
   </head>
   <body>
-    <ProductPage product={product} relatedProducts={relatedProducts} />
+    <ProductPage product={product} relatedProducts={relatedProducts} allProducts={allProducts} />
   </body>
 </html>

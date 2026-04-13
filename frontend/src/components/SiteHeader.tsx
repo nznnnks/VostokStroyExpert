@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AuthHeaderButton from "./AuthHeaderButton";
 import { navLinks } from "../data/site";
+import { featuredProduct, formatPrice, products, type Product } from "../data/products";
+import { loadCatalogProducts } from "../lib/backend-api";
 
 type SiteHeaderProps = {
   light?: boolean;
@@ -8,6 +10,12 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ light = true }: SiteHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [catalogProducts, setCatalogProducts] = useState<Product[] | null>(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const searchRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -25,8 +33,64 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsSearchOpen(false);
+    };
+    const onClick = (event: MouseEvent) => {
+      if (!searchRef.current) return;
+      if (searchRef.current.contains(event.target as Node)) return;
+      setIsSearchOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onClick);
+    inputRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    let isActive = true;
+    setIsLoadingProducts(true);
+    loadCatalogProducts()
+      .then((items) => {
+        if (!isActive) return;
+        setCatalogProducts(items);
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingProducts(false);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [isSearchOpen]);
+
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const fallbackSource = [featuredProduct, ...products].filter(
+    (item, index, all) => all.findIndex((entry) => entry.slug === item.slug) === index,
+  );
+  const searchSource = catalogProducts && catalogProducts.length > 0 ? catalogProducts : fallbackSource;
+  const searchResults = trimmedQuery
+    ? searchSource.filter((item) =>
+        [item.title, item.brand, item.brandLabel, item.category, item.slug].some((value) =>
+          value.toLowerCase().includes(trimmedQuery),
+        ),
+      )
+    : searchSource;
+  const visibleResults = searchResults.slice(0, 2);
+
   return (
-    <header className={`border-b px-4 py-4 md:px-10 ${light ? "border-[#ece8e1] bg-white" : "border-white/10 bg-transparent"}`}>
+    <header
+      ref={searchRef}
+      className={`relative z-40 border-b px-4 py-4 md:px-10 ${
+        light ? "border-[#ece8e1] bg-white" : "border-white/10 bg-transparent"
+      }`}
+    >
       <div className="mx-auto grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[auto_1fr_auto] md:gap-4 2xl:max-w-[1860px]">
         <a
           href="/"
@@ -48,12 +112,17 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
           ))}
         </nav>
         <div className="flex items-center justify-end gap-3 md:gap-4">
-          <a href="/catalog" aria-label="Поиск по каталогу" className="hidden md:inline-flex">
+          <button
+            type="button"
+            aria-label="Открыть поиск по каталогу"
+            onClick={() => setIsSearchOpen((prev) => !prev)}
+            className="hidden md:inline-flex"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18" className={`${light ? "text-[#111]" : "text-white"}`} aria-hidden="true">
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.6" fill="none" />
               <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
-          </a>
+          </button>
           <a href="/cart" aria-label="Корзина" className="hidden md:inline-flex">
             <svg viewBox="0 0 24 24" width="18" height="18" className={`${light ? "text-[#111]" : "text-white"}`} aria-hidden="true">
               <path
@@ -88,6 +157,87 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
           </button>
         </div>
       </div>
+      {isSearchOpen ? (
+        <div className="absolute left-0 right-0 top-full">
+          <div className="mx-auto max-w-[1480px] px-4 md:px-10 2xl:max-w-[1860px]">
+            <div
+              className={`ml-auto w-full max-w-[520px] rounded-[10px] border px-4 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.08)] ${
+                light ? "border-[#e6e1d8] bg-white" : "border-white/10 bg-[#0b0b0b]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 flex-1 items-center gap-3 rounded-[8px] border border-[#e1ddd5] px-4">
+                  <svg viewBox="0 0 24 24" width="16" height="16" className={`${light ? "text-[#7d7d78]" : "text-white/70"}`} aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                    <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    ref={inputRef}
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Поиск по каталогу"
+                    className={`w-full bg-transparent text-[15px] outline-none placeholder:text-[#b7b2aa] ${
+                      light ? "text-[#111]" : "text-white"
+                    }`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(false)}
+                  className={`inline-flex h-11 w-11 items-center justify-center rounded-[8px] border ${
+                    light ? "border-[#e1ddd5] text-[#111]" : "border-white/20 text-white"
+                  }`}
+                  aria-label="Закрыть поиск"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="mt-3 grid gap-3">
+                {isLoadingProducts ? (
+                  <div
+                    className={`rounded-[10px] border px-4 py-3 text-[14px] ${
+                      light ? "border-[#ece8e1] text-[#7d7d78]" : "border-white/10 text-white/70"
+                    }`}
+                  >
+                    Загружаем товары...
+                  </div>
+                ) : visibleResults.length === 0 ? (
+                  <div className={`rounded-[10px] border px-4 py-3 text-[14px] ${light ? "border-[#ece8e1] text-[#7d7d78]" : "border-white/10 text-white/70"}`}>
+                    Ничего не найдено
+                  </div>
+                ) : (
+                  visibleResults.map((item) => (
+                    <a
+                      key={item.slug}
+                      href={`/product/${item.slug}`}
+                      className={`flex items-center gap-3 rounded-[10px] border px-3 py-3 transition ${
+                        light ? "border-[#ece8e1] hover:border-[#d3b46a]" : "border-white/10 hover:border-white/40"
+                      }`}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="h-12 w-12 rounded-[8px] object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = "/catalog/product-1.png";
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className={`text-[12px] uppercase tracking-[1.5px] ${light ? "text-[#8a857c]" : "text-white/60"} [font-family:Jaldi,'JetBrains_Mono',monospace]`}>
+                          {item.brandLabel}
+                        </p>
+                        <p className={`truncate text-[15px] leading-tight ${light ? "text-[#111]" : "text-white"}`}>{item.title}</p>
+                        <p className={`text-[14px] ${light ? "text-[#6f6c66]" : "text-white/70"}`}>{formatPrice(item.price)}</p>
+                      </div>
+                    </a>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
           <button

@@ -399,12 +399,15 @@ export function CatalogPage({ products }: CatalogPageProps) {
                   </div>
                 </div>
               ) : (
-                <div key={resultsAnimationKey} className="catalog-results mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3 2xl:gap-8">
+                <div
+                  key={resultsAnimationKey}
+                  className="catalog-results mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 2xl:gap-8"
+                >
                   {pageProducts.map((product, index) => (
                     <article
                       key={product.slug}
                       style={{ animationDelay: `${index * 60}ms` }}
-                      className="catalog-card group border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] 2xl:p-9"
+                      className="catalog-card group flex h-full flex-col border border-[#ebe5de] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] 2xl:p-9"
                     >
                       <a href={`/catalog/${product.slug}`}>
                         <img
@@ -417,17 +420,17 @@ export function CatalogPage({ products }: CatalogPageProps) {
                           className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                         />
                       </a>
-                      <div className="mt-8">
+                      <div className="mt-8 flex flex-1 flex-col">
                         <p className="text-[14px] uppercase tracking-[2.4px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.brandLabel}</p>
-                        <h3 className="mt-4 text-[32px] leading-[1.15] 2xl:text-[36px] [font-family:DM_Sans,Manrope,sans-serif]">
+                        <h3 className="mt-4 min-h-[88px] text-[32px] leading-[1.15] 2xl:min-h-[96px] 2xl:text-[36px] [font-family:DM_Sans,Manrope,sans-serif]">
                           <a href={`/catalog/${product.slug}`}>{product.title}</a>
                         </h3>
-                        <div className="mt-5 space-y-1 text-[17px] leading-7 text-[#7a7a75] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        <div className="mt-5 min-h-[56px] space-y-1 text-[17px] leading-7 text-[#7a7a75] 2xl:min-h-[60px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                           <p>{product.rating}</p>
                           <p>{product.efficiency}</p>
                         </div>
                         <p className="mt-8 text-[48px] leading-none 2xl:text-[56px] [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(product.price)}</p>
-                        <div className="mt-8 grid gap-3">
+                        <div className="mt-auto grid gap-3 pt-8">
                           <a
                             href={`/cart?add=${product.slug}`}
                             className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
