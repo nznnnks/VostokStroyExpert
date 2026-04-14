@@ -273,7 +273,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   const [discounts, setDiscounts] = useState<Array<{ id: string; name: string; value: string }>>([]);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [navOpen, setNavOpen] = useState(false);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; phone?: string; status: "ACTIVE" | "BLOCKED" }>>([]);
   const [payments, setPayments] = useState<Array<{ id: string; orderId: string; amount: string }>>([]);
   const [loading, setLoading] = useState(activeKey === "clients" || activeKey === "orders" || activeKey === "news" || activeKey === "catalog");
   const [error, setError] = useState<Error | null>(null);
@@ -350,7 +350,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     passwordHash: "",
     firstName: "",
     lastName: "",
-    role: "MANAGER",
     isActive: true,
   });
   const [userForm, setUserForm] = useState({
@@ -358,9 +357,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     email: "",
     phone: "",
     passwordHash: "",
-    firstName: "",
-    lastName: "",
-    role: "CLIENT",
     status: "ACTIVE",
   });
   const [paymentForm, setPaymentForm] = useState({
@@ -527,11 +523,23 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
       );
     }
 
+    if (activeKey === "clients") {
+      const nextUsers = await loadUsers();
+      setUsers(
+        nextUsers.map((item) => ({
+          id: item.id,
+          name: [item.clientProfile?.firstName, item.clientProfile?.lastName].filter(Boolean).join(" ") || item.email,
+          email: item.email,
+          phone: item.phone ?? undefined,
+          status: item.status,
+        })),
+      );
+    }
+
     if (activeKey === "settings") {
-      const [nextDiscounts, nextAdmins, nextUsers] = await Promise.all([
+      const [nextDiscounts, nextAdmins] = await Promise.all([
         loadAdminDiscounts(),
         loadAdminUsers(),
-        loadUsers(),
       ]);
       setDiscounts(
         nextDiscounts
@@ -543,14 +551,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           id: item.id,
           name: [item.firstName, item.lastName].filter(Boolean).join(" ") || item.email,
           email: item.email,
-        })),
-      );
-      setUsers(
-        nextUsers.map((item) => ({
-          id: item.id,
-          name: [item.clientProfile?.firstName, item.clientProfile?.lastName].filter(Boolean).join(" ") || item.email,
-          email: item.email,
-          role: item.role,
         })),
       );
     }
@@ -1222,14 +1222,13 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         passwordHash: adminUserForm.passwordHash.trim() || undefined,
         firstName: firstNameValue,
         lastName: adminUserForm.lastName.trim() || undefined,
-        role: adminUserForm.role as "SUPERADMIN" | "MANAGER" | "EDITOR",
         isActive: adminUserForm.isActive,
       };
 
       if (adminUserForm.id) {
         await updateAdminUser(adminUserForm.id, payload);
       } else {
-        await createAdminUser(payload as { email: string; passwordHash: string; firstName: string; lastName?: string; role?: "SUPERADMIN" | "MANAGER" | "EDITOR"; isActive?: boolean });
+        await createAdminUser(payload as { email: string; passwordHash: string; firstName: string; lastName?: string; isActive?: boolean });
       }
 
       await refreshAdminData();
@@ -1239,7 +1238,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         passwordHash: "",
         firstName: "",
         lastName: "",
-        role: "MANAGER",
         isActive: true,
       });
     } catch (nextError) {
@@ -1266,7 +1264,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         passwordHash: "",
         firstName: "",
         lastName: "",
-        role: "MANAGER",
         isActive: true,
       });
     } catch (nextError) {
@@ -1380,18 +1377,13 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         email: emailValue,
         phone: userForm.phone || undefined,
         passwordHash: userForm.passwordHash.trim() || undefined,
-        role: userForm.role as "CLIENT" | "MANAGER",
         status: userForm.status as "ACTIVE" | "BLOCKED",
-        clientProfile: {
-          firstName: userForm.firstName.trim() || "Клиент",
-          lastName: userForm.lastName.trim() || undefined,
-        },
       };
 
       if (userForm.id) {
         await updateUser(userForm.id, payload);
       } else {
-        await createUser(payload as { email: string; passwordHash: string; phone?: string; role?: "CLIENT" | "MANAGER"; status?: "ACTIVE" | "BLOCKED"; clientProfile?: { firstName: string; lastName?: string } });
+        await createUser(payload as { email: string; passwordHash: string; phone?: string; status?: "ACTIVE" | "BLOCKED" });
       }
 
       await refreshAdminData();
@@ -1400,9 +1392,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         email: "",
         phone: "",
         passwordHash: "",
-        firstName: "",
-        lastName: "",
-        role: "CLIENT",
         status: "ACTIVE",
       });
     } catch (nextError) {
@@ -1428,9 +1417,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         email: "",
         phone: "",
         passwordHash: "",
-        firstName: "",
-        lastName: "",
-        role: "CLIENT",
         status: "ACTIVE",
       });
     } catch (nextError) {
@@ -1559,7 +1545,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         const nextPayments = activeKey === "requests" ? await loadAdminPayments() : [];
         const nextDiscounts = activeKey === "settings" ? await loadAdminDiscounts() : [];
         const nextAdmins = activeKey === "settings" ? await loadAdminUsers() : [];
-        const nextUsers = activeKey === "settings" ? await loadUsers() : [];
+        const nextUsers = activeKey === "clients" ? await loadUsers() : [];
 
         if (!active) {
           return;
@@ -1599,7 +1585,8 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
             id: item.id,
             name: [item.clientProfile?.firstName, item.clientProfile?.lastName].filter(Boolean).join(" ") || item.email,
             email: item.email,
-            role: item.role,
+            phone: item.phone ?? undefined,
+            status: item.status,
           })),
         );
         setCatalogForm((prev) => ({ ...prev, categoryId: prev.categoryId || nextCategories[0]?.id || "" }));
@@ -1824,7 +1811,104 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
               {!loading && error && !authRequired ? <SectionMessage title="Ошибка загрузки" description={error.message || "Не удалось получить данные раздела."} /> : null}
 
               {!loading && !error && activeKey === "clients" ? (
-                <div className="mt-10">
+                <div className="mt-10 space-y-10">
+                  <div className="admin-form-card">
+                    <h2 className="text-[24px] [font-family:'Cormorant_Garamond',serif]">Аккаунт клиента</h2>
+                    <div className="mt-6 admin-form-grid">
+                      <label className="admin-toolbar__label">
+                        Email
+                        <input
+                          className="admin-input mt-2"
+                          value={userForm.email}
+                          onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
+                          placeholder="client@company.com"
+                        />
+                      </label>
+                      <label className="admin-toolbar__label">
+                        Телефон
+                        <input
+                          className="admin-input mt-2"
+                          value={userForm.phone}
+                          onChange={(event) => setUserForm((prev) => ({ ...prev, phone: formatRussianPhone(event.target.value) }))}
+                          placeholder="+7(999) 999-99-99"
+                          inputMode="tel"
+                          maxLength={17}
+                        />
+                      </label>
+                      <label className="admin-toolbar__label">
+                        Пароль
+                        <input
+                          className="admin-input mt-2"
+                          value={userForm.passwordHash}
+                          onChange={(event) => setUserForm((prev) => ({ ...prev, passwordHash: event.target.value }))}
+                          placeholder="Введите пароль"
+                        />
+                      </label>
+                      <label className="admin-toolbar__label">
+                        Статус
+                        <select
+                          className="admin-input mt-2"
+                          value={userForm.status}
+                          onChange={(event) => setUserForm((prev) => ({ ...prev, status: event.target.value }))}
+                        >
+                          <option value="ACTIVE">Активен</option>
+                          <option value="BLOCKED">Заблокирован</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {actionError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{actionError}</p> : null}
+                    <div className="admin-form-actions">
+                      <button className="admin-action-btn" type="button" onClick={handleUserSubmit} disabled={actionLoading}>
+                        {userForm.id ? "Сохранить" : "Создать"}
+                      </button>
+                      <button
+                        className="admin-action-btn admin-action-btn--ghost"
+                        type="button"
+                        onClick={() => {
+                          setUserForm({ id: "", email: "", phone: "", passwordHash: "", status: "ACTIVE" });
+                          setClientForm(emptyClientForm);
+                        }}
+                        disabled={actionLoading}
+                      >
+                        Очистить
+                      </button>
+                      {userForm.id ? (
+                        <button className="admin-action-btn admin-action-btn--ghost" type="button" onClick={handleUserDelete} disabled={actionLoading}>
+                          Удалить
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {users.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="admin-action-btn admin-action-btn--ghost"
+                          onClick={() => {
+                            setUserForm({
+                              id: item.id,
+                              email: item.email,
+                              phone: formatRussianPhone(item.phone ?? ""),
+                              passwordHash: "",
+                              status: item.status,
+                            });
+
+                            const profile = clients.find((client) => client.userId === item.id);
+                            if (profile) {
+                              fillClientForm(profile);
+                            } else {
+                              setClientForm({ ...emptyClientForm, userId: item.id });
+                            }
+                          }}
+                        >
+                          {item.email}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="admin-form-card">
                     <div className="admin-form-grid admin-form-grid--catalog">
                       <label className="admin-toolbar__label">
@@ -2962,18 +3046,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                         />
                       </label>
                       <label className="admin-toolbar__label">
-                        Роль
-                        <select
-                          className="admin-input mt-2"
-                          value={adminUserForm.role}
-                          onChange={(event) => setAdminUserForm((prev) => ({ ...prev, role: event.target.value }))}
-                        >
-                          <option value="SUPERADMIN">Superadmin</option>
-                          <option value="MANAGER">Manager</option>
-                          <option value="EDITOR">Editor</option>
-                        </select>
-                      </label>
-                      <label className="admin-toolbar__label">
                         Активен
                         <select
                           className="admin-input mt-2"
@@ -3000,7 +3072,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                             passwordHash: "",
                             firstName: "",
                             lastName: "",
-                            role: "MANAGER",
                             isActive: true,
                           })
                         }
@@ -3213,131 +3284,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                     </div>
                   </div>
 
-                  <div className="admin-form-card">
-                    <h2 className="text-[24px] [font-family:'Cormorant_Garamond',serif]">Пользователи</h2>
-                    <div className="mt-6 admin-form-grid">
-                      <label className="admin-toolbar__label">
-                        Email
-                        <input
-                          className="admin-input mt-2"
-                          value={userForm.email}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
-                          placeholder="user@company.com"
-                        />
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Телефон
-                        <input
-                          className="admin-input mt-2"
-                          value={userForm.phone}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, phone: formatRussianPhone(event.target.value) }))}
-                          placeholder="+7(999) 999-99-99"
-                          inputMode="tel"
-                          maxLength={17}
-                        />
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Пароль
-                        <input
-                          className="admin-input mt-2"
-                          value={userForm.passwordHash}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, passwordHash: event.target.value }))}
-                          placeholder="Введите пароль"
-                        />
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Имя
-                        <input
-                          className="admin-input mt-2"
-                          value={userForm.firstName}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, firstName: event.target.value }))}
-                          placeholder="Мария"
-                        />
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Фамилия
-                        <input
-                          className="admin-input mt-2"
-                          value={userForm.lastName}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, lastName: event.target.value }))}
-                          placeholder="Павлова"
-                        />
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Роль
-                        <select
-                          className="admin-input mt-2"
-                          value={userForm.role}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value }))}
-                        >
-                          <option value="CLIENT">Client</option>
-                          <option value="MANAGER">Manager</option>
-                        </select>
-                      </label>
-                      <label className="admin-toolbar__label">
-                        Статус
-                        <select
-                          className="admin-input mt-2"
-                          value={userForm.status}
-                          onChange={(event) => setUserForm((prev) => ({ ...prev, status: event.target.value }))}
-                        >
-                          <option value="ACTIVE">Активен</option>
-                          <option value="BLOCKED">Заблокирован</option>
-                        </select>
-                      </label>
-                    </div>
-                    {actionError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{actionError}</p> : null}
-                    <div className="admin-form-actions">
-                      <button className="admin-action-btn" type="button" onClick={handleUserSubmit} disabled={actionLoading}>
-                        {userForm.id ? "Сохранить" : "Создать"}
-                      </button>
-                      <button
-                        className="admin-action-btn admin-action-btn--ghost"
-                        type="button"
-                        onClick={() =>
-                          setUserForm({
-                            id: "",
-                            email: "",
-                            phone: "",
-                            passwordHash: "",
-                            firstName: "",
-                            lastName: "",
-                            role: "CLIENT",
-                            status: "ACTIVE",
-                          })
-                        }
-                        disabled={actionLoading}
-                      >
-                        Очистить
-                      </button>
-                      {userForm.id ? (
-                        <button className="admin-action-btn admin-action-btn--ghost" type="button" onClick={handleUserDelete} disabled={actionLoading}>
-                          Удалить
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      {users.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="admin-action-btn admin-action-btn--ghost"
-                          onClick={() =>
-                            setUserForm((prev) => ({
-                              ...prev,
-                              id: item.id,
-                              email: item.email,
-                              firstName: item.name.split(" ")[0] ?? item.name,
-                              lastName: item.name.split(" ").slice(1).join(" "),
-                              role: item.role,
-                            }))
-                          }
-                        >
-                          {item.email}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               ) : null}
 
