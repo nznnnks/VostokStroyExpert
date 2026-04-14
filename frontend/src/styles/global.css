@@ -171,7 +171,7 @@ body {
   margin: 0;
   appearance: none;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .catalog-double-range__control input[data-range="min"] {
@@ -196,6 +196,8 @@ body {
   border: 1px solid #d6cfc5;
   border-radius: 999px;
   background: #ffffff;
+  cursor: pointer;
+  pointer-events: auto;
   box-shadow: 0 4px 12px rgba(17, 17, 17, 0.16);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
@@ -211,6 +213,8 @@ body {
   border: 1px solid #d6cfc5;
   border-radius: 999px;
   background: #ffffff;
+  cursor: pointer;
+  pointer-events: auto;
   box-shadow: 0 4px 12px rgba(17, 17, 17, 0.16);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
@@ -227,6 +231,44 @@ body {
   border-color: #d3b46a;
   transform: scale(1.08);
   box-shadow: 0 0 0 6px rgba(211, 180, 106, 0.16);
+}
+
+.product-hero-image-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-hero-image-layer--in {
+  animation: product-image-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.product-hero-image-layer--out {
+  animation: product-image-out 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes product-image-in {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes product-image-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
 }
 
 @keyframes catalog-results-in {

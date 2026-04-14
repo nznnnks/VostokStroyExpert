@@ -51,6 +51,12 @@ const services = [
   },
 ];
 
+const serviceHrefByTitle: Record<string, string> = {
+  "Тепловой контроль": "/services/thermal-control",
+  "Очистка воздуха": "/services/air-cleaning",
+  "Акустическая настройка": "/services/acoustic-tuning",
+};
+
 const steps = [
   ["/image/steps-1.png", "Диагностика", "Изучаем объект, ограничения и режим эксплуатации, чтобы не перегружать проект лишними решениями."],
   ["/image/steps-2.png", "Моделирование", "Собираем инженерную схему, считаем нагрузки и согласовываем логику системы."],
@@ -103,7 +109,7 @@ export function StayseLandingTailwind() {
       <div className="flex-1">
         <SiteHeader />
 
-        <section id="hero" className="relative isolate min-h-screen overflow-hidden bg-[#050505] text-white">
+        <section id="hero" className="relative isolate min-h-[100svh] overflow-hidden bg-[#050505] text-white md:min-h-screen">
         <img
           src="/image/hero-menu.png"
           alt=""
@@ -116,32 +122,32 @@ export function StayseLandingTailwind() {
           className="absolute inset-0 -z-20 h-full w-full object-cover object-[72%_center] md:object-right"
         />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(4,4,5,0.98)_0%,rgba(4,4,5,0.92)_24%,rgba(4,4,5,0.62)_46%,rgba(4,4,5,0.18)_72%)]" />
-        <div className="mx-auto flex min-h-screen max-w-[1480px] flex-col justify-between px-3 pb-6 pt-10 sm:px-5 md:px-10 md:pb-12 md:pt-24 2xl:max-w-[1680px]">
+        <div className="mx-auto flex min-h-[100svh] max-w-[1480px] flex-col justify-between px-5 pb-4 pt-6 sm:px-5 md:min-h-screen md:px-10 md:pb-12 md:pt-24 2xl:max-w-[1680px]">
           <div className="max-w-[700px]">
-            <h1 className="max-w-[760px] text-[clamp(52px,6vw,156px)] leading-[0.88] tracking-[-0.05em] [font-family:'Cormorant_Garamond',serif]">
+            <h1 className="max-w-[760px] text-[clamp(42px,11vw,156px)] leading-[0.9] tracking-[-0.05em] [font-family:'Cormorant_Garamond',serif]">
               Атмосферное
               <br />
               Совершенство
             </h1>
-            <p className="mt-4 max-w-[900px] text-[clamp(17px,1.4vw+12px,36px)] font-[200] leading-[1.55] text-[#f4f4f1] md:mt-6">
+            <p className="mt-3 max-w-[720px] text-[clamp(16px,3.8vw,34px)] font-[300] leading-[1.45] text-[#f4f4f1] md:mt-6 md:leading-[1.55]">
               Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
               Когда тишина становится ощутимой.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-6 text-[clamp(11px,0.5vw+10px,15px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
+            <div className="mt-6 flex flex-wrap items-center gap-3 text-[clamp(12px,0.5vw+10px,15px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-8 md:gap-6">
               <a href="/services" className="inline-flex h-11 min-w-[152px] items-center justify-center bg-[#1a1a1a] px-5 text-white">
                 услуги
               </a>
-              <a href="/catalog" className="inline-flex h-11 items-center justify-center px-5 text-white/92">
+              <a href="/catalog" className="inline-flex h-11 min-w-[152px] items-center justify-center border border-white/25 bg-black/20 px-5 text-white/92">
                 каталог
               </a>
             </div>
           </div>
 
-          <ul className="mt-10 grid gap-6 border-t border-white/10 pt-5 text-[clamp(11px,0.45vw+9px,14px)] uppercase tracking-[1.7px] text-[#f4f4f1d6] sm:grid-cols-3 [font-family:'JetBrains_Mono',monospace]">
+          <ul className="mt-7 grid gap-4 border-t border-white/10 pt-4 text-[clamp(12px,0.45vw+9px,14px)] uppercase tracking-[1px] text-[#f4f4f1d6] sm:grid-cols-3 sm:tracking-[1.7px] [font-family:'JetBrains_Mono',monospace]">
             {stats.map(([value, label]) => (
-              <li key={label} className="flex flex-col gap-2">
-                <strong className="text-[clamp(16px,0.8vw+12px,24px)] font-normal leading-none tracking-[0.18em] text-white">{value}</strong>
-                <span className="max-w-[420px] leading-5">{label}</span>
+              <li key={label} className="flex flex-col gap-1.5">
+                <strong className="text-[clamp(18px,0.8vw+12px,24px)] font-normal leading-none tracking-[0.12em] text-white sm:tracking-[0.18em]">{value}</strong>
+                <span className="max-w-[420px] leading-[1.45] sm:leading-5">{label}</span>
               </li>
             ))}
           </ul>
@@ -149,7 +155,7 @@ export function StayseLandingTailwind() {
         </section>
 
       <section id="about" className="px-3 py-10 sm:px-5 md:px-10 md:py-16">
-        <div className="mx-auto grid max-w-[1480px] gap-8 pb-6 md:grid-cols-[120px_380px_1fr] md:items-start md:gap-12 2xl:max-w-[1860px]">
+        <div className="mx-auto grid max-w-[1480px] gap-8 pb-6 lg:grid-cols-[120px_380px_1fr] lg:items-start lg:gap-12 2xl:max-w-[1860px]">
           <div className="text-[clamp(56px,5.5vw,120px)] leading-[0.78] text-[#e5dfd8] [font-family:'Cormorant_Garamond',serif]">25</div>
           <div>
             <h2 className="text-[clamp(32px,3vw,72px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">О компании</h2>
@@ -169,11 +175,8 @@ export function StayseLandingTailwind() {
           <h2 className="text-[clamp(36px,3.6vw,82px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Нам доверяют:</h2>
           <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
             {trusted.map(([image, title, note]) => (
-              <article key={title} className="flex min-h-[190px] flex-col justify-between border border-[#f0ede7] bg-white p-4 text-center md:min-h-[240px] md:p-5 2xl:min-h-[280px]">
+              <article key={title} className="flex min-h-[170px] flex-col items-center justify-center border border-[#f0ede7] bg-white p-4 text-center md:min-h-[210px] md:p-5 2xl:min-h-[240px]">
                 <img src={image} alt={title} loading="lazy" decoding="async" width="240" height="221" className="mx-auto h-[110px] w-full object-contain md:h-[150px] 2xl:h-[170px]" />
-                <div className="mt-3">
-                  <p className="mx-auto max-w-[240px] text-[clamp(12px,0.5vw+10px,15px)] font-semibold leading-[1.2] text-[#050505]">{note}</p>
-                </div>
               </article>
             ))}
           </div>
@@ -187,17 +190,22 @@ export function StayseLandingTailwind() {
 
       <section id="services" className="px-3 py-12 sm:px-5 md:px-10 md:py-18">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
-          <p className="text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.5px] text-[#cdb89b] [font-family:'JetBrains_Mono',monospace]">основные услуги</p>
+          <p className="text-[clamp(12px,0.4vw+10px,15px)] uppercase tracking-[1.5px] text-[#b99863] [font-family:'JetBrains_Mono',monospace]">основные услуги</p>
           <h2 className="mt-3 text-[clamp(32px,3.2vw,72px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Наши услуги</h2>
           <div className="mt-10 grid gap-10 md:grid-cols-3 md:gap-8">
             {services.map((service) => (
-              <article key={service.title} className="flex h-full flex-col border-l border-[#ece8e1] pl-3 md:pl-5">
+              <article key={service.title} className="relative flex h-full flex-col border-l border-[#ece8e1] pl-3 transition-colors hover:border-[#d3b46a] md:pl-5">
+                <a
+                  href={serviceHrefByTitle[service.title] ?? "/services"}
+                  aria-label={`Открыть направление: ${service.title}`}
+                  className="absolute inset-0 z-10"
+                />
                 <img src={service.image} alt="" loading="lazy" decoding="async" width="560" height="560" className="mx-auto aspect-square w-[180px] object-cover sm:w-[220px] md:w-[250px]" />
                 <h3 className="mt-5 max-w-[280px] text-[clamp(22px,1.6vw+16px,40px)] leading-[1.02] [font-family:'Cormorant_Garamond',serif]">{service.title}</h3>
-                <p className="mt-4 max-w-[300px] flex-1 text-[clamp(12px,0.5vw+11px,15px)] leading-6 text-[#4f4f4b]">{service.text}</p>
-                <div className="mt-auto pt-6 flex flex-wrap items-center gap-4 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
+                <p className="mt-4 max-w-[320px] flex-1 text-[clamp(14px,0.55vw+12px,18px)] leading-[1.65] text-[#2f2f2c]">{service.text}</p>
+                <div className="relative z-20 mt-auto flex flex-wrap items-center gap-4 pt-6 text-[clamp(12px,0.4vw+10px,15px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
                   <a href="/checkout" className="inline-flex h-9 items-center justify-center bg-[#050505] px-5 text-white">заказать</a>
-                  <a href={`/services/${service.title === "Тепловой контроль" ? "thermal-control" : service.title === "Очистка воздуха" ? "air-cleaning" : "acoustic-tuning"}`} className="text-[#2d2d29]">подробнее</a>
+                  <a href={serviceHrefByTitle[service.title] ?? "/services"} className="text-[#2d2d29]">подробнее</a>
                 </div>
               </article>
             ))}
@@ -213,7 +221,7 @@ export function StayseLandingTailwind() {
               <article key={title} className="max-w-[280px]">
                 <img src={image} alt="" loading="lazy" decoding="async" width="48" height="48" className="h-12 w-12 object-contain" />
                 <h3 className="mt-5 text-[clamp(20px,1vw+16px,28px)] leading-none [font-family:'Cormorant_Garamond',serif]">{title}</h3>
-                <p className="mt-3 text-[clamp(12px,0.45vw+11px,14px)] leading-6 text-[#4f4f4b]">{text}</p>
+                <p className="mt-3 text-[clamp(14px,0.5vw+12px,17px)] leading-[1.65] text-[#2f2f2c]">{text}</p>
               </article>
             ))}
           </div>
@@ -224,17 +232,18 @@ export function StayseLandingTailwind() {
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
           <div className="flex items-end justify-between gap-3">
             <h2 className="text-[clamp(32px,3vw,60px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Новостной блог</h2>
-            <a href="/news" className="pb-2 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.2px] text-[#3e3e39] [font-family:'JetBrains_Mono',monospace]">Все новости</a>
+            <a href="/news" className="pb-2 text-[clamp(12px,0.4vw+10px,15px)] uppercase tracking-[1.2px] text-[#2f2f2c] [font-family:'JetBrains_Mono',monospace]">Все новости</a>
           </div>
-          <div className="mt-12 grid gap-10 md:grid-cols-3">
+          <div className="mt-12 grid gap-10 md:grid-cols-2 xl:grid-cols-3">
             {blog.map((article) => (
-              <article key={article.title} className={`${article.wide ? "md:col-span-2" : ""}`}>
+              <article key={article.title} className={`relative transition-opacity hover:opacity-95 ${article.wide ? "md:col-span-2" : ""}`}>
+                <a href="/news" aria-label={`Открыть новость: ${article.title}`} className="absolute inset-0 z-10" />
                 <img src={article.image} alt="" loading="lazy" decoding="async" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                <div className="grid gap-5 border border-t-0 border-[#ece8e1] p-6 md:grid-cols-[1fr_auto] md:items-end md:gap-8">
+                <div className="grid gap-5 border border-t-0 border-[#ece8e1] p-6 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-8">
                   <div>
-                    <p className="text-[clamp(12px,0.45vw+11px,14px)] leading-5 text-[#4f4f4b]">{article.text}</p>
+                    <p className="text-[clamp(15px,0.55vw+12px,20px)] leading-[1.55] text-[#2d2d2a]">{article.text}</p>
                   </div>
-                  <a href="/news" className="inline-flex h-9 items-center justify-center bg-[#1a1a1a] px-5 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
+                  <a href="/news" className="relative z-20 inline-flex h-10 items-center justify-center bg-[#1a1a1a] px-6 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
                     смотреть
                   </a>
                 </div>
@@ -250,14 +259,14 @@ export function StayseLandingTailwind() {
           <div className="mt-12 grid gap-12 md:grid-cols-2">
             {reviews.map(([avatar, text, author, role]) => (
               <article key={author as string} className="grid gap-5">
-                <p className="max-w-[540px] text-[clamp(12px,0.45vw+11px,14px)] leading-6 text-[#4f4f4b]">{text}</p>
+                <p className="max-w-[620px] text-[clamp(14px,0.5vw+12px,18px)] leading-[1.65] text-[#2f2f2c]">{text}</p>
                 <footer className="flex flex-wrap items-center gap-3">
                   <img src={avatar as string} alt={author as string} loading="lazy" decoding="async" width="120" height="120" className="h-11 w-11 rounded-full object-cover" />
                   <div className="min-w-[160px]">
-                    <strong className="block text-[clamp(12px,0.4vw+11px,14px)]">{author}</strong>
-                    <span className="block text-[clamp(11px,0.35vw+10px,12px)] text-[#75756f]">{role}</span>
+                    <strong className="block text-[clamp(13px,0.45vw+11px,16px)]">{author}</strong>
+                    <span className="block text-[clamp(12px,0.4vw+10px,14px)] text-[#5f5f5b]">{role}</span>
                   </div>
-                  <a href="/about" className="ml-auto inline-flex h-9 items-center justify-center bg-[#1a1a1a] px-5 text-[clamp(10px,0.35vw+9px,12px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
+                  <a href="/about" className="ml-auto inline-flex h-10 items-center justify-center bg-[#1a1a1a] px-6 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
                     отзыв
                   </a>
                 </footer>

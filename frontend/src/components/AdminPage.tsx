@@ -3,33 +3,44 @@ import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
 import LogoutLink from "./LogoutLink";
 
-const metrics = [
-  ["Выручка (RUB)", "120 000 RUB", "", "+14%", "/admin/revenue.svg", "/admin/revenue-line.svg"],
-  ["Заказы", "+ 2", "заказа", "+7%", "/admin/dashboard-blocks.svg", "/admin/dashboard-blocks.svg"],
-  ["Заявки", "4", "заявки", "", "/admin/dashboard-blocks.svg", "/admin/dashboard-blocks.svg"],
-];
+type DashboardEvent = [string, string, string, string, string, string, string, string, "orders" | "requests" | "clients"];
 
-const daySummary = [
-  ["Заявки", "2 заявки"],
-  ["Выручка", "120 000 RUB"],
-  ["Прибыль", "24 000 RUB"],
-];
-
-const events = [
+const initialEvents: DashboardEvent[] = [
   ["#AE-9021", "Skyline Residences", 'ООО "Вертикаль"', "VRF Multi-Split", "Активно", "#2ebf63", "22.10.2024", "450,000 ₽", "orders"],
   ["#AE-9018", "Nordic Museum", "Архитектурное бюро A1", "Precision Chiller", "Ожидание", "#8a6a2a", "21.10.2024", "1,200,000 ₽", "orders"],
   ["#AE-8995", "Industrial Park Beta", "Технопром групп", "HVAC Central Unit", "Требует внимания", "#b24c47", "20.10.2024", "890,500 ₽", "requests"],
   ["#AE-8992", "Green Valley Office", "Инвестдевелопмент", "Smart Air Flow", "Завершено", "#d8d8d8", "19.10.2024", "210,000 ₽", "clients"],
 ];
 
-const chartValues = [58, 62, 78, 32, 56, 82, 60];
-const weekDays = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+const chartSeries = {
+  orders: {
+    week: [58, 62, 78, 32, 56, 82, 60],
+    month: [34, 38, 41, 44, 47, 53, 49, 58, 62, 66, 72, 69],
+  },
+  requests: {
+    week: [42, 28, 64, 51, 37, 48, 45],
+    month: [22, 29, 31, 36, 33, 41, 39, 44, 48, 46, 50, 52],
+  },
+  revenue: {
+    week: [36, 55, 48, 62, 70, 64, 76],
+    month: [28, 30, 34, 42, 46, 44, 52, 58, 60, 63, 67, 71],
+  },
+} as const;
+
+const weekDays = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"] as const;
+const monthLabels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] as const;
 const eventFilters = [
   ["all", "Все события"],
   ["orders", "Заказы"],
   ["requests", "Заявки"],
   ["clients", "Клиенты"],
 ] as const;
+const statusCycle: Array<Pick<DashboardEvent, 4 | 5>> = [
+  ["Активно", "#2ebf63"],
+  ["Ожидание", "#8a6a2a"],
+  ["Требует внимания", "#b24c47"],
+  ["Завершено", "#d8d8d8"],
+];
 
 type AdminPageProps = {
   activeKey?: string;
@@ -41,9 +52,14 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
     [session?.admin?.firstName, session?.admin?.lastName].filter(Boolean).join(" ").trim() ||
     session?.admin?.email ||
     "Администратор";
+  const [eventsData, setEventsData] = useState<DashboardEvent[]>(initialEvents);
   const [eventFilter, setEventFilter] = useState<(typeof eventFilters)[number][0]>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [chartType, setChartType] = useState<keyof typeof chartSeries>("orders");
+  const [chartPeriod, setChartPeriod] = useState<"week" | "month">("week");
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session || session.type !== "admin") {
@@ -53,8 +69,84 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
   }, [session]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => eventFilter === "all" || event[8] === eventFilter);
-  }, [eventFilter]);
+    return eventsData.filter((event) => eventFilter === "all" || event[8] === eventFilter);
+  }, [eventFilter, eventsData]);
+
+  const metrics = useMemo(() => {
+    const totalRevenue = eventsData.reduce((sum, event) => sum + Number(event[7].replace(/[^\d]/g, "")), 0);
+    const ordersCount = eventsData.filter((event) => event[8] === "orders").length;
+    const requestsCount = eventsData.filter((event) => event[8] === "requests").length;
+
+    return [
+      ["Выручка (RUB)", `${totalRevenue.toLocaleString("ru-RU")} RUB`, "", "+14%", "/admin/revenue.svg"],
+      ["Заказы", `+ ${ordersCount}`, "заказа", "+7%", "/admin/dashboard-blocks.svg"],
+      ["Заявки", String(requestsCount), "заявки", "", "/admin/dashboard-blocks.svg"],
+    ] as const;
+  }, [eventsData]);
+
+  const daySummary = useMemo(() => {
+    const ordersCount = eventsData.filter((event) => event[8] === "orders").length;
+    const requestsCount = eventsData.filter((event) => event[8] === "requests").length;
+    const totalRevenue = eventsData.reduce((sum, event) => sum + Number(event[7].replace(/[^\d]/g, "")), 0);
+    const profit = Math.round(totalRevenue * 0.2);
+
+    return [
+      ["Заявки", `${requestsCount} заявки`],
+      ["Выручка", `${totalRevenue.toLocaleString("ru-RU")} RUB`],
+      ["Прибыль", `${profit.toLocaleString("ru-RU")} RUB`],
+      ["Заказы", `${ordersCount} заказа`],
+    ] as const;
+  }, [eventsData]);
+
+  const chartValues = chartSeries[chartType][chartPeriod];
+  const chartLabels = chartPeriod === "week" ? weekDays : monthLabels;
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeoutId = window.setTimeout(() => setToastMessage(null), 2200);
+    return () => window.clearTimeout(timeoutId);
+  }, [toastMessage]);
+
+  function rotateStatus(id: string) {
+    setEventsData((prev) =>
+      prev.map((event) => {
+        if (event[0] !== id) return event;
+        const index = statusCycle.findIndex(([status]) => status === event[4]);
+        const next = statusCycle[(index + 1) % statusCycle.length];
+        return [event[0], event[1], event[2], event[3], next[0], next[1], event[6], event[7], event[8]];
+      }),
+    );
+    setToastMessage(`Статус ${id} обновлен`);
+  }
+
+  function addTestRequest() {
+    const serial = 9100 + eventsData.length;
+    const id = `#AE-${serial}`;
+    const now = new Date();
+    const date = now.toLocaleDateString("ru-RU");
+    const amountValue = 180000 + Math.round(Math.random() * 420000);
+    const amount = `${amountValue.toLocaleString("en-US")} ₽`;
+
+    setEventsData((prev) => [[id, "Новая заявка", "С сайта", "Air Handling Unit", "Ожидание", "#8a6a2a", date, amount, "requests"], ...prev]);
+    setEventFilter("all");
+    setToastMessage("Тестовая заявка добавлена");
+  }
+
+  function exportFilteredCsv() {
+    const header = ["ID", "Проект", "Клиент", "Тип системы", "Статус", "Дата", "Сумма", "Категория"];
+    const rows = filteredEvents.map((event) => [event[0], event[1], event[2], event[3], event[4], event[6], event[7], event[8]]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `admin-events-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setToastMessage("CSV выгружен");
+  }
 
   function renderEventFilters(compact = false) {
     return (
@@ -266,14 +358,24 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                         className="h-[22px] w-[22px] object-contain opacity-50"
                       />
                     </div>
-                    <div className="mt-12 flex min-h-[88px] items-end justify-between gap-4">
-                      <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
-                        <p className={`${index === 0 ? "text-[34px] md:text-[42px] 2xl:text-[46px]" : "text-[40px] md:text-[48px]"} whitespace-nowrap uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}>{value}</p>
+                    <div className="mt-12 flex min-h-[96px] items-end justify-between gap-4">
+                      <div className="flex min-w-0 max-w-[80%] flex-wrap items-end gap-x-3 gap-y-1">
+                        <p
+                          className={`${
+                            index === 0 ? "text-[34px] md:text-[40px] 2xl:text-[44px]" : "text-[38px] md:text-[44px]"
+                          } leading-[0.98] uppercase tracking-[1px] break-words [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+                        >
+                          {value}
+                        </p>
                         {suffix ? (
                           <span className="pb-2 text-[18px] text-[#9a9993] md:text-[20px]">{suffix}</span>
                         ) : null}
                       </div>
-                      {delta ? <span className="shrink-0 pb-2 text-[18px] text-[#2ebf63]">{delta}</span> : null}
+                      {delta ? (
+                        <span className="shrink-0 rounded border border-[#d6efdf] bg-[#f3fbf6] px-2.5 py-1 text-[16px] text-[#2ebf63]">
+                          {delta}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-10">
                       {index === 0 ? (
@@ -294,6 +396,48 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                 ))}
               </div>
 
+              <section className="mt-8 border border-[#e8e3db] bg-white p-8 md:p-10">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-[30px] [font-family:'Cormorant_Garamond',serif]">Быстрые действия</h2>
+                    <p className="mt-2 text-[14px] uppercase tracking-[3px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      интерактивные операции дашборда
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={addTestRequest}
+                      className="admin-action-btn inline-flex h-11 items-center justify-center bg-[#111] px-5 text-[14px] uppercase tracking-[2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      добавить заявку
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEventFilter("all");
+                        setToastMessage("Фильтр сброшен");
+                      }}
+                      className="admin-action-btn admin-action-btn--ghost inline-flex h-11 items-center justify-center px-5 text-[14px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      сбросить фильтр
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMaintenanceMode((prev) => !prev);
+                        setToastMessage(`Режим: ${maintenanceMode ? "рабочий" : "техобслуживание"}`);
+                      }}
+                      className={`admin-action-btn inline-flex h-11 items-center justify-center px-5 text-[14px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                        maintenanceMode ? "bg-[#b24c47] text-white" : "bg-[#1f2a1f] text-white"
+                      }`}
+                    >
+                      {maintenanceMode ? "отключить maintenance" : "включить maintenance"}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               <div className="mt-10 grid gap-6 xl:grid-cols-[1fr_360px] 2xl:grid-cols-[1fr_420px]">
                 <section className="border border-[#e8e3db] bg-white p-8 md:p-10">
                   <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
@@ -303,21 +447,33 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                         показатели за период
                       </p>
                     </div>
-                    <div className="flex items-center gap-10 text-[16px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      <span className="flex items-center gap-3">
-                        заказы
-                        <img src="/admin/orders-arrow-down.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
-                      </span>
-                      <span className="flex items-center gap-3">
-                        неделя
-                        <img src="/admin/week-arrow-down.png" alt="" aria-hidden="true" width="12" height="12" className="h-3 w-3 object-contain" />
-                      </span>
+                    <div className="flex flex-wrap items-center gap-3 text-[13px] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      {(["orders", "requests", "revenue"] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setChartType(type)}
+                          className={`rounded border px-3 py-1.5 ${chartType === type ? "border-[#111] text-[#111]" : "border-[#d9d4cc] text-[#7a7a75]"}`}
+                        >
+                          {type === "orders" ? "заказы" : type === "requests" ? "заявки" : "выручка"}
+                        </button>
+                      ))}
+                      {(["week", "month"] as const).map((period) => (
+                        <button
+                          key={period}
+                          type="button"
+                          onClick={() => setChartPeriod(period)}
+                          className={`rounded border px-3 py-1.5 ${chartPeriod === period ? "border-[#111] text-[#111]" : "border-[#d9d4cc] text-[#7a7a75]"}`}
+                        >
+                          {period === "week" ? "неделя" : "месяц"}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="mt-10 grid h-[420px] grid-cols-7 items-end gap-8 border-b border-[#ece8e1] px-4 pb-10">
+                  <div className="mt-10 grid h-[420px] items-end gap-8 border-b border-[#ece8e1] px-4 pb-10" style={{ gridTemplateColumns: `repeat(${chartValues.length}, minmax(0, 1fr))` }}>
                     {chartValues.map((value, index) => (
-                      <div key={weekDays[index]} className="relative flex h-full items-end justify-center">
+                      <div key={`${chartLabels[index]}-${index}`} className="relative flex h-full items-end justify-center">
                         <div className="absolute inset-x-0 top-[22%] border-t border-[#f0ede7]" />
                         <div className="absolute inset-x-0 top-[50%] border-t border-[#f0ede7]" />
                         <div className="absolute inset-x-0 top-[78%] border-t border-[#f0ede7]" />
@@ -325,8 +481,8 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-6 grid grid-cols-7 px-4 text-center text-[14px] uppercase tracking-[2px] text-[#b1b1ac] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {weekDays.map((day) => (
+                  <div className="mt-6 grid px-4 text-center text-[14px] uppercase tracking-[2px] text-[#b1b1ac] [font-family:Jaldi,'JetBrains_Mono',monospace]" style={{ gridTemplateColumns: `repeat(${chartLabels.length}, minmax(0, 1fr))` }}>
+                    {chartLabels.map((day) => (
                       <span key={day}>{day}</span>
                     ))}
                   </div>
@@ -338,7 +494,7 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                     показатели за период
                   </p>
 
-                  <div className="mt-12 space-y-14">
+                  <div className="mt-12 space-y-10">
                     {daySummary.map(([label, value]) => (
                       <div key={label as string} className="flex items-start justify-between gap-6">
                         <span className="pt-1 text-[18px] uppercase tracking-[3px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}:</span>
@@ -359,7 +515,13 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                   </div>
                   <div className="hidden items-center gap-5 xl:flex">
                     {renderEventFilters(false)}
-                    <span className="text-[16px] uppercase tracking-[4px] text-[#b1b1ac] [font-family:Jaldi,'JetBrains_Mono',monospace]">экспорт .csv</span>
+                    <button
+                      type="button"
+                      onClick={exportFilteredCsv}
+                      className="text-[16px] uppercase tracking-[4px] text-[#b1b1ac] transition-colors hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      экспорт .csv
+                    </button>
                   </div>
                   <button
                     type="button"
@@ -397,10 +559,14 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
                     </div>
                     <div>
                       <p className="text-[13px] uppercase tracking-[3px] text-[#b1b1ac] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Статус</p>
-                      <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => rotateStatus(String(id))}
+                        className="flex items-center gap-4 rounded px-2 py-1 text-left transition-colors hover:bg-[#f5f2ec]"
+                      >
                         <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color as string }} />
                         <span className="text-[18px]">{status}</span>
-                      </div>
+                      </button>
                     </div>
                     <div>
                       <p className="text-[13px] uppercase tracking-[3px] text-[#b1b1ac] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Дата</p>
@@ -418,6 +584,12 @@ export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
           </section>
         </div>
       </div>
+
+      {toastMessage ? (
+        <div className="fixed bottom-6 right-6 z-[70] rounded border border-[#d9d4cc] bg-white px-4 py-3 text-[14px] uppercase tracking-[1.5px] text-[#111] shadow-[0_8px_24px_rgba(0,0,0,0.12)] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          {toastMessage}
+        </div>
+      ) : null}
 
       <div className={`fixed inset-0 z-50 xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!filtersOpen}>
         <button

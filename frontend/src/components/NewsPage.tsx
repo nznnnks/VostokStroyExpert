@@ -26,16 +26,18 @@ export function NewsPage({ posts = [] }: NewsPageProps) {
           {posts.length > 0 ? (
             <div className="mt-12 grid gap-8 md:grid-cols-2">
               {posts.map((post) => (
-                <article key={post.slug} className="flex h-full flex-col border border-[#e8e3db] bg-white">
-                  <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                  <div className="flex flex-1 flex-col p-6">
-                    <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
-                    <h2 className="mt-3 text-[clamp(1.8rem,2.6vw,2.5rem)] leading-[1.02] [font-family:'Cormorant_Garamond',serif]">{post.title}</h2>
-                    <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
-                    <a href={`/news/${post.slug}`} className="mt-auto inline-flex pt-6 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      Читать новость
-                    </a>
-                  </div>
+                <article key={post.slug} className="border border-[#e8e3db] bg-white">
+                  <a href={`/news/${post.slug}`} className="flex h-full flex-col">
+                    <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
+                    <div className="flex flex-1 flex-col p-6">
+                      <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
+                      <h2 className="mt-3 text-[clamp(1.8rem,2.6vw,2.5rem)] leading-[1.02] [font-family:'Cormorant_Garamond',serif]">{post.title}</h2>
+                      <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
+                      <span className="mt-auto inline-flex pt-6 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        Читать новость
+                      </span>
+                    </div>
+                  </a>
                 </article>
               ))}
             </div>

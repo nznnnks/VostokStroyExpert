@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatPrice, type Product } from "../data/products";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
@@ -13,6 +13,40 @@ const reviews = [
   ["Игорь", "★★★☆☆"],
 ];
 
+const countryToCode: Record<string, string> = {
+  "германия": "DE",
+  "deutschland": "DE",
+  "швейцария": "CH",
+  "switzerland": "CH",
+  "япония": "JP",
+  "japan": "JP",
+  "италия": "IT",
+  "italy": "IT",
+  "франция": "FR",
+  "france": "FR",
+  "китай": "CN",
+  "china": "CN",
+  "южная корея": "KR",
+  "корея": "KR",
+  "south korea": "KR",
+  "сша": "US",
+  "usa": "US",
+  "united states": "US",
+  "россия": "RU",
+  "russia": "RU",
+};
+
+function toFlagEmoji(country: string) {
+  const normalized = country.trim().toLowerCase();
+  const code = countryToCode[normalized];
+  if (!code) return "🌍";
+  return code
+    .toUpperCase()
+    .split("")
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join("");
+}
+
 type ProductPageProps = {
   product: Product;
   relatedProducts?: Product[];
@@ -22,6 +56,10 @@ type ProductPageProps = {
 export function ProductPage({ product, relatedProducts, allProducts }: ProductPageProps) {
   const [visibleCount, setVisibleCount] = useState(4);
   const gallery = product.gallery ?? [product.image];
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [previousImage, setPreviousImage] = useState<string | null>(null);
+  const [isImageTransitioning, setIsImageTransitioning] = useState(false);
+  const countryFlag = toFlagEmoji(product.country);
   const specs = [
     ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
     ["Площадь покрытия", product.coverage ?? "До 100 м²"],
@@ -37,6 +75,35 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
   const visibleRelated = combinedRelated.slice(0, visibleCount);
   const canLoadMore = visibleCount < combinedRelated.length;
   const descriptionTitle = product.slug === "monolith-v2" ? "Создано для архитектурной интеграции" : `О модели ${product.title}`;
+  const activeImage = gallery[activeImageIndex] ?? gallery[0];
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+    setPreviousImage(null);
+    setIsImageTransitioning(false);
+  }, [product.slug]);
+
+  useEffect(() => {
+    if (!isImageTransitioning) return;
+    const timeoutId = window.setTimeout(() => {
+      setIsImageTransitioning(false);
+      setPreviousImage(null);
+    }, 360);
+    return () => window.clearTimeout(timeoutId);
+  }, [isImageTransitioning]);
+
+  function goToImage(nextIndex: number) {
+    if (gallery.length <= 1) return;
+    const normalizedIndex = ((nextIndex % gallery.length) + gallery.length) % gallery.length;
+    if (normalizedIndex === activeImageIndex) return;
+    setPreviousImage(activeImage);
+    setActiveImageIndex(normalizedIndex);
+    setIsImageTransitioning(true);
+  }
+
+  function showNextImage() {
+    goToImage(activeImageIndex + 1);
+  }
 
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -58,31 +125,58 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
 
           <div className="mt-10 grid gap-10 xl:grid-cols-[1.15fr_0.85fr]">
             <div>
-              <div className="relative overflow-hidden bg-[#f7f7f4]">
+              <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f7f4]">
+                {previousImage && isImageTransitioning ? (
+                  <img
+                    src={previousImage}
+                    alt=""
+                    width="1200"
+                    height="1500"
+                    loading="eager"
+                    decoding="async"
+                    aria-hidden="true"
+                    className="product-hero-image-layer product-hero-image-layer--out"
+                  />
+                ) : null}
                 <img
-                  src={gallery[0]}
+                  src={activeImage}
                   alt={product.title}
                   width="1200"
                   height="1500"
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"
-                  className="aspect-[4/5] w-full object-cover"
+                  className={`product-hero-image-layer ${isImageTransitioning ? "product-hero-image-layer--in" : ""}`}
                 />
-                <button className="absolute right-6 top-1/2 -translate-y-1/2 text-[clamp(2.5rem,4vw,4.5rem)] leading-none text-[#73736f]">›</button>
+                <button
+                  type="button"
+                  onClick={showNextImage}
+                  disabled={gallery.length <= 1}
+                  aria-label="Следующее фото"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 text-[clamp(2.5rem,4vw,4.5rem)] leading-none text-[#73736f] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ›
+                </button>
               </div>
               <div className="mt-4 grid grid-cols-4 gap-4">
-                {gallery.slice(1).map((image, index) => (
-                  <img
+                {gallery.map((image, index) => (
+                  <button
                     key={`${image}-${index}`}
-                    src={image}
-                    alt=""
-                    width="260"
-                    height="200"
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-[1.1/1] w-full object-cover"
-                  />
+                    type="button"
+                    onClick={() => goToImage(index)}
+                    className={`overflow-hidden border transition-colors ${index === activeImageIndex ? "border-[#111]" : "border-transparent hover:border-[#b9b2a8]"}`}
+                    aria-label={`Показать фото ${index + 1}`}
+                  >
+                    <img
+                      src={image}
+                      alt=""
+                      width="260"
+                      height="200"
+                      loading="lazy"
+                      decoding="async"
+                      className="aspect-[1.1/1] w-full object-cover"
+                    />
+                  </button>
                 ))}
               </div>
             </div>
@@ -128,18 +222,17 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
 
               <div className="mt-12 flex justify-end">
                 <div className="w-full max-w-[250px] border border-[#d9d3cb] p-5 text-center">
-                  <img
-                    src="/product/icons8-germany-48 1.png"
-                    alt="Germany"
-                    width="120"
-                    height="120"
-                    loading="lazy"
-                    decoding="async"
-                    className="mx-auto h-28 w-28 object-contain"
-                  />
+                  <div
+                    role="img"
+                    aria-label={`Флаг: ${product.country}`}
+                    className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border border-[#a8a19a] bg-[#f8f8f6] text-[64px] leading-none"
+                  >
+                    {countryFlag}
+                  </div>
                   <p className="mt-3 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[3px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     {product.brandLabel}
                   </p>
+                  <p className="mt-1 text-[12px] uppercase tracking-[1.8px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.country}</p>
                   <p className="mt-2 text-[clamp(0.95rem,0.9vw,1.15rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                     заказов: 230
                   </p>

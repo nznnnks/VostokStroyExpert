@@ -39,8 +39,11 @@ export function CatalogPage({ products }: CatalogPageProps) {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxProductPrice]);
+  const [priceRangeDraft, setPriceRangeDraft] = useState<[number, number]>([0, maxProductPrice]);
   const [powerRange, setPowerRange] = useState<[number, number]>([minPower, maxPower]);
+  const [powerRangeDraft, setPowerRangeDraft] = useState<[number, number]>([minPower, maxPower]);
   const [volumeRange, setVolumeRange] = useState<[number, number]>([minVolume, maxVolume]);
+  const [volumeRangeDraft, setVolumeRangeDraft] = useState<[number, number]>([minVolume, maxVolume]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -176,22 +179,24 @@ export function CatalogPage({ products }: CatalogPageProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">От</p>
-                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761] 2xl:text-[22px]">{formatPrice(priceRange[0])}</div>
+                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761] 2xl:text-[22px]">{formatPrice(priceRangeDraft[0])}</div>
               </div>
               <div>
                 <p className="text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">До</p>
-                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761] 2xl:text-[22px]">{formatPrice(priceRange[1])}</div>
+                <div className="mt-3 border border-[#e7e1d9] px-4 py-4 text-[20px] text-[#676761] 2xl:text-[22px]">{formatPrice(priceRangeDraft[1])}</div>
               </div>
             </div>
             <DoubleRange
               min={0}
               max={maxProductPrice}
               step={1000}
-              value={priceRange}
+              value={priceRangeDraft}
               ariaLabelMin="Минимальная цена"
               ariaLabelMax="Максимальная цена"
               formatValue={formatPrice}
-              onChange={(value) => {
+              onChange={setPriceRangeDraft}
+              onCommit={(value) => {
+                if (priceRange[0] === value[0] && priceRange[1] === value[1]) return;
                 setPriceRange(value);
                 setPage(1);
               }}
@@ -229,10 +234,12 @@ export function CatalogPage({ products }: CatalogPageProps) {
           min={minPower}
           max={maxPower}
           step={0.1}
-          value={powerRange}
+          value={powerRangeDraft}
           ariaLabelMin="Минимальная мощность"
           ariaLabelMax="Максимальная мощность"
-          onChange={(value) => {
+          onChange={setPowerRangeDraft}
+          onCommit={(value) => {
+            if (powerRange[0] === value[0] && powerRange[1] === value[1]) return;
             setPowerRange(value);
             setPage(1);
           }}
@@ -243,10 +250,12 @@ export function CatalogPage({ products }: CatalogPageProps) {
           min={minVolume}
           max={maxVolume}
           step={0.1}
-          value={volumeRange}
+          value={volumeRangeDraft}
           ariaLabelMin="Минимальный объем"
           ariaLabelMax="Максимальный объем"
-          onChange={(value) => {
+          onChange={setVolumeRangeDraft}
+          onCommit={(value) => {
+            if (volumeRange[0] === value[0] && volumeRange[1] === value[1]) return;
             setVolumeRange(value);
             setPage(1);
           }}
@@ -429,8 +438,10 @@ export function CatalogPage({ products }: CatalogPageProps) {
                           <p>{product.rating}</p>
                           <p>{product.efficiency}</p>
                         </div>
-                        <p className="mt-8 text-[48px] leading-none 2xl:text-[56px] [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(product.price)}</p>
-                        <div className="mt-auto grid gap-3 pt-8">
+                        <p className="mt-auto pt-8 text-[clamp(2rem,5vw,3rem)] leading-none tabular-nums whitespace-nowrap md:text-[clamp(1.9rem,3.8vw,2.6rem)] lg:text-[clamp(1.8rem,2.4vw,2.2rem)] 2xl:text-[clamp(2rem,1.9vw,2.5rem)] [font-family:DM_Sans,Manrope,sans-serif]">
+                          {formatPrice(product.price)}
+                        </p>
+                        <div className="mt-8 grid gap-3">
                           <a
                             href={`/cart?add=${product.slug}`}
                             className="inline-flex h-16 items-center justify-center bg-[#111] text-[18px] uppercase tracking-[2px] text-white transition-all duration-300 hover:bg-[#2a2a26] hover:tracking-[2.5px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
@@ -508,10 +519,17 @@ type DoubleRangeProps = {
   ariaLabelMax: string;
   formatValue: (value: number) => string;
   onChange: (value: [number, number]) => void;
+  onCommit: (value: [number, number]) => void;
 };
 
-function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange }: DoubleRangeProps) {
+function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange, onCommit }: DoubleRangeProps) {
   const [from, to] = value;
+  const lastValueRef = useRef<[number, number]>(value);
+
+  useEffect(() => {
+    lastValueRef.current = value;
+  }, [value]);
+
   if (min === max) {
     return (
       <div className="catalog-double-range catalog-double-range--static mt-5">
@@ -533,11 +551,19 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
   const maxPercent = ((to - min) / distance) * 100;
 
   function updateMin(next: number) {
-    onChange([Math.min(next, to - step), to]);
+    const nextValue: [number, number] = [Math.min(next, to - step), to];
+    lastValueRef.current = nextValue;
+    onChange(nextValue);
   }
 
   function updateMax(next: number) {
-    onChange([from, Math.max(next, from + step)]);
+    const nextValue: [number, number] = [from, Math.max(next, from + step)];
+    lastValueRef.current = nextValue;
+    onChange(nextValue);
+  }
+
+  function commitCurrentValue() {
+    onCommit(lastValueRef.current);
   }
 
   return (
@@ -556,6 +582,10 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
           aria-label={ariaLabelMin}
           data-range="min"
           onChange={(event) => updateMin(Number(event.target.value))}
+          onMouseUp={commitCurrentValue}
+          onTouchEnd={commitCurrentValue}
+          onKeyUp={commitCurrentValue}
+          onBlur={commitCurrentValue}
         />
         <input
           type="range"
@@ -566,6 +596,10 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
           aria-label={ariaLabelMax}
           data-range="max"
           onChange={(event) => updateMax(Number(event.target.value))}
+          onMouseUp={commitCurrentValue}
+          onTouchEnd={commitCurrentValue}
+          onKeyUp={commitCurrentValue}
+          onBlur={commitCurrentValue}
         />
       </div>
       <div className="mt-3 text-center text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
@@ -584,9 +618,10 @@ type RangeFilterProps = {
   ariaLabelMin: string;
   ariaLabelMax: string;
   onChange: (value: [number, number]) => void;
+  onCommit: (value: [number, number]) => void;
 };
 
-function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax, onChange }: RangeFilterProps) {
+function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax, onChange, onCommit }: RangeFilterProps) {
   return (
     <section>
       <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
@@ -608,6 +643,7 @@ function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax,
           ariaLabelMax={ariaLabelMax}
           formatValue={(rangeValue) => rangeValue.toFixed(1)}
           onChange={onChange}
+          onCommit={onCommit}
         />
       </div>
     </section>

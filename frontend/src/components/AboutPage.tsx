@@ -92,12 +92,14 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
           </div>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {services.map((service) => (
-              <article key={service.slug} className="border border-[#e8e3db] p-6">
-                <img src={service.image} alt="" aria-hidden="true" width="500" height="500" className="mx-auto aspect-square w-[220px] object-contain" />
-                <h3 className="mt-5 text-[clamp(1.4rem,2vw,2rem)] [font-family:'Cormorant_Garamond',serif]">{service.title}</h3>
-                <p className="mt-4 text-[clamp(0.95rem,1vw,1.05rem)] leading-7 text-[#5f5f5a]">{service.shortText}</p>
-                <a href={`/services/${service.slug}`} className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                  Подробнее
+              <article key={service.slug} className="border border-[#e8e3db]">
+                <a href={`/services/${service.slug}`} className="block h-full p-6">
+                  <img src={service.image} alt="" aria-hidden="true" width="500" height="500" className="mx-auto aspect-square w-[220px] object-contain" />
+                  <h3 className="mt-5 text-[clamp(1.4rem,2vw,2rem)] [font-family:'Cormorant_Garamond',serif]">{service.title}</h3>
+                  <p className="mt-4 text-[clamp(0.95rem,1vw,1.05rem)] leading-7 text-[#5f5f5a]">{service.shortText}</p>
+                  <span className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Подробнее
+                  </span>
                 </a>
               </article>
             ))}
@@ -116,13 +118,15 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
           {newsPosts.length > 0 ? (
             <div className="mt-8 grid gap-6 md:grid-cols-2">
               {newsPosts.slice(0, 2).map((post) => (
-                <article key={post.slug} className="border border-[#e8e3db] p-6">
-                  <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                  <p className="mt-5 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
-                  <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{post.title}</h3>
-                  <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
-                  <a href={`/news/${post.slug}`} className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    Читать
+                <article key={post.slug} className="border border-[#e8e3db]">
+                  <a href={`/news/${post.slug}`} className="block h-full p-6">
+                    <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
+                    <p className="mt-5 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
+                    <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{post.title}</h3>
+                    <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
+                    <span className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Читать
+                    </span>
                   </a>
                 </article>
               ))}
