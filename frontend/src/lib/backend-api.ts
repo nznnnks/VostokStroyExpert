@@ -1788,6 +1788,23 @@ export async function loadAdminNewsById(id: string) {
   });
 }
 
+export async function uploadAdminProductImage(file: File) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiRequest<{ url: string; path: string; name: string; size: number; mimeType: string }>("/api/products/upload-image", {
+    method: "POST",
+    authToken,
+    body: formData,
+  });
+}
+
 export async function createAdminProduct(payload: {
   categoryId: string;
   slug: string;

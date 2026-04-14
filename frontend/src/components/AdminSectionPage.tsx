@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { adminNav } from "../data/admin";
 import { ApiError } from "../lib/api-client";
@@ -47,6 +47,7 @@ import {
   updateAdminUser,
   updateAdminPayment,
   updateUser,
+  uploadAdminProductImage,
 } from "../lib/backend-api";
 
 type AdminSectionPageProps = {
@@ -156,6 +157,31 @@ function formatRussianPhone(value: string) {
 
 function isValidRussianPhone(value: string) {
   return value.replace(/\D/g, "").length === 11;
+}
+
+function parseCatalogImages(value: string) {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  // Data URLs contain commas, so we keep newline as a primary delimiter.
+  if (normalized.includes("\n") || normalized.startsWith("data:")) {
+    return normalized
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return normalized
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function stringifyCatalogImages(images: string[]) {
+  return images.join("\n");
 }
 
 const emptySeoFields = {
@@ -290,6 +316,9 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     categoryId: "",
     ...emptySeoFields,
   });
+  const catalogImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [catalogImageDragOver, setCatalogImageDragOver] = useState(false);
+  const [catalogImageUrlDraft, setCatalogImageUrlDraft] = useState("");
   const [categoryForm, setCategoryForm] = useState({
     id: "",
     name: "",
@@ -347,6 +376,127 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   });
   const [orderItemDraft, setOrderItemDraft] = useState(emptyOrderItemDraft);
   const [orderEntityQuery, setOrderEntityQuery] = useState("");
+  const [catalogDraggedIndex, setCatalogDraggedIndex] = useState<number | null>(null);
+  const [catalogDragOverIndex, setCatalogDragOverIndex] = useState<number | null>(null);
+  const catalogImageList = useMemo(() => parseCatalogImages(catalogForm.images), [catalogForm.images]);
+
+  function setCatalogImages(nextImages: string[]) {
+    setCatalogForm((prev) => ({ ...prev, images: stringifyCatalogImages(nextImages) }));
+  }
+
+  function resetCatalogImageUiState() {
+    setCatalogImageUrlDraft("");
+    setCatalogDraggedIndex(null);
+    setCatalogDragOverIndex(null);
+  }
+
+  async function appendCatalogImageFiles(fileList: FileList | File[]) {
+    const files = Array.from(fileList);
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (imageFiles.length === 0) {
+      setActionError("Выберите файлы изображений (png/jpg/webp/svg).");
+      return;
+    }
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      const uploaded = await Promise.all(
+        imageFiles.map(async (file) => {
+          const result = await uploadAdminProductImage(file);
+          return result.url;
+        }),
+      );
+      const merged = [...catalogImageList, ...uploaded];
+      setCatalogImages(merged);
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : "Не удалось загрузить изображения.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleCatalogImageInputChange(event: ChangeEvent<HTMLInputElement>) {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+
+    await appendCatalogImageFiles(event.target.files);
+    event.target.value = "";
+  }
+
+  async function handleCatalogImageDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setCatalogImageDragOver(false);
+
+    if (!event.dataTransfer.files || event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    await appendCatalogImageFiles(event.dataTransfer.files);
+  }
+
+  function handleAddCatalogImageUrl() {
+    const nextUrl = catalogImageUrlDraft.trim();
+
+    if (!nextUrl) {
+      return;
+    }
+
+    setCatalogImages([...catalogImageList, nextUrl]);
+    resetCatalogImageUiState();
+  }
+
+  function handleMoveCatalogImage(index: number, direction: "up" | "down") {
+    const nextIndex = direction === "up" ? index - 1 : index + 1;
+
+    if (nextIndex < 0 || nextIndex >= catalogImageList.length) {
+      return;
+    }
+
+    const nextImages = [...catalogImageList];
+    [nextImages[index], nextImages[nextIndex]] = [nextImages[nextIndex], nextImages[index]];
+    setCatalogImages(nextImages);
+  }
+
+  function handleDeleteCatalogImage(index: number) {
+    const nextImages = catalogImageList.filter((_, currentIndex) => currentIndex !== index);
+    setCatalogImages(nextImages);
+  }
+
+  function handleCatalogImageDragStart(index: number) {
+    setCatalogDraggedIndex(index);
+    setCatalogDragOverIndex(index);
+  }
+
+  function handleCatalogImageDragOver(event: DragEvent<HTMLDivElement>, index: number) {
+    event.preventDefault();
+    if (catalogDragOverIndex !== index) {
+      setCatalogDragOverIndex(index);
+    }
+  }
+
+  function handleCatalogImageDropOnCard(index: number) {
+    if (catalogDraggedIndex === null || catalogDraggedIndex === index) {
+      setCatalogDraggedIndex(null);
+      setCatalogDragOverIndex(null);
+      return;
+    }
+
+    const nextImages = [...catalogImageList];
+    const [draggedImage] = nextImages.splice(catalogDraggedIndex, 1);
+    nextImages.splice(index, 0, draggedImage);
+    setCatalogImages(nextImages);
+    setCatalogDraggedIndex(null);
+    setCatalogDragOverIndex(null);
+  }
+
+  function handleCatalogImageDragEnd() {
+    setCatalogDraggedIndex(null);
+    setCatalogDragOverIndex(null);
+  }
 
   async function refreshAdminData() {
     const data = await loadAdminSectionData();
@@ -479,10 +629,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     const stockValue = catalogForm.stock ? Number(catalogForm.stock) : undefined;
     const powerValue = catalogForm.power ? Number(catalogForm.power) : undefined;
     const volumeValue = catalogForm.volume ? Number(catalogForm.volume) : undefined;
-    const imagesValue = catalogForm.images
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const imagesValue = parseCatalogImages(catalogForm.images);
 
     if (!nameValue || !resolvedSlug || !catalogForm.sku.trim() || !catalogForm.categoryId || Number.isNaN(priceValue)) {
       setActionError("Заполните обязательные поля товара: название, slug, артикул, цена, категория.");
@@ -554,6 +701,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         categoryId: categories[0]?.id || "",
         ...emptySeoFields,
       });
+      resetCatalogImageUiState();
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Не удалось сохранить товар.");
     } finally {
@@ -598,6 +746,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         categoryId: categories[0]?.id || "",
         ...emptySeoFields,
       });
+      resetCatalogImageUiState();
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Не удалось удалить товар.");
     } finally {
@@ -655,7 +804,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         filtration: item.filtration ?? "",
         power: item.power ? String(item.power) : "",
         volume: item.volume ? String(item.volume) : "",
-        images: item.images?.join(", ") ?? "",
+        images: stringifyCatalogImages(item.images ?? []),
         stock: item.stock !== undefined && item.stock !== null ? String(item.stock) : "",
         status: item.status ?? "DRAFT",
         categoryId: item.category?.id ?? item.categoryId ?? categories[0]?.id ?? "",
@@ -663,6 +812,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         metaDescription: item.metaDescription ?? "",
         metaKeywords: item.metaKeywords ?? "",
       });
+      resetCatalogImageUiState();
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Не удалось загрузить товар.");
     } finally {
@@ -2436,15 +2586,121 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                       </label>
                     </div>
                     <div className="mt-4">
-                      <label className="admin-toolbar__label">
-                        Изображения (URL через запятую)
-                        <textarea
-                          className="admin-input admin-textarea mt-2"
-                          value={catalogForm.images}
-                          onChange={(event) => setCatalogForm((prev) => ({ ...prev, images: event.target.value }))}
-                          placeholder="https://.../img1.jpg, https://.../img2.jpg"
+                      <div className="admin-toolbar__label">
+                        <p>Изображения товара</p>
+                        <input
+                          ref={catalogImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleCatalogImageInputChange}
                         />
-                      </label>
+                        <div
+                          className={`mt-2 rounded-md border-2 border-dashed p-5 transition-colors ${catalogImageDragOver ? "border-[#111] bg-[#f6f3ee]" : "border-[#d8d1c7] bg-[#fbf9f5]"}`}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            setCatalogImageDragOver(true);
+                          }}
+                          onDragLeave={() => setCatalogImageDragOver(false)}
+                          onDrop={handleCatalogImageDrop}
+                        >
+                          <p className="text-[14px] text-[#6f6a62]">Перетащите изображения сюда или выберите файлы с устройства.</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="admin-action-btn"
+                              onClick={() => catalogImageInputRef.current?.click()}
+                              disabled={actionLoading}
+                            >
+                              Выбрать файлы
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            className="admin-input"
+                            value={catalogImageUrlDraft}
+                            onChange={(event) => setCatalogImageUrlDraft(event.target.value)}
+                            placeholder="https://.../img.jpg"
+                          />
+                          <button type="button" className="admin-action-btn admin-action-btn--ghost" onClick={handleAddCatalogImageUrl}>
+                            Добавить URL
+                          </button>
+                        </div>
+                        <div className="mt-4">
+                          <p className="text-[12px] uppercase tracking-[2px] text-[#9b958b]">
+                            Галерея: зажмите карточку и перетащите для смены порядка
+                          </p>
+                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                          {catalogImageList.map((image, index) => (
+                            <div
+                              key={`${image.slice(0, 24)}-${index}`}
+                              draggable
+                              onDragStart={() => handleCatalogImageDragStart(index)}
+                              onDragOver={(event) => handleCatalogImageDragOver(event, index)}
+                              onDrop={() => handleCatalogImageDropOnCard(index)}
+                              onDragEnd={handleCatalogImageDragEnd}
+                              className={`group relative overflow-hidden rounded-md border bg-[#fff] p-2 shadow-sm transition-all ${
+                                catalogDragOverIndex === index ? "border-[#111] ring-2 ring-[#e7e2d8]" : "border-[#e8e3db]"
+                              }`}
+                            >
+                              <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded bg-[#111]/80 px-2 py-1 text-[11px] uppercase tracking-[1px] text-white">
+                                <span className="cursor-grab">⋮⋮</span>
+                                <span>{index + 1}</span>
+                              </div>
+                              <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 rounded bg-white/95 text-[16px] text-[#111] shadow-sm transition hover:bg-white disabled:opacity-35"
+                                  onClick={() => handleMoveCatalogImage(index, "up")}
+                                  disabled={index === 0}
+                                  title="Сдвинуть влево/вверх"
+                                >
+                                  ←
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 rounded bg-white/95 text-[16px] text-[#111] shadow-sm transition hover:bg-white disabled:opacity-35"
+                                  onClick={() => handleMoveCatalogImage(index, "down")}
+                                  disabled={index === catalogImageList.length - 1}
+                                  title="Сдвинуть вправо/вниз"
+                                >
+                                  →
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-8 rounded bg-[#111]/90 px-2 text-[11px] uppercase tracking-[1px] text-white transition hover:bg-[#111]"
+                                  onClick={() => handleDeleteCatalogImage(index)}
+                                  title="Удалить изображение"
+                                >
+                                  Удалить
+                                </button>
+                              </div>
+                              <img
+                                src={image}
+                                alt={`Изображение ${index + 1}`}
+                                className="aspect-[4/3] h-auto w-full rounded object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            </div>
+                          ))}
+                          </div>
+                          {catalogImageList.length === 0 ? (
+                            <p className="mt-2 text-[13px] text-[#8c877f]">Изображения ещё не добавлены.</p>
+                          ) : null}
+                        </div>
+                        <details className="mt-4">
+                          <summary className="cursor-pointer text-[12px] uppercase tracking-[2px] text-[#9b958b]">Служебное поле (список URL)</summary>
+                          <textarea
+                            className="admin-input admin-textarea mt-2"
+                            value={catalogForm.images}
+                            onChange={(event) => setCatalogForm((prev) => ({ ...prev, images: event.target.value }))}
+                            placeholder="Одно изображение на строку"
+                          />
+                        </details>
+                      </div>
                     </div>
                     <SeoFields
                       value={catalogForm}
@@ -2458,7 +2714,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                       <button
                         className="admin-action-btn admin-action-btn--ghost"
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
                           setCatalogForm({
                             id: "",
                             name: "",
@@ -2484,8 +2740,9 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                             status: "DRAFT",
                             categoryId: categories[0]?.id || "",
                             ...emptySeoFields,
-                          })
-                        }
+                          });
+                          resetCatalogImageUiState();
+                        }}
                         disabled={actionLoading}
                       >
                         Очистить
