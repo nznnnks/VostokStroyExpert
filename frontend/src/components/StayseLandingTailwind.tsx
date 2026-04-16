@@ -23,10 +23,22 @@ const formatPhone = (raw: string) => {
 };
 
 const stats = [
-  ["100+", "реализованных проектов"],
-  ["10+", "лет на рынке инженерных решений"],
-  ["проверено", "на объектах высокого класса и в коммерческих пространствах"],
-];
+  {
+    value: "100+",
+    mobileLines: ["реализовано", "проектов"],
+    desktopLabel: "реализованных проектов",
+  },
+  {
+    value: "10+",
+    mobileLines: ["лет", "практики"],
+    desktopLabel: "лет на рынке инженерных решений",
+  },
+  {
+    value: "проверено",
+    mobileLines: ["премиальные", "объекты"],
+    desktopLabel: "на объектах высокого класса и в коммерческих пространствах",
+  },
+] as const;
 
 const trusted = [
   ["/image/trusted-1.png", "Artest", "88 Michelin"],
@@ -235,50 +247,63 @@ export function StayseLandingTailwind() {
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(4,4,5,0.98)_0%,rgba(4,4,5,0.92)_24%,rgba(4,4,5,0.62)_46%,rgba(4,4,5,0.18)_72%)]" />
         <div className="absolute inset-0 -z-[5] hidden bg-[radial-gradient(circle_at_72%_44%,rgba(127,153,220,0.18)_0%,rgba(127,153,220,0.07)_18%,rgba(5,5,5,0)_44%)] md:block" />
         <div className="relative z-20 mx-auto flex h-full max-w-[1480px] flex-col justify-center gap-8 px-5 pb-7 pt-0 sm:px-5 md:justify-between md:gap-8 md:px-10 md:pb-8 md:pt-8 xl:gap-10 xl:pb-10 xl:pt-12 2xl:max-w-[1680px]">
-          <div className="mx-auto max-w-[680px] text-center md:mx-0 md:text-left">
-            <h1 className="mx-auto max-w-[760px] text-[clamp(42px,11vw,136px)] leading-[0.86] tracking-[-0.045em] [font-family:'Cormorant_Garamond',serif] md:mx-0 md:text-[clamp(34px,8.2vw,136px)] md:tracking-[-0.05em]">
+          <div className="mx-auto max-w-[680px] text-center md:mx-0 md:max-w-[46rem] md:text-left xl:max-w-[52rem]">
+            <h1 className="mx-auto max-w-[760px] text-[clamp(42px,11vw,136px)] leading-[0.86] tracking-[-0.045em] [font-family:'Cormorant_Garamond',serif] md:mx-0 md:max-w-[8.2em] md:text-[clamp(34px,7.1vw,122px)] md:tracking-[-0.05em] xl:max-w-[760px] xl:text-[clamp(40px,8.2vw,136px)]">
               Атмосферное
               <br />
               Совершенство
             </h1>
-            <p className="mx-auto mt-6 max-w-[30rem] text-[clamp(15px,3.5vw,32px)] font-[300] leading-[1.42] text-[#f4f4f1] md:mx-0 md:mt-5 md:max-w-[720px] md:text-[clamp(14px,2.4vw,32px)] md:leading-[1.45] xl:mt-6 xl:leading-[1.52]">
+            <p className="mx-auto mt-6 max-w-[30rem] text-[clamp(15px,3.5vw,32px)] font-[300] leading-[1.42] text-[#f4f4f1] md:mx-0 md:mt-5 md:max-w-[32rem] md:text-[clamp(14px,1.7vw,25px)] md:leading-[1.42] xl:mt-6 xl:max-w-[720px] xl:text-[clamp(16px,2.4vw,32px)] xl:leading-[1.52]">
               Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
               Когда тишина становится ощутимой.
             </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-[clamp(11px,0.42vw+10px,17px)] uppercase tracking-[1.1px] [font-family:'JetBrains_Mono',monospace] md:mt-7 md:justify-start md:gap-4 xl:mt-8 xl:gap-6 2xl:gap-7 md:tracking-[1.2px]">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-[clamp(11px,0.42vw+10px,17px)] uppercase tracking-[1.1px] [font-family:'JetBrains_Mono',monospace] md:mt-7 md:justify-start md:gap-3.5 xl:mt-8 xl:gap-6 2xl:gap-7 md:tracking-[1.2px]">
               <a
                 href="/services"
-                className="inline-grid h-[56px] min-w-[164px] place-items-center bg-[#1a1a1a] px-7 text-center text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)] md:h-[clamp(46px,4.2vw,66px)] md:min-w-[clamp(156px,13vw,226px)] md:px-[clamp(20px,2.2vw,38px)] xl:h-[76px] xl:min-w-[248px] 2xl:h-[84px] 2xl:min-w-[276px]"
+                className="inline-grid h-[56px] min-w-[164px] place-items-center bg-[#1a1a1a] px-7 text-center text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)] md:h-[clamp(44px,3.2vw,58px)] md:min-w-[clamp(138px,11vw,180px)] md:px-[clamp(18px,1.8vw,28px)] xl:h-[76px] xl:min-w-[248px] xl:px-[clamp(20px,2.2vw,38px)] 2xl:h-[84px] 2xl:min-w-[276px]"
               >
                 <span className="translate-y-[0.04em] leading-none">услуги</span>
               </a>
               <a
                 href="/catalog"
-                className="inline-grid h-[56px] min-w-[164px] place-items-center border border-white/25 bg-black/20 px-7 text-center text-white/92 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-white/45 hover:bg-white/12 hover:shadow-[0_18px_40px_rgba(0,0,0,0.24)] md:h-[clamp(46px,4.2vw,66px)] md:min-w-[clamp(156px,13vw,226px)] md:px-[clamp(20px,2.2vw,38px)] xl:h-[76px] xl:min-w-[248px] 2xl:h-[84px] 2xl:min-w-[276px]"
+                className="inline-grid h-[56px] min-w-[164px] place-items-center border border-white/25 bg-black/20 px-7 text-center text-white/92 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-white/45 hover:bg-white/12 hover:shadow-[0_18px_40px_rgba(0,0,0,0.24)] md:h-[clamp(44px,3.2vw,58px)] md:min-w-[clamp(138px,11vw,180px)] md:px-[clamp(18px,1.8vw,28px)] xl:h-[76px] xl:min-w-[248px] xl:px-[clamp(20px,2.2vw,38px)] 2xl:h-[84px] 2xl:min-w-[276px]"
               >
                 <span className="translate-y-[0.04em] leading-none">каталог</span>
               </a>
             </div>
           </div>
 
-          <ul className="mt-8 grid gap-3 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] px-5 py-5 text-[clamp(11px,0.45vw+9px,16px)] uppercase tracking-[0.9px] text-[#f4f4f1d6] backdrop-blur-[10px] sm:grid-cols-3 sm:gap-4 sm:tracking-[1.5px] md:mt-0 md:rounded-none md:border-x-0 md:border-b-0 md:border-t md:bg-transparent md:px-0 md:py-4 md:backdrop-blur-0 xl:pt-5 [font-family:'JetBrains_Mono',monospace]">
-            {stats.map(([value, label], index) => (
+          <ul className="mt-5 grid gap-0 overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(15,15,16,0.9)_0%,rgba(19,21,26,0.86)_52%,rgba(26,31,41,0.82)_100%)] shadow-[0_16px_40px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-[10px] sm:mt-8 sm:grid-cols-3 sm:gap-4 sm:rounded-[22px] sm:border-white/10 sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.02)_100%)] sm:px-5 sm:py-5 sm:shadow-none sm:backdrop-blur-[10px] md:mt-0 md:rounded-none md:border-x-0 md:border-b-0 md:border-t md:bg-transparent md:px-0 md:py-4 md:shadow-none md:backdrop-blur-0 xl:pt-5 [font-family:'JetBrains_Mono',monospace]">
+            {stats.map(({ value, mobileLines, desktopLabel }, index) => (
               <li
-                key={label}
-                className={`flex flex-col gap-1.5 text-left transition duration-700 ease-out sm:items-center sm:text-center md:text-left ${
+                key={value}
+                className={`relative flex min-h-[82px] flex-col items-center justify-center gap-1 px-4 py-3 text-center transition duration-700 ease-out sm:min-h-0 sm:gap-1.5 sm:px-0 sm:py-0 ${
                   heroStatsVisible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                 }`}
                 style={{ transitionDelay: `${index * 130}ms` }}
               >
+                {index > 0 ? (
+                  <span className="absolute left-4 right-4 top-0 h-px bg-white/8 sm:hidden" aria-hidden="true" />
+                ) : null}
                 <strong
-                  className={`text-[clamp(16px,0.95vw+12px,28px)] font-normal leading-none tracking-[0.11em] text-white transition duration-700 ease-out sm:tracking-[0.18em] ${
+                  className={`text-[clamp(1.8rem,5vw,2.3rem)] font-semibold uppercase leading-none tracking-[0.08em] text-white transition duration-700 ease-out sm:text-[clamp(16px,0.95vw+12px,28px)] sm:font-normal sm:tracking-[0.18em] ${
                     index === 2 && heroStatsVisible ? "translate-y-0 opacity-100" : index === 2 ? "translate-y-2 opacity-0" : ""
                   }`}
                   style={index === 2 ? { transitionDelay: "260ms" } : undefined}
                 >
                   {index === 0 ? `${animatedStats[0]}+` : index === 1 ? `${animatedStats[1]}+` : value}
                 </strong>
-                <span className="max-w-[420px] leading-[1.45] sm:leading-5">{label}</span>
+                <div className="space-y-0.5 text-center sm:hidden">
+                  {mobileLines.map((line) => (
+                    <p
+                      key={line}
+                      className="text-[0.66rem] uppercase leading-[1.08] tracking-[0.1em] text-white/68"
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                <span className="mx-auto hidden max-w-[420px] text-center leading-[1.45] sm:block sm:leading-5">{desktopLabel}</span>
               </li>
             ))}
           </ul>
