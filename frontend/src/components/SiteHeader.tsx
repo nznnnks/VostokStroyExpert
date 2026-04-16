@@ -55,7 +55,13 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 24);
+      const nextScrollY = window.scrollY;
+      setIsScrolled((prev) => {
+        if (prev) {
+          return nextScrollY > 10;
+        }
+        return nextScrollY > 32;
+      });
     };
 
     handleScroll();
@@ -99,10 +105,11 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
     >
       {light ? (
         <div
-          className={`overflow-hidden border-b border-white/8 bg-[#060606] text-white transition-all duration-500 ease-out ${
-            isScrolled ? "max-h-0 opacity-0" : "max-h-16 opacity-100"
+          className={`grid overflow-hidden border-b border-white/8 bg-[#060606] text-white transition-[grid-template-rows,opacity,transform,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            isScrolled ? "grid-rows-[0fr] -translate-y-1 opacity-0 border-white/0" : "grid-rows-[1fr] translate-y-0 opacity-100"
           }`}
         >
+          <div className="min-h-0">
           <div className="mx-auto flex max-w-[1480px] min-h-[40px] items-center justify-between gap-4 px-4 py-2.5 text-[12px] font-medium uppercase tracking-[0.7px] text-white/84 sm:text-[12.5px] md:min-h-[40px] md:px-10 md:py-2.5 md:text-[13px] md:tracking-[1px] xl:px-12 2xl:max-w-[1860px] 2xl:px-16 2xl:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <div className="min-w-0 flex-1 md:flex-none">
               <a
@@ -119,17 +126,18 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
               +7 999 200 40 00
             </a>
           </div>
+          </div>
         </div>
       ) : null}
-      <div className={`px-2 pt-0 transition-all duration-500 ease-out md:px-4 ${isScrolled ? "pb-2 pt-2 md:pt-3" : "pb-0"}`}>
+      <div className="px-2 pt-0 md:px-4">
       <div
-        className={`mx-auto grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 px-4 py-4 transition-all duration-500 ease-out md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 xl:gap-6 xl:px-12 2xl:max-w-[1860px] 2xl:px-16 ${
+        className={`mx-auto mt-0 grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 px-4 py-4 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 xl:gap-6 xl:px-12 2xl:max-w-[1860px] 2xl:px-16 ${
           isScrolled
             ? light
-              ? "max-w-[1420px] rounded-[28px] border border-[#e7e1d8]/90 bg-white/88 shadow-[0_12px_34px_rgba(0,0,0,0.12)] backdrop-blur-md 2xl:max-w-[1760px]"
+              ? "mt-2 md:mt-3 max-w-[1420px] translate-y-0 rounded-[28px] border border-[#1b1b1b]/24 bg-white/90 shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] backdrop-blur-md 2xl:max-w-[1760px]"
               : "max-w-[1420px] rounded-[28px] border border-white/14 bg-black/45 shadow-[0_12px_34px_rgba(0,0,0,0.24)] backdrop-blur-md 2xl:max-w-[1760px]"
             : light
-              ? "border-b border-[#ece8e1] bg-white"
+              ? "max-w-[1480px] rounded-none border-b border-[#ece8e1] bg-white shadow-[0_0_0_rgba(0,0,0,0)] 2xl:max-w-[1860px]"
               : "border-b border-white/10 bg-transparent"
         }`}
       >
