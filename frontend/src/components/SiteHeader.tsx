@@ -110,7 +110,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
           }`}
         >
           <div className="min-h-0">
-          <div className="mx-auto flex max-w-[1480px] min-h-[40px] items-center justify-between gap-4 px-4 py-2.5 text-[12px] font-medium uppercase tracking-[0.7px] text-white/84 sm:text-[12.5px] md:min-h-[40px] md:px-10 md:py-2.5 md:text-[13px] md:tracking-[1px] xl:px-12 2xl:max-w-[1860px] 2xl:px-16 2xl:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <div className="mx-auto flex max-w-[1480px] min-h-[40px] items-center justify-between gap-4 px-4 py-2.5 text-[clamp(13px,0.35vw+11.5px,15px)] font-medium uppercase tracking-[0.7px] text-white/84 md:min-h-[40px] md:px-10 md:py-2.5 md:tracking-[1px] xl:px-12 2xl:max-w-[1860px] 2xl:px-16 [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <div className="min-w-0 flex-1 md:flex-none">
               <a
                 href="mailto:concierge@aeris-climate.com"
