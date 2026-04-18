@@ -191,7 +191,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
       ) : null}
       <div className="px-2 pt-0 md:px-4">
         <div
-          className={`mx-auto mt-0 grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 px-4 py-4 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 xl:gap-6 xl:px-12 2xl:max-w-[1860px] 2xl:px-16 ${
+          className={`mx-auto mt-0 grid max-w-[1480px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 md:py-4 xl:gap-6 xl:px-12 2xl:max-w-[1860px] 2xl:px-16 ${
             isScrolled
               ? light
                 ? "mt-2 md:mt-3 max-w-[1420px] translate-y-0 rounded-[28px] border border-[#1b1b1b]/24 bg-white/90 shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] backdrop-blur-md 2xl:max-w-[1760px]"
@@ -203,7 +203,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
         >
           <a
             href="/"
-            className={`text-[clamp(18px,3.6vw,40px)] italic tracking-[-0.03em] transition duration-300 ease-out hover:opacity-75 [font-family:'Cormorant_Garamond',serif] ${
+            className={`block min-w-0 truncate text-[clamp(17px,5vw,28px)] italic tracking-[-0.03em] transition duration-300 ease-out hover:opacity-75 md:text-[clamp(18px,3.6vw,40px)] [font-family:'Cormorant_Garamond',serif] ${
               light ? "text-[#050505]" : "text-white"
             }`}
           >
@@ -225,7 +225,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
               </a>
             ))}
           </nav>
-          <div className="flex items-center justify-end gap-2 md:gap-4 xl:gap-5 2xl:gap-6">
+          <div className="flex shrink-0 items-center justify-end gap-1 md:gap-4 xl:gap-5 2xl:gap-6">
             <button
               type="button"
               aria-label="Открыть поиск по каталогу"
@@ -279,18 +279,18 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
                 <circle cx="16.5" cy="19.5" r="1.4" fill="currentColor" />
               </svg>
             </a>
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex items-center gap-1 md:hidden">
               <a
                 href="https://t.me/vostok_support"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Telegram"
-                className="inline-flex h-11 w-11 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c]"
+                className="inline-flex h-8 w-8 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
+                  width="15"
+                  height="15"
                   aria-hidden="true"
                   fill="currentColor"
                 >
@@ -302,12 +302,12 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Telegram"
-                className="inline-flex h-11 w-11 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c]"
+                className="inline-flex h-8 w-8 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
+                  width="15"
+                  height="15"
                   aria-hidden="true"
                   fill="currentColor"
                 >
@@ -317,7 +317,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
               <a
                 href="/#contact"
                 onClick={handleRequestClick}
-                className="inline-flex h-11 items-center justify-center bg-[#050505] px-4 text-[13px] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                className="inline-flex h-8 items-center justify-center bg-[#050505] px-2 text-[10px] uppercase tracking-[0.7px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:px-3 sm:text-[12px] sm:tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
               >
                 Заявка
               </a>
@@ -334,7 +334,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
               aria-label="Открыть меню"
               aria-expanded={isOpen}
               onClick={openMobileMenu}
-              className={`relative z-[130] inline-flex h-11 w-11 items-center justify-center border transition-opacity lg:hidden ${
+              className={`relative z-[130] inline-flex h-9 w-9 shrink-0 items-center justify-center border transition-opacity sm:h-10 sm:w-10 md:h-11 md:w-11 lg:hidden ${
                 isOpen
                   ? "pointer-events-none opacity-0"
                   : "pointer-events-auto opacity-100"
