@@ -154,7 +154,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
     <header ref={searchRef} className="sticky top-0 z-[140] isolate">
       {light ? (
         <div
-          className={`grid overflow-hidden border-b border-white/8 bg-[#060606] text-white transition-[grid-template-rows,opacity,transform,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          className={`hidden overflow-hidden border-b border-white/8 bg-[#060606] text-white transition-[grid-template-rows,opacity,transform,border-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid ${
             isScrolled
               ? "grid-rows-[0fr] -translate-y-1 opacity-0 border-white/0"
               : "grid-rows-[1fr] translate-y-0 opacity-100"
@@ -194,7 +194,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
           className={`mx-auto mt-0 grid max-w-[1480px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 md:py-4 xl:gap-6 xl:px-12 2xl:max-w-[1860px] 2xl:px-16 ${
             isScrolled
               ? light
-                ? "mt-2 md:mt-3 max-w-[1420px] translate-y-0 rounded-[28px] border border-[#1b1b1b]/24 bg-white/90 shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] backdrop-blur-md 2xl:max-w-[1760px]"
+                ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] border border-[#1b1b1b]/24 bg-white/90 shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] backdrop-blur-md 2xl:max-w-[1760px]"
                 : "max-w-[1420px] rounded-[28px] border border-white/14 bg-black/45 shadow-[0_12px_34px_rgba(0,0,0,0.24)] backdrop-blur-md 2xl:max-w-[1760px]"
               : light
                 ? "max-w-[1480px] rounded-none border-b border-[#ece8e1] bg-white shadow-[0_0_0_rgba(0,0,0,0)] 2xl:max-w-[1860px]"

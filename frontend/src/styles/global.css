@@ -218,7 +218,7 @@ body {
 }
 
 .hero {
-  --hero-header-offset: 76px;
+  --hero-header-offset: 58px;
   --hero-section-bg: #e1ddd6;
   --hero-bg-opacity: 1;
   --hero-media-opacity: 1;
