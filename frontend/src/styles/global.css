@@ -228,7 +228,7 @@ body {
 }
 
 .hero {
-  --hero-header-offset: 76px;
+  --hero-header-offset: var(--site-header-offset, 76px);
   --hero-section-bg: #e1ddd6;
   --hero-bg-opacity: 1;
   --hero-media-opacity: 1;
@@ -526,10 +526,6 @@ body {
 }
 
 @media (min-width: 768px) {
-  .hero {
-    --hero-header-offset: 82px;
-  }
-
   .hero {
     min-height: calc(100dvh - var(--hero-header-offset));
   }

@@ -20,6 +20,7 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const searchRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const maxHeaderHeightRef = useRef(0);
 
   const openMobileMenu = () => {
     setIsOpen(true);
@@ -84,6 +85,32 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const el = searchRef.current;
+    if (!el) return;
+
+    const setCssVar = (height: number) => {
+      const next = Math.ceil(height);
+      if (next <= 0) return;
+      if (next <= maxHeaderHeightRef.current) return;
+      maxHeaderHeightRef.current = next;
+      document.documentElement.style.setProperty("--site-header-offset", `${next}px`);
+    };
+
+    // Initial measurement.
+    setCssVar(el.getBoundingClientRect().height);
+
+    if (!("ResizeObserver" in window)) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setCssVar(entry.contentRect.height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
