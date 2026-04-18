@@ -14,19 +14,37 @@ type HeroModelLayout = {
 };
 
 const HERO_MODEL_LAYOUTS = {
-  compact: {
-    groupPosition: [0.9, -1.72, 0] as [number, number, number],
-    scale: 1.72,
-    wrapperClassName: "pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-[42%] md:block lg:w-[44%]",
+  mobile: {
+    groupPosition: [0, -1.34, 0] as [number, number, number],
+    scale: 1.34,
+    wrapperClassName: "hero-model-edgefade hero-model-edgefade--mobile hero-model-frame pointer-events-none",
     camera: {
-      position: [0, 1.1, 9.6] as [number, number, number],
-      fov: 27,
+      position: [0, 1.05, 10.8] as [number, number, number],
+      fov: 30,
+    },
+  },
+  tablet: {
+    groupPosition: [0.35, -1.48, 0] as [number, number, number],
+    scale: 1.5,
+    wrapperClassName: "hero-model-edgefade hero-model-edgefade--tablet hero-model-frame pointer-events-none",
+    camera: {
+      position: [0, 1.08, 10.1] as [number, number, number],
+      fov: 29,
+    },
+  },
+  compact: {
+    groupPosition: [0.55, -1.56, 0] as [number, number, number],
+    scale: 1.68,
+    wrapperClassName: "hero-model-edgefade hero-model-edgefade--compact hero-model-frame pointer-events-none",
+    camera: {
+      position: [0, 1.1, 9.8] as [number, number, number],
+      fov: 28,
     },
   },
   medium: {
     groupPosition: [0.65, -1.62, 0] as [number, number, number],
     scale: 1.94,
-    wrapperClassName: "pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-[46%] md:block xl:w-[48%]",
+    wrapperClassName: "hero-model-edgefade hero-model-edgefade--medium hero-model-frame pointer-events-none",
     camera: {
       position: [0, 1.12, 9.2] as [number, number, number],
       fov: 25.5,
@@ -35,7 +53,7 @@ const HERO_MODEL_LAYOUTS = {
   wide: {
     groupPosition: [0.25, -1.45, 0] as [number, number, number],
     scale: 2.3,
-    wrapperClassName: "pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-[58%] md:block xl:w-[56%] 2xl:w-[54%]",
+    wrapperClassName: "hero-model-edgefade hero-model-edgefade--wide hero-model-frame pointer-events-none",
     camera: {
       position: [0, 1.15, 9] as [number, number, number],
       fov: 24,
@@ -46,6 +64,8 @@ const HERO_MODEL_LAYOUTS = {
 type HeroModelLayoutKey = keyof typeof HERO_MODEL_LAYOUTS;
 
 function getHeroModelLayoutKey(width: number): HeroModelLayoutKey {
+  if (width < 768) return "mobile";
+  if (width < 1024) return "tablet";
   if (width < 1280) return "compact";
   if (width < 1536) return "medium";
   return "wide";
@@ -113,7 +133,7 @@ export function HeroDesktopModel() {
   const reducedMotion =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const [layoutKey, setLayoutKey] = useState<HeroModelLayoutKey>(() =>
-    typeof window === "undefined" ? "wide" : getHeroModelLayoutKey(window.innerWidth),
+    typeof window === "undefined" ? "mobile" : getHeroModelLayoutKey(window.innerWidth),
   );
   const layout = HERO_MODEL_LAYOUTS[layoutKey];
 
@@ -131,17 +151,20 @@ export function HeroDesktopModel() {
   return (
     <div className={layout.wrapperClassName}>
       <Canvas
+        className="hero-model-edgefade__canvas"
         dpr={[1, 1.25]}
         camera={layout.camera}
         frameloop="demand"
         gl={{
           alpha: true,
           antialias: true,
-          premultipliedAlpha: false,
+          premultipliedAlpha: true,
           powerPreference: "low-power",
         }}
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0);
+          gl.setClearAlpha(0);
+          gl.domElement.style.background = "transparent";
         }}
       >
         <Suspense fallback={null}>
