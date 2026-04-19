@@ -61,6 +61,16 @@ const HERO_MODEL_LAYOUTS = {
       fov: 24,
     },
   },
+  ultraWide: {
+    groupPosition: [0.2, -1.28, 0] as [number, number, number],
+    scale: 2.16,
+    wrapperClassName:
+      "pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-[58%] md:block xl:w-[56%] min-[1680px]:w-[53%] 2xl:w-[51%]",
+    camera: {
+      position: [0, 1.18, 9.15] as [number, number, number],
+      fov: 24.8,
+    },
+  },
 } satisfies Record<string, HeroModelLayout>;
 
 type HeroModelLayoutKey = keyof typeof HERO_MODEL_LAYOUTS;
@@ -70,7 +80,8 @@ function getHeroModelLayoutKey(width: number): HeroModelLayoutKey {
   if (width < 1024) return "tablet";
   if (width < 1280) return "compact";
   if (width < 1536) return "medium";
-  return "wide";
+  if (width < 1680) return "wide";
+  return "ultraWide";
 }
 
 function HeroModel({

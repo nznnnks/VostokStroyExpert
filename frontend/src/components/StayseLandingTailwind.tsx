@@ -40,31 +40,76 @@ const stats = [
   },
 ] as const;
 
-const trusted = [
-  ["/image/trusted-1.png", "Artest", "88 Michelin"],
-  ["/image/trusted-2.png", "White Rabbit", "88 Michelin"],
-  ["/image/trusted-3.png", "Technikum", "рекомендовано Michelin"],
-  ["/image/trusted-4.png", "Central House", "рекомендовано Michelin"],
-  ["/image/trusted-5.png", "Regent", "рекомендовано Michelin"],
-  ["/image/trusted-6.png", "Big Gourmet", "наградa Michelin Big Gourmand"],
-  ["/image/trusted-7.png", "Co-Co Chalet", "в 10 лучших ресторанов краснодарского края"],
-];
+const trustHighlights = [
+  {
+    value: "25",
+    lines: ["лет на", "российском рынке"],
+  },
+  {
+    value: "100+",
+    lines: ["реализованных", "проектов"],
+  },
+  {
+    value: "10+",
+    lines: ["лет инженерной", "практики"],
+  },
+  {
+    value: "62+",
+    lines: ["брендов в", "ассортименте"],
+  },
+] as const;
+
+const trustLogos = [
+  { path: "/image/clear_logo/artest.png", alt: "Artest" },
+  { path: "/image/clear_logo/white-rabbit.png", alt: "White Rabbit" },
+  { path: "/image/clear_logo/regent.png", alt: "Regent" },
+  { path: "/image/clear_logo/co-co-chalet.png", alt: "Co-Co Chalet" },
+  { path: "/image/clear_logo/ugolek.png", alt: "Ugolek" },
+  { path: "/image/clear_logo/restaurant-central-house-of-writers.png", alt: "Central House of Writers" },
+  { path: "/image/clear_logo/tehnikum.png", alt: "Tehnikum" },
+] as const;
+
+const trustLogoTopRow = trustLogos.slice(0, 4);
+const trustLogoBottomRow = trustLogos.slice(4);
+const trustLogoDesktopTopRow = [
+  { path: "/image/clear_logo/artest.png", alt: "Artest" },
+  { path: "/image/clear_logo/white-rabbit.png", alt: "White Rabbit" },
+  { path: "/image/clear_logo/tehnikum.png", alt: "Tehnikum" },
+  { path: "/image/clear_logo/restaurant-central-house-of-writers.png", alt: "Central House of Writers" },
+  { path: "/image/clear_logo/regent.png", alt: "Regent" },
+  { path: "/image/clear_logo/ugolek.png", alt: "Ugolek" },
+  { path: "/image/clear_logo/co-co-chalet.png", alt: "Co-Co Chalet" },
+] as const;
+const trustLogoDesktopBottomRow = [
+  { path: "/image/clear_logo/burger-king.png", alt: "Burger King" },
+  { path: "/image/clear_logo/KFC.png", alt: "KFC" },
+  { path: "/image/clear_logo/bowl-room.png", alt: "Bowl Room" },
+  { path: "/image/clear_logo/papa-johns.png", alt: "Papa Johns" },
+  { path: "/image/clear_logo/kabuki.png", alt: "Kabuki" },
+  { path: "/image/clear_logo/vanwok.png", alt: "Vanwok" },
+] as const;
 
 const services = [
   {
-    image: "/image/services-1.png",
+    poster: "/image/services-preview-2026.png",
+    video: "/video/about-trust.mp4",
     title: "Тепловой контроль",
     text: "Настраиваем стабильную температуру и корректную работу систем в резиденциях, бутиках и инженерно сложных интерьерах.",
+    accentClassName: "bg-[#9fd6f0]",
   },
   {
-    image: "/image/services-2.png",
+    poster: "/image/services-preview-2026.png",
+    video: "/video/about-trust.mp4",
     title: "Очистка воздуха",
     text: "Подбираем фильтрацию, влажность и воздухообмен так, чтобы система работала незаметно и ощущалась как комфорт.",
+    accentClassName: "bg-[#ecd693]",
   },
   {
-    image: "/image/services-3.png",
+    poster: "/image/services-preview-2026.png",
+    video: "/video/about-trust.mp4",
     title: "Акустическая настройка",
     text: "Снижаем шум, убираем лишние вибрации и интегрируем оборудование без конфликта с архитектурой пространства.",
+    accentClassName: "bg-[#ead79d]",
   },
 ];
 
@@ -188,9 +233,6 @@ export function StayseLandingTailwind() {
     mediaQueryList.addListener(update);
     return () => mediaQueryList.removeListener(update);
   }, []);
-
-  const trustedTopRow = trusted.slice(0, 4);
-  const trustedBottomRow = trusted.slice(4);
   const blogTopRow = blog.slice(0, 2);
   const blogBottomRow = blog.slice(2, 4);
   const renderBlogCard = (article: (typeof blog)[number], isWide: boolean, imageClassName: string, contentClassName: string) => (
@@ -238,27 +280,27 @@ export function StayseLandingTailwind() {
 
         <section id="hero" className="hero">
           <div className="hero__background" aria-hidden="true">
-        <img
-          src="/image/hero-menu.png"
-          alt=""
-          aria-hidden="true"
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          width="1280"
-          height="6179"
-          className="hero__bg hero__bg--mobile"
-        />
-        <img
-          src="/image/hero-desktop-bg.jpeg"
-          alt=""
-          aria-hidden="true"
-          loading="eager"
-          decoding="async"
-          width="1280"
-          height="720"
-          className="hero__bg hero__bg--desktop"
-        />
+            <img
+              src="/image/hero-menu.png"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              width="1280"
+              height="6179"
+              className="hero__bg hero__bg--mobile"
+            />
+            <img
+              src="/image/hero-desktop-bg.jpeg"
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              decoding="async"
+              width="1280"
+              height="720"
+              className="hero__bg hero__bg--desktop"
+            />
           </div>
 
           <div className="hero__inner">
@@ -333,81 +375,221 @@ export function StayseLandingTailwind() {
           </div>
         </section>
 
-      <section id="about" className="px-3 py-10 sm:px-5 md:px-10 md:py-16">
-        <div className="mx-auto grid max-w-[1480px] gap-8 pb-6 xl:grid-cols-[120px_360px_minmax(0,760px)] xl:items-start xl:gap-12 2xl:max-w-[1860px]">
-          <div className="text-[clamp(56px,5.5vw,120px)] leading-[0.78] text-[#e5dfd8] [font-family:'Cormorant_Garamond',serif]">25</div>
-          <div>
-            <h2 className="text-[clamp(32px,3vw,72px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">О компании</h2>
-            <p className="mt-3 max-w-[300px] text-[clamp(13px,0.7vw+11px,18px)] italic leading-6 text-[#8b8b86] [font-family:'Cormorant_Garamond',serif]">
-              ВостокЭкспертСтрой
-            </p>
+      <section id="about" className="relative overflow-hidden bg-[#050505] px-3 pt-12 pb-0 text-white sm:px-5 md:pt-18 md:pb-0">
+        <div className="absolute inset-0">
+          <div className="absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
+            <img
+              src="/image/about-trust-mobile.png"
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.03] md:hidden"
+            />
+            <img
+              src="/image/hero-desktop-bg.jpeg"
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 hidden h-full w-full object-cover object-center md:block"
+            />
+            <video
+              className="absolute inset-0 hidden h-full w-full object-cover md:block"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/image/hero-desktop-bg.jpeg"
+            >
+              <source src="/video/about-trust.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,15,0.08)_0%,rgba(8,11,16,0.08)_18%,rgba(8,11,16,0.14)_46%,rgba(8,11,16,0.24)_100%)] md:bg-[linear-gradient(180deg,rgba(7,10,15,0.56)_0%,rgba(8,11,16,0.52)_16%,rgba(8,11,16,0.62)_42%,rgba(8,11,16,0.72)_72%,rgba(8,11,16,0.84)_100%)]" />
           </div>
-          <p className="max-w-[760px] pt-1 text-[clamp(18px,1.6vw+12px,34px)] leading-[1.35] text-[#12120f] [font-family:'Cormorant_Garamond',serif]">
-            Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
-            Когда тишина становится ощутимой.
-          </p>
         </div>
-      </section>
 
-      <section className="px-3 py-10 sm:px-5 md:px-10 md:py-16">
-        <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
-          <h2 className="text-[clamp(36px,3.6vw,82px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">Нам доверяют:</h2>
-          <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-6 lg:hidden">
-            {trusted.map(([image, title], index) => (
-              <article
-                key={title}
-                className={`flex min-h-[170px] flex-col items-center justify-center border border-[#f0ede7] bg-white p-4 text-center transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_16px_34px_rgba(17,17,17,0.07)] md:min-h-[210px] md:p-5 ${
-                  index === trusted.length - 1 ? "col-span-2 md:col-span-3" : ""
-                }`}
+        <div className="relative z-10 left-1/2 w-screen -translate-x-1/2">
+          <div className="px-3 sm:px-5 md:px-10 xl:px-12 2xl:px-20">
+            <div className="grid gap-4 xl:grid-cols-4 xl:items-stretch xl:gap-6 2xl:gap-8">
+            <div className="flex min-h-[118px] flex-col justify-start rounded-[18px] bg-white px-6 py-5 text-[#12120f] md:min-h-[124px] md:px-8 md:py-5 xl:min-h-[132px] xl:justify-between xl:px-10 xl:py-6">
+              <p className="text-[clamp(10px,0.32vw+9px,14px)] uppercase tracking-[0.22em] text-[#7f8ea3] [font-family:'JetBrains_Mono',monospace]">25 лет на российском рынке</p>
+              <h2 className="mt-7 max-w-[12ch] text-[clamp(32px,8vw,46px)] leading-[0.92] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif] md:mt-0 md:max-w-[14ch] md:text-[clamp(28px,2vw,40px)] md:leading-[0.98] md:tracking-[-0.02em]">ВостокСтройЭксперт</h2>
+            </div>
+            <div className="flex min-h-[116px] items-center rounded-[18px] bg-white px-6 py-5 text-[#12120f] md:min-h-[124px] md:px-8 md:py-5 xl:col-span-3 xl:min-h-[132px] xl:px-14 2xl:px-16">
+              <p className="max-w-[68ch] text-[clamp(24px,1.55vw,42px)] leading-[1.08] [font-family:'Cormorant_Garamond',serif]">
+                Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса. Когда тишина становится ощутимой.
+              </p>
+            </div>
+          </div>
+          </div>
+
+          <div className="relative z-10 left-1/2 mt-8 w-screen -translate-x-1/2">
+            <div className="px-3 py-10 sm:px-5 md:px-10 xl:px-12 xl:py-12 2xl:px-20">
+              <div className="grid grid-cols-2 gap-4 xl:grid-cols-4 xl:gap-6 2xl:gap-8">
+                {trustHighlights.map(({ value, lines }) => (
+                  <article
+                    key={value}
+                    className="flex min-h-[128px] flex-col justify-between rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(89,98,116,0.42)_0%,rgba(68,74,89,0.32)_100%)] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-[10px] xl:min-h-[176px] xl:px-7 xl:py-6"
+                  >
+                    <strong className="block text-[clamp(2rem,6vw,3rem)] font-semibold leading-none tracking-[-0.03em] text-[#eef0f4] xl:text-[clamp(2.45rem,2.4vw,3.7rem)]">{value}</strong>
+                    <p className="text-[clamp(13px,1.1vw,18px)] font-semibold leading-[0.98] text-[#d7dae1] xl:text-[clamp(17px,0.72vw+13px,26px)]">
+                      <span className="block whitespace-nowrap">{lines[0]}</span>
+                      <span className="block whitespace-nowrap">{lines[1]}</span>
+                    </p>
+                  </article>
+                ))}
+              </div>
+
+            </div>
+
+            <div className="relative left-1/2 mt-8 w-screen -translate-x-1/2 sm:mt-10 2xl:mt-12">
+              <div className="hidden flex-col gap-4 px-3 sm:flex sm:flex-row sm:items-end sm:justify-between sm:px-4 md:px-6 2xl:px-8">
+                <div className="space-y-4 sm:self-end">
+                  <div className="inline-flex min-h-[92px] w-fit items-center rounded-[18px] border border-[#e7e2d9] bg-[linear-gradient(180deg,#ffffff_0%,#f6f3ee_100%)] px-6 py-4 text-[clamp(18px,1vw+14px,28px)] font-semibold text-[#12120f] shadow-[0_10px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] xl:px-7">
+                    Более 62 брендов нам доверяют
+                  </div>
+                </div>
+                <a
+                  href="/about"
+                  className="inline-flex min-h-[78px] w-full items-center justify-center self-start rounded-[20px] border border-[#d8c6a3] bg-white px-8 text-center text-[clamp(18px,1vw+14px,28px)] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.82)] transition duration-300 ease-out hover:-translate-y-1 hover:border-[#c9ae7a] hover:shadow-[0_24px_40px_rgba(0,0,0,0.2)] sm:min-h-[92px] sm:w-[320px] sm:self-end"
+                >
+                  О нас
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 px-3 sm:hidden">
+              <div className="inline-flex w-fit rounded-[18px] border border-[#e7e2d9] bg-[linear-gradient(180deg,#ffffff_0%,#f6f3ee_100%)] px-5 py-3 text-[22px] font-semibold text-[#12120f] shadow-[0_10px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]">
+                Более 62 брендов
+              </div>
+            </div>
+
+            <div className="mt-5 bg-white/98 px-3 py-3 xl:px-0 xl:py-4 2xl:mt-12">
+              <div className="xl:max-w-none">
+                <div className="sm:hidden">
+                  <div className="space-y-2 overflow-hidden">
+                    <div className="flex w-max gap-2 -translate-x-16">
+                      {trustLogoTopRow.map(({ path, alt }) => (
+                        <article
+                          key={path}
+                          className="flex h-[94px] w-[172px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
+                        >
+                          <img
+                            src={path}
+                            alt={alt}
+                            loading="lazy"
+                            decoding="async"
+                            className="max-h-[48px] w-full max-w-[148px] object-contain object-center"
+                          />
+                        </article>
+                      ))}
+                    </div>
+                    <div className="flex w-max gap-2 -translate-x-4">
+                      {trustLogoBottomRow.map(({ path, alt }) => (
+                        <article
+                          key={path}
+                          className="flex h-[94px] w-[172px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
+                        >
+                          <img
+                            src={path}
+                            alt={alt}
+                            loading="lazy"
+                            decoding="async"
+                            className="max-h-[48px] w-full max-w-[148px] object-contain object-center"
+                          />
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden sm:block xl:hidden">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-4 gap-3">
+                      {trustLogoTopRow.map(({ path, alt }) => (
+                        <article
+                          key={path}
+                          className="group flex min-h-[112px] items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)]"
+                        >
+                          <img
+                            src={path}
+                            alt={alt}
+                            loading="lazy"
+                            decoding="async"
+                            className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
+                          />
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 sm:mx-auto sm:w-[86%]">
+                      {trustLogoBottomRow.map(({ path, alt }) => (
+                        <article
+                          key={path}
+                          className="group flex min-h-[112px] items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)]"
+                        >
+                          <img
+                            src={path}
+                            alt={alt}
+                            loading="lazy"
+                            decoding="async"
+                            className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
+                          />
+                        </article>
+                      ))}
+                    </div>
+
+                  </div>
+                </div>
+
+                <div className="hidden overflow-hidden space-y-3 xl:block">
+                  <div className="flex w-max gap-3 -translate-x-[3.5rem] 2xl:gap-4 2xl:-translate-x-[4.5rem]">
+                    {trustLogoDesktopTopRow.map(({ path, alt }, index) => (
+                      <article
+                        key={`${path}-${index}`}
+                        className="group flex h-[112px] w-[250px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] xl:w-[260px] 2xl:h-[118px] 2xl:w-[300px]"
+                      >
+                        <img
+                          src={path}
+                          alt={alt}
+                          loading="lazy"
+                          decoding="async"
+                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px]"
+                        />
+                      </article>
+                    ))}
+                  </div>
+
+                  <div className="flex w-max gap-3 translate-x-[1.5rem] 2xl:gap-4 2xl:translate-x-[2rem]">
+                    {trustLogoDesktopBottomRow.map(({ path, alt }, index) => (
+                      <article
+                        key={`${path}-${index}`}
+                        className="group flex h-[112px] w-[250px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] xl:w-[260px] 2xl:h-[118px] 2xl:w-[300px]"
+                      >
+                        <img
+                          src={path}
+                          alt={alt}
+                          loading="lazy"
+                          decoding="async"
+                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px]"
+                        />
+                      </article>
+                    ))}
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 mb-8 px-3 sm:hidden">
+              <a
+                href="/about"
+                className="inline-flex min-h-[74px] w-full items-center justify-center rounded-[20px] border border-[#b99863] bg-white px-5 text-center text-[22px] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.86)]"
               >
-                <img
-                  src={image}
-                  alt={title}
-                  loading="lazy"
-                  decoding="async"
-                  width="240"
-                  height="221"
-                  className="mx-auto h-[110px] w-full max-w-[220px] object-contain object-center md:h-[150px] md:max-w-[240px]"
-                />
-              </article>
-            ))}
-          </div>
-          <div className="mt-10 hidden space-y-5 md:space-y-6 xl:block">
-            <div className="grid grid-cols-4 gap-6">
-              {trustedTopRow.map(([image, title]) => (
-                <article key={title} className="flex min-h-[210px] flex-col items-center justify-center border border-[#f0ede7] bg-white p-5 text-center transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_16px_34px_rgba(17,17,17,0.07)] 2xl:min-h-[240px]">
-                  <img
-                    src={image}
-                    alt={title}
-                    loading="lazy"
-                    decoding="async"
-                    width="240"
-                    height="221"
-                    className="mx-auto h-[150px] w-full max-w-[240px] object-contain object-center 2xl:h-[170px]"
-                  />
-                </article>
-              ))}
+                <span className="whitespace-nowrap">Больше о нас</span>
+              </a>
             </div>
-            <div className="mx-auto grid max-w-[1120px] grid-cols-3 gap-6">
-              {trustedBottomRow.map(([image, title]) => (
-                <article key={title} className="flex min-h-[210px] flex-col items-center justify-center border border-[#f0ede7] bg-white p-5 text-center transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_16px_34px_rgba(17,17,17,0.07)] 2xl:min-h-[240px]">
-                  <img
-                    src={image}
-                    alt={title}
-                    loading="lazy"
-                    decoding="async"
-                    width="240"
-                    height="221"
-                    className="mx-auto h-[150px] w-full max-w-[240px] object-contain object-center 2xl:h-[170px]"
-                  />
-                </article>
-              ))}
-            </div>
-          </div>
-          <div className="mt-10 flex justify-center">
-            <a href="/about" className="inline-flex h-12 items-center justify-center bg-[#111] px-10 text-[clamp(12px,0.5vw+11px,16px)] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#232323] hover:shadow-[0_14px_28px_rgba(0,0,0,0.14)] [font-family:'Cormorant_Garamond',serif]">
-              Подробнее
-            </a>
           </div>
         </div>
       </section>
@@ -417,19 +599,74 @@ export function StayseLandingTailwind() {
           <p className="text-[clamp(12px,0.45vw+10px,17px)] uppercase tracking-[1.5px] text-[#b99863] [font-family:'JetBrains_Mono',monospace]">основные услуги</p>
           <h2 className="mt-3 text-[clamp(32px,3.2vw,72px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Наши услуги</h2>
           <div className="mt-10 grid gap-10 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
-            {services.map((service) => (
-              <article key={service.title} className="group relative flex h-full flex-col border-l border-[#ece8e1] pl-3 transition duration-500 ease-out hover:-translate-y-1 hover:border-[#d3b46a] hover:shadow-[0_14px_30px_rgba(0,0,0,0.05)] md:pl-5">
+            {services.map((service, index) => (
+              <article
+                key={service.title}
+                className={`group relative flex h-full flex-col border-l border-[#ece8e1] px-0 transition duration-500 ease-out hover:-translate-y-1 hover:border-[#d3b46a] md:pl-5 md:pr-0 ${
+                  index === services.length - 1 ? "xl:border-r xl:pr-5" : ""
+                }`}
+                onMouseEnter={(event) => {
+                  if (window.innerWidth < 768) return;
+                  const video = event.currentTarget.querySelector("video");
+                  if (video instanceof HTMLVideoElement) {
+                    void video.play().catch(() => {});
+                  }
+                }}
+                onMouseLeave={(event) => {
+                  if (window.innerWidth < 768) return;
+                  const video = event.currentTarget.querySelector("video");
+                  if (video instanceof HTMLVideoElement) {
+                    video.pause();
+                    video.currentTime = 0;
+                  }
+                }}
+              >
                 <a
                   href={serviceHrefByTitle[service.title] ?? "/services"}
                   aria-label={`Открыть направление: ${service.title}`}
                   className="absolute inset-0 z-10"
                 />
-                <img src={service.image} alt="" loading="lazy" decoding="async" width="560" height="560" className="mx-auto aspect-square w-[180px] object-cover transition duration-700 ease-out group-hover:scale-[1.035] sm:w-[220px] md:w-[250px]" />
-                <h3 className="mt-5 max-w-[280px] text-[clamp(22px,1.6vw+16px,40px)] leading-[1.02] transition-colors duration-300 group-hover:text-[#8f6c38] [font-family:'Cormorant_Garamond',serif]">{service.title}</h3>
-                <p className="mt-4 max-w-[340px] flex-1 text-[clamp(14px,0.6vw+12px,20px)] leading-[1.65] text-[#2f2f2c]">{service.text}</p>
-                <div className="relative z-20 mt-auto flex flex-wrap items-center gap-4 pt-6 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace]">
-                  <a href="/checkout" className="inline-flex h-9 items-center justify-center bg-[#050505] px-5 text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1f1f1f] xl:h-11 xl:px-7 2xl:h-12 2xl:px-8">заказать</a>
-                  <a href={serviceHrefByTitle[service.title] ?? "/services"} className="text-[#2d2d29] transition-colors duration-300 hover:text-[#8f6c38] xl:text-[17px] 2xl:text-[18px]">подробнее</a>
+                <div className="relative w-full overflow-hidden rounded-none md:mx-auto md:w-full md:max-w-[400px] md:rounded-[22px]">
+                  <div className={`pointer-events-none absolute left-1/2 top-[8%] h-[58%] w-[46%] -translate-x-1/2 rounded-full opacity-65 blur-[2px] ${service.accentClassName}`} />
+                  <div className={`pointer-events-none absolute bottom-[2%] left-1/3 h-[18%] w-[26%] -translate-x-1/2 rotate-[-8deg] opacity-95 ${service.accentClassName}`} style={{ clipPath: "polygon(0 0, 100% 0, 100% 68%, 0 100%)" }} />
+                  <div className="relative aspect-[1.32] overflow-hidden rounded-none bg-[#f4f1ea] md:aspect-[1.3] md:rounded-[22px]">
+                    <video
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      poster={service.poster}
+                      className="absolute inset-0 hidden h-full w-full object-cover opacity-0 transition duration-500 ease-out md:block group-hover:opacity-100"
+                    >
+                      <source src={service.video} type="video/mp4" />
+                    </video>
+                    <img
+                      src={service.poster}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      width="560"
+                      height="560"
+                      className="relative z-[1] h-full w-full rounded-none object-cover transition duration-500 ease-out group-hover:scale-[1.02] group-hover:opacity-0 md:rounded-[22px]"
+                    />
+                    <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(11,12,14,0.16)_0%,rgba(11,12,14,0.18)_26%,rgba(11,12,14,0.36)_52%,rgba(11,12,14,0.72)_100%)] md:hidden" />
+                    <div className="absolute inset-x-0 bottom-0 z-[3] px-6 pb-10 pt-12 text-white md:hidden">
+                      <h3 className="max-w-[12ch] text-[clamp(1.9rem,7.2vw,3rem)] uppercase leading-[0.88] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif]">
+                        {service.title}
+                      </h3>
+                      <p className="mt-4 max-w-[78%] text-[clamp(1.14rem,4.2vw,1.38rem)] leading-[1.12] tracking-[-0.01em] text-white/92 [font-family:'Cormorant_Garamond',serif]">
+                        {service.text}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <h3 className="mt-8 hidden max-w-[280px] text-[clamp(22px,1.6vw+16px,38px)] font-semibold uppercase leading-[1.06] transition-colors duration-300 group-hover:text-[#8f6c38] md:block [font-family:'Cormorant_Garamond',serif]">
+                  {service.title}
+                </h3>
+                <p className="mt-6 hidden max-w-[340px] flex-1 text-[clamp(14px,0.6vw+12px,20px)] leading-[1.55] text-[#2f2f2c] md:block [font-family:'Cormorant_Garamond',serif]">{service.text}</p>
+                <div className="relative z-20 mt-5 flex items-center justify-center gap-8 px-4 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-auto md:justify-between md:gap-4 md:px-0 md:pt-8 md:pr-4">
+                  <a href="/checkout" className="inline-flex h-11 min-w-[132px] items-center justify-center bg-[#050505] px-5 text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1f1f1f] xl:h-12 xl:min-w-[164px] xl:px-7">заказать</a>
+                  <a href={serviceHrefByTitle[service.title] ?? "/services"} className="inline-flex items-center text-[#2d2d29] transition-colors duration-300 hover:text-[#8f6c38] xl:text-[17px] 2xl:text-[18px]">подробнее</a>
                 </div>
               </article>
             ))}
