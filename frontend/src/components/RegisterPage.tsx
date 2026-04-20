@@ -45,7 +45,7 @@ export function RegisterPage() {
             />
           </div>
 
-          <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-center xl:pl-10 xl:pr-16 xl:py-8">
+          <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-start xl:pl-10 xl:pr-16 xl:py-8">
             <div className="w-full max-w-[560px] xl:mr-auto">
               <p className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 <a href="/" className="hover:text-[#111]">Главная</a>
