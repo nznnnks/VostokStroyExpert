@@ -254,14 +254,19 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
                 : "border-b border-white/10 bg-transparent"
           }`}
         >
-	          <a
-	            href="/"
-	            onClick={(event) => handleNavLinkClick(event, "/")}
-	            className={`block min-w-0 whitespace-nowrap pr-1 text-[clamp(15px,4.6vw,24px)] italic leading-[1.06] tracking-[-0.03em] transition duration-300 ease-out hover:opacity-75 sm:text-[clamp(17px,5vw,28px)] md:text-[clamp(18px,3.6vw,40px)] [font-family:'Cormorant_Garamond',serif] ${
-	              light ? "text-[#050505]" : "text-white"
-	            }`}
-	          >
-            ВостокСтройЭксперт
+          <a
+            href="/"
+            onClick={(event) => handleNavLinkClick(event, "/")}
+            className="block min-w-0 pr-1 transition duration-300 ease-out hover:opacity-75"
+            aria-label="ВостокСтройЭксперт"
+          >
+            <img
+              src="/logo.png"
+              alt="ВостокСтройЭксперт"
+              loading="eager"
+              decoding="async"
+              className="h-10 w-auto object-contain sm:h-18 md:h-19"
+            />
           </a>
           <nav
             className={`hidden w-full items-center justify-center gap-[clamp(18px,1.8vw,48px)] text-[clamp(14px,0.6vw+12px,21px)] uppercase tracking-[1.4px] lg:flex lg:justify-self-center [font-family:Jaldi,'JetBrains_Mono',monospace] ${
@@ -720,11 +725,13 @@ export function SiteHeader({ light = true }: SiteHeaderProps) {
               </div>
             ) : null}
             <div className="mt-8 flex items-center justify-center">
-              <span
-                className={`text-center text-[22px] italic [font-family:'Cormorant_Garamond',serif] ${light ? "text-[#050505]" : "text-white"}`}
-              >
-                ВостокСтройЭксперт
-              </span>
+              <img
+                src="/logo.png"
+                alt="ВостокСтройЭксперт"
+                loading="eager"
+                decoding="async"
+                className="h-12 w-auto object-contain"
+              />
             </div>
             <nav
               className={`mt-8 flex flex-col items-center gap-5 text-center text-[16px] uppercase tracking-[1.8px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${light ? "text-[#6d6d67]" : "text-white/80"}`}

@@ -55,7 +55,7 @@ export function RegisterPage() {
               <h1 className="mt-4 text-[clamp(1.9rem,4.2vw,3.6rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">Регистрация</h1>
               <div className="mt-3 h-px w-[58px] bg-[#d3b46a]" />
 
-              <form className="mt-7 space-y-5" onSubmit={handleSubmit}>
+              <form className="mt-7 space-y-5 [@media(max-height:820px)]:mt-5 [@media(max-height:820px)]:space-y-4" onSubmit={handleSubmit}>
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Имя</span>
                   <input
@@ -115,13 +115,13 @@ export function RegisterPage() {
                 </button>
               </form>
 
-              <div className="mt-7 flex items-center gap-4 text-[clamp(0.68rem,0.6vw,0.85rem)] uppercase tracking-[2px] text-[#9a9993] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <div className="mt-7 flex items-center gap-4 text-[clamp(0.68rem,0.6vw,0.85rem)] uppercase tracking-[2px] text-[#9a9993] [font-family:Jaldi,'JetBrains_Mono',monospace] [@media(max-height:820px)]:mt-5">
                 <span className="h-px flex-1 bg-[#e1ddd5]" />
                 <span>Precise Control</span>
                 <span className="h-px flex-1 bg-[#e1ddd5]" />
               </div>
 
-              <p className="mt-3 text-center text-[clamp(0.9rem,1vw,1.05rem)] text-[#7d7d78]">
+              <p className="mt-3 text-center text-[clamp(0.9rem,1vw,1.05rem)] text-[#7d7d78] [@media(max-height:820px)]:mt-2">
                 Уже есть аккаунт?{" "}
                 <a href="/login" className="border-b border-[#d3b46a] font-semibold text-[#111]">
                   Войти
