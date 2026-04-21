@@ -211,6 +211,7 @@ function HeroModel({
   viewportWidth: number;
 }) {
   const groupRef = useRef<THREE.Group | null>(null);
+  const pointerRafRef = useRef<number | null>(null);
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
   const { scene } = useGLTF("/models/hero-dantex.glb");
@@ -259,13 +260,33 @@ function HeroModel({
     if (reducedMotion) return;
 
     const handleMouseMove = (event: MouseEvent) => {
-      mouse.current.x = (event.clientX / window.innerWidth - 0.5) * 2;
-      mouse.current.y = (event.clientY / window.innerHeight - 0.5) * 2;
-      invalidate();
+      const nextX = (event.clientX / window.innerWidth - 0.5) * 2;
+      const nextY = (event.clientY / window.innerHeight - 0.5) * 2;
+
+      if (
+        Math.abs(mouse.current.x - nextX) < 0.0015 &&
+        Math.abs(mouse.current.y - nextY) < 0.0015
+      ) {
+        return;
+      }
+
+      mouse.current.x = nextX;
+      mouse.current.y = nextY;
+
+      if (pointerRafRef.current !== null) return;
+      pointerRafRef.current = window.requestAnimationFrame(() => {
+        pointerRafRef.current = null;
+        invalidate();
+      });
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (pointerRafRef.current !== null) {
+        window.cancelAnimationFrame(pointerRafRef.current);
+      }
+    };
   }, [invalidate, mouse, reducedMotion]);
 
   useFrame(() => {
@@ -320,14 +341,14 @@ export function HeroDesktopModel() {
     <div className={wrapperClassName}>
       <Canvas
         className="hero-model-edgefade__canvas"
-        dpr={[1, 1.25]}
+        dpr={[1, 1.1]}
         camera={layout.camera}
         frameloop="demand"
         gl={{
           alpha: true,
           antialias: true,
           premultipliedAlpha: true,
-          powerPreference: "low-power",
+          powerPreference: "high-performance",
         }}
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0);

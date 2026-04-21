@@ -296,6 +296,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     excerpt: "",
     images: "",
     status: "DRAFT",
+    publishedAt: "",
     ...emptySeoFields,
   });
   const newsImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -719,6 +720,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     const titleValue = newsForm.title.trim();
     const resolvedSlug = newsForm.slug.trim() || slugify(titleValue);
     const imagesValue = parseCatalogImages(newsForm.images);
+    const publishedAtValue = newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined;
 
     if (!titleValue || !resolvedSlug) {
       setActionError("Заполните название и slug для новости.");
@@ -737,6 +739,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           category: newsForm.category.trim() || undefined,
           images: imagesValue,
           status: newsForm.status as "DRAFT" | "PUBLISHED" | "ARCHIVED",
+          publishedAt: publishedAtValue,
           metaTitle: newsForm.metaTitle.trim() || undefined,
           metaDescription: newsForm.metaDescription.trim() || undefined,
           metaKeywords: newsForm.metaKeywords.trim() || undefined,
@@ -749,6 +752,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           category: newsForm.category.trim() || undefined,
           images: imagesValue,
           status: newsForm.status as "DRAFT" | "PUBLISHED" | "ARCHIVED",
+          publishedAt: publishedAtValue,
           metaTitle: newsForm.metaTitle.trim() || undefined,
           metaDescription: newsForm.metaDescription.trim() || undefined,
           metaKeywords: newsForm.metaKeywords.trim() || undefined,
@@ -756,7 +760,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
       }
 
       await refreshAdminData();
-      setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", ...emptySeoFields });
+      setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", publishedAt: "", ...emptySeoFields });
       resetNewsImageUiState();
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Не удалось сохранить новость.");
@@ -776,7 +780,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     try {
       await deleteAdminNews(newsForm.id);
       await refreshAdminData();
-      setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", ...emptySeoFields });
+      setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", publishedAt: "", ...emptySeoFields });
       resetNewsImageUiState();
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Не удалось удалить новость.");
@@ -933,6 +937,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         excerpt: item.excerpt ?? "",
         images: stringifyCatalogImages(images),
         status: item.status ?? "DRAFT",
+        publishedAt: item.publishedAt ? new Date(item.publishedAt).toISOString().slice(0, 16) : "",
         metaTitle: item.metaTitle ?? "",
         metaDescription: item.metaDescription ?? "",
         metaKeywords: item.metaKeywords ?? "",
@@ -2496,6 +2501,15 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                           <option value="ARCHIVED">Архив</option>
                         </select>
                       </label>
+                      <label className="admin-toolbar__label">
+                        Время публикации
+                        <input
+                          type="datetime-local"
+                          className="admin-input mt-2"
+                          value={newsForm.publishedAt}
+                          onChange={(event) => setNewsForm((prev) => ({ ...prev, publishedAt: event.target.value }))}
+                        />
+                      </label>
                     </div>
                     <label className="admin-toolbar__label mt-4">
                       Короткое описание
@@ -2627,7 +2641,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                         className="admin-action-btn admin-action-btn--ghost"
                         type="button"
                         onClick={() => {
-                          setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", ...emptySeoFields });
+                          setNewsForm({ id: "", title: "", slug: "", category: "", excerpt: "", images: "", status: "DRAFT", publishedAt: "", ...emptySeoFields });
                           resetNewsImageUiState();
                         }}
                         disabled={actionLoading}

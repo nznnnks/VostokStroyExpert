@@ -7,7 +7,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-[1480px] gap-10 xl:grid-cols-[1.1fr_1.2fr_1fr] xl:items-start xl:gap-12 2xl:max-w-[1860px] 2xl:gap-14">
         <div>
           <p className="text-[24px] italic transition duration-300 ease-out hover:opacity-75 [font-family:'Cormorant_Garamond',serif] md:text-[26px] xl:text-[30px] 2xl:text-[34px]">ВостокСтройЭксперт</p>
-          <p className="mt-8 max-w-[360px] text-[14px] uppercase leading-9 tracking-[1.8px] text-[#7d7d78] md:mt-10 md:text-[15px] md:leading-10 xl:max-w-[400px] xl:text-[16px] xl:leading-[2.9rem] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <p className="mt-8 hidden max-w-[360px] text-[14px] uppercase leading-9 tracking-[1.8px] text-[#7d7d78] md:mt-10 xl:block md:text-[15px] md:leading-10 xl:max-w-[400px] xl:text-[16px] xl:leading-[2.9rem] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             архитектурная климатическая интеграция для нового поколения антропогенной среды.
           </p>
         </div>

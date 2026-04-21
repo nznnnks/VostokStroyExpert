@@ -1,6 +1,5 @@
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
-import { services } from "../data/site";
 import type { NewsPostView } from "../lib/backend-api";
 
 type AboutPageProps = {
@@ -91,27 +90,54 @@ const aboutBlog = [
     title: "Почему инженерия должна быть частью тихого интерьера",
     text: "Разбираем, как оборудование высокого класса интегрируется в пространство без визуального и акустического давления.",
     wide: true,
+    publishedAt: "2026-04-20T11:30:00+03:00",
   },
   {
     image: "/image/news-2.png",
     title: "Сервис и контроль системы после запуска",
     text: "Что важно предусмотреть заранее, чтобы климатическая система не требовала постоянного внимания.",
+    publishedAt: "2026-04-20T11:05:00+03:00",
   },
   {
     image: "/image/news-3.png",
     title: "Что нужно знать про VRF-решения",
     text: "Коротко о сценариях применения и тонкостях подбора для объектов разного масштаба.",
+    publishedAt: "2026-04-20T10:20:00+03:00",
   },
   {
     image: "/image/news-4.png",
     title: "Надёжность как главный критерий премиальной инженерии",
     text: "Почему стабильная работа системы важнее перегруженного набора характеристик в спецификации.",
+    publishedAt: "2026-04-20T09:15:00+03:00",
   },
 ] as const;
 
-export function AboutPage({ newsPosts = [] }: AboutPageProps) {
+const clampTextStyle = (lines: number) =>
+  ({
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: lines,
+    overflow: "hidden",
+  }) as const;
+
+const formatRelativePublication = (value: string) => {
+  const diffMs = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return "только что";
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "только что";
+  if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "минуту" : diffMinutes < 5 ? "минуты" : "минут"} назад`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "час" : diffHours < 5 ? "часа" : "часов"} назад`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ${diffDays === 1 ? "день" : diffDays < 5 ? "дня" : "дней"} назад`;
+};
+
+export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
   const aboutBlogTopRow = aboutBlog.slice(0, 2);
   const aboutBlogBottomRow = aboutBlog.slice(2, 4);
+  const mobileAboutBlogLead = aboutBlog[0];
+  const mobileAboutBlogMiddle = aboutBlog.slice(1, 3);
+  const mobileAboutBlogTail = aboutBlog[3];
   const renderAboutBlogCard = (
     article: (typeof aboutBlog)[number],
     isWide: boolean,
@@ -120,7 +146,7 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
   ) => (
     <article
       key={article.title}
-      className={`group relative overflow-hidden transition duration-500 ease-out hover:-translate-y-1 hover:opacity-100 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${isWide ? "md:col-span-8" : "md:col-span-4"}`}
+      className={`group relative flex h-full flex-col overflow-hidden border border-[#ddd6cc] bg-white transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${isWide ? "md:col-span-8" : "md:col-span-4"}`}
     >
       <a href="/news" aria-label={`Открыть новость: ${article.title}`} className="absolute inset-0 z-10" />
       <img
@@ -132,29 +158,75 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
         height="760"
         className={`w-full object-cover transition duration-700 ease-out group-hover:scale-[1.025] ${imageClassName}`}
       />
-      {isWide ? (
-        <div className={`grid border border-t-0 border-[#ece8e1] bg-white p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-8 md:p-6 ${contentClassName}`}>
-          <p className="max-w-[90%] text-[clamp(15px,0.55vw+12px,20px)] leading-[1.5] text-[#2d2d2a]">{article.text}</p>
-          <a
-            href="/news"
-            className="relative z-20 inline-flex h-11 w-fit items-center justify-center self-start bg-[#1a1a1a] px-7 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] md:self-end [font-family:'JetBrains_Mono',monospace]"
+      <div className={`flex h-full flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] px-5 py-4 md:px-6 md:py-5 ${contentClassName}`}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 md:gap-5">
+          <h3
+            className="max-w-none pr-2 text-[clamp(24px,1.55vw,42px)] font-semibold leading-[0.9] tracking-[-0.03em] text-[#0d0d0b] [font-family:'Cormorant_Garamond',serif]"
+            style={clampTextStyle(2)}
           >
-            смотреть
-          </a>
+            {article.title}
+          </h3>
+          <span className="shrink-0 pt-1 text-[clamp(12px,0.55vw+10px,17px)] leading-none text-[#9a9891]">
+            {formatRelativePublication(article.publishedAt)}
+          </span>
         </div>
-      ) : (
-        <div className={`border border-t-0 border-[#ece8e1] bg-white p-5 md:p-6 ${contentClassName}`}>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-5">
-            <p className="max-w-[22ch] text-[clamp(15px,0.55vw+12px,20px)] leading-[1.5] text-[#2d2d2a]">{article.text}</p>
-            <a
-              href="/news"
-              className="relative z-20 inline-flex h-11 w-fit items-center justify-center self-start bg-[#1a1a1a] px-7 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] md:self-end [font-family:'JetBrains_Mono',monospace]"
-            >
-              смотреть
-            </a>
-          </div>
+        <p
+          className="mt-4 max-w-[34ch] text-[clamp(15px,0.5vw+13px,21px)] leading-[1.28] text-[#30302c] md:max-w-[52ch]"
+          style={clampTextStyle(isWide ? 2 : 3)}
+        >
+          {article.text}
+        </p>
+        <div className="mt-auto flex justify-end pt-5">
+          <span className="inline-flex h-12 min-w-[144px] items-center justify-center bg-[#1a1a1a] px-8 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
+            читать
+          </span>
         </div>
-      )}
+      </div>
+    </article>
+  );
+  const renderMobileAboutBlogCard = (article: (typeof aboutBlog)[number], isWide: boolean) => (
+    <article
+      key={`${article.title}-${isWide ? "wide" : "narrow"}`}
+      className={`group relative flex h-full flex-col overflow-hidden border border-[#ddd6cc] bg-white transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${
+        isWide ? "" : "min-w-0"
+      }`}
+    >
+      <a href="/news" aria-label={`Открыть новость: ${article.title}`} className="absolute inset-0 z-10" />
+      <img
+        src={article.image}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        width="1200"
+        height="760"
+        className={`w-full object-cover transition duration-700 ease-out group-hover:scale-[1.025] ${
+          isWide ? "aspect-[16/7.7]" : "aspect-[4/3.2]"
+        }`}
+      />
+      <div className={`flex h-full flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] ${isWide ? "px-4 py-3" : "px-3 py-3"}`}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <h3
+            className={`max-w-none pr-2 font-semibold leading-[0.92] tracking-[-0.03em] text-[#0d0d0b] [font-family:'Cormorant_Garamond',serif] ${
+              isWide ? "text-[clamp(22px,5.6vw,32px)]" : "text-[clamp(18px,4.6vw,24px)]"
+            }`}
+            style={clampTextStyle(isWide ? 2 : 3)}
+          >
+            {article.title}
+          </h3>
+          <span className="shrink-0 pt-1 text-[12px] leading-none text-[#9a9891]">
+            {formatRelativePublication(article.publishedAt)}
+          </span>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <span
+            className={`inline-flex items-center justify-center bg-[#1a1a1a] text-[11px] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace] ${
+              isWide ? "h-11 min-w-[132px] px-6" : "h-10 min-w-[112px] px-4"
+            }`}
+          >
+            читать
+          </span>
+        </div>
+      </div>
     </article>
   );
 
@@ -196,7 +268,14 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto flex min-h-[420px] max-w-[1860px] items-end px-3 pb-8 sm:px-5 md:min-h-[520px] md:px-10 md:pb-12 xl:min-h-[680px] xl:px-12 xl:pb-16 2xl:px-20">
+          <div className="relative z-10 mx-auto flex min-h-[420px] max-w-[1860px] flex-col justify-between px-3 pb-8 pt-10 sm:px-5 md:min-h-[520px] md:px-10 md:pb-12 md:pt-14 xl:min-h-[680px] xl:px-12 xl:pb-16 xl:pt-16 2xl:px-20">
+            <p className="breadcrumb-nav uppercase tracking-[1.5px] text-white/70 [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <a href="/" className="transition hover:text-white">Главная</a>
+              <span className="mx-2 text-white/35">/</span>
+              <a href="/about" className="transition hover:text-white">О компании</a>
+              <span className="mx-2 text-white/35">/</span>
+              <span className="tracking-[2.8px]">CLIMATRADE</span>
+            </p>
             <p className="text-[clamp(28px,2vw,54px)] font-normal italic leading-none text-white/88 [font-family:'Cormorant_Garamond',serif]">
               О нашей работе и опыте
             </p>
@@ -251,9 +330,6 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
                   Бренды, с которыми мы работали и которые знаем вживую
                 </h2>
               </div>
-              <p className="max-w-[680px] text-[clamp(0.96rem,1vw,1.12rem)] leading-[1.7] text-[#5f5f5a]">
-                В этой сетке используются только файлы из текущей папки clear_logo, без подмешивания логотипов из других каталогов.
-              </p>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7">
@@ -281,24 +357,32 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
               <h2 className="text-[clamp(32px,3vw,60px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Новостной блог</h2>
               <a href="/news" className="pb-2 text-[clamp(12px,0.45vw+10px,17px)] uppercase tracking-[1.2px] text-[#2f2f2c] [font-family:'JetBrains_Mono',monospace]">Все новости</a>
             </div>
-            <div className="mt-12 space-y-6 xl:space-y-8">
-              <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
-                {aboutBlogTopRow.map((article, index) =>
-                  renderAboutBlogCard(
-                    article,
+          <div className="mt-12 space-y-6 xl:space-y-8">
+            <div className="space-y-4 md:hidden">
+              {mobileAboutBlogLead ? renderMobileAboutBlogCard(mobileAboutBlogLead, true) : null}
+              <div className="grid grid-cols-2 gap-4">
+                {mobileAboutBlogMiddle.map((article) => renderMobileAboutBlogCard(article, false))}
+              </div>
+              {mobileAboutBlogTail ? renderMobileAboutBlogCard(mobileAboutBlogTail, true) : null}
+            </div>
+
+            <div className="hidden gap-6 md:grid lg:grid-cols-12 xl:gap-8">
+              {aboutBlogTopRow.map((article, index) =>
+                renderAboutBlogCard(
+                  article,
                     index === 0,
-                    index === 0 ? "aspect-[16/9] md:h-[420px] md:aspect-auto" : "aspect-[4/3] md:h-[420px] md:aspect-auto",
-                    "md:h-[196px] 2xl:h-[212px]",
+                    index === 0 ? "aspect-[16/9] md:h-[300px] md:aspect-auto" : "aspect-[4/3] md:h-[300px] md:aspect-auto",
+                    "min-h-[180px] md:min-h-[188px]",
                   ),
                 )}
               </div>
-              <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
-                {aboutBlogBottomRow.map((article, index) =>
-                  renderAboutBlogCard(
-                    article,
+            <div className="hidden gap-6 md:grid lg:grid-cols-12 xl:gap-8">
+              {aboutBlogBottomRow.map((article, index) =>
+                renderAboutBlogCard(
+                  article,
                     index === 1,
-                    index === 1 ? "aspect-[16/9] md:h-[360px] md:aspect-auto" : "aspect-[4/3] md:h-[360px] md:aspect-auto",
-                    "md:h-[196px] 2xl:h-[212px]",
+                    index === 1 ? "aspect-[16/9] md:h-[260px] md:aspect-auto" : "aspect-[4/3] md:h-[260px] md:aspect-auto",
+                    "min-h-[180px] md:min-h-[188px]",
                   ),
                 )}
               </div>
@@ -306,132 +390,6 @@ export function AboutPage({ newsPosts = [] }: AboutPageProps) {
           </div>
         </section>
 
-        <section className="px-4 py-10 md:px-10 md:py-14">
-          <div className="mx-auto max-w-[1480px]">
-          <p className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/" className="hover:text-[#111]">Главная</a>
-            <span className="mx-2 text-[#b5b2ab]">/</span>
-            <a href="/about" className="hover:text-[#111]">О компании</a>
-            <span className="mx-2 text-[#b5b2ab]">/</span>
-            <span>ВостокСтройЭксперт</span>
-          </p>
-          <h1 className="mt-8 max-w-[900px] text-[clamp(2.6rem,5.2vw,5.75rem)] leading-[0.92] [font-family:'Cormorant_Garamond',serif]">
-            Тихая инженерия для жилых, коммерческих и частных объектов высокого класса
-          </h1>
-          <div className="mt-10 grid items-start gap-10 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-8 text-[clamp(1.05rem,1.4vw,1.45rem)] leading-[1.75] text-[#565651]">
-              <p>
-                ВостокСтройЭксперт проектирует и интегрирует климатические системы так, чтобы техника не спорила с архитектурой, не шумела и не усложняла эксплуатацию объекта.
-              </p>
-              <p>
-                Мы работаем с частными резиденциями, коммерческими пространствами, бутиками и объектами с высокой инженерной плотностью. Основной фокус: точность, акустический комфорт, сервис и долговечность решений.
-              </p>
-              <p id="privacy">
-                Мы также сопровождаем объект после запуска: проводим диагностику, тонкую настройку и сервисную поддержку, чтобы климатическая система работала как часть пространства, а не как отдельный технический слой.
-              </p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <article className="flex h-full flex-col border border-[#e8e3db] p-8 text-left">
-                <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Опыт</p>
-                <p className="mt-5 text-[clamp(2.5rem,4.2vw,4.1rem)] leading-none [font-family:'Cormorant_Garamond',serif]">25+</p>
-                <p className="mt-3 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">лет в интеграции инженерных решений и сопровождении объектов высокого класса.</p>
-              </article>
-              <article className="flex h-full flex-col border border-[#e8e3db] p-8 text-left">
-                <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Подход</p>
-                <p className="mt-5 text-[clamp(1.8rem,2.6vw,2.6rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">Комфорт без визуального и акустического давления</p>
-              </article>
-            </div>
-          </div>
-          </div>
-        </section>
-
-        <section className="px-4 py-6 md:px-10 md:py-10">
-          <div className="mx-auto max-w-[1480px] border border-[#e8e3db] bg-[#fbfaf8] p-8 md:p-10">
-            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                  Наши достижения
-                </p>
-                <h2 className="mt-4 text-[clamp(2rem,3.2vw,3.6rem)] leading-[1] [font-family:'Cormorant_Garamond',serif]">
-                  Репутация, собранная на реальных объектах
-                </h2>
-                <p className="mt-4 max-w-[720px] text-[clamp(1rem,1.2vw,1.35rem)] leading-[1.7] text-[#5f5f5a]">
-                  Мы измеряем результат не количеством проектов, а качеством среды, которую создаём. За последние годы мы сформировали устойчивую
-                  практику инженерной интеграции для резиденций, бутиков, гостиниц и коммерческих пространств высокого класса.
-                </p>
-              </div>
-              <div className="grid min-w-[260px] gap-4">
-                {[
-                  ["120+", "проектов с полным циклом интеграции"],
-                  ["25+", "лет экспертизы команды в климатическом инжиниринге"],
-                  ["98%", "клиентов продолжают сервисное сопровождение"],
-                ].map(([value, label]) => (
-                  <div key={label} className="border border-[#e8e3db] bg-white p-4">
-                    <p className="text-[clamp(1.4rem,2.2vw,2.2rem)] [font-family:'Cormorant_Garamond',serif]">{value}</p>
-                    <p className="mt-2 text-[clamp(0.85rem,0.8vw,1rem)] leading-6 text-[#5f5f5a]">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-4 py-8 md:px-10 md:py-12">
-          <div className="mx-auto max-w-[1480px]">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="text-[clamp(2rem,3.5vw,3.9rem)] [font-family:'Cormorant_Garamond',serif]">Наши направления</h2>
-            <a href="/services" className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              Все услуги
-            </a>
-          </div>
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {services.map((service) => (
-              <article key={service.slug} className="border border-[#e8e3db]">
-                <a href={`/services/${service.slug}`} className="block h-full p-6">
-                  <img src={service.image} alt="" aria-hidden="true" width="500" height="500" className="mx-auto aspect-square w-[220px] object-contain" />
-                  <h3 className="mt-5 text-[clamp(1.4rem,2vw,2rem)] [font-family:'Cormorant_Garamond',serif]">{service.title}</h3>
-                  <p className="mt-4 text-[clamp(0.95rem,1vw,1.05rem)] leading-7 text-[#5f5f5a]">{service.shortText}</p>
-                  <span className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    Подробнее
-                  </span>
-                </a>
-              </article>
-            ))}
-          </div>
-          </div>
-        </section>
-
-        <section id="terms" className="px-4 py-8 md:px-10 md:py-12">
-          <div className="mx-auto max-w-[1480px]">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="text-[clamp(2rem,3.5vw,3.9rem)] [font-family:'Cormorant_Garamond',serif]">Новости и контекст</h2>
-            <a href="/news" className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              Весь блог
-            </a>
-          </div>
-          {newsPosts.length > 0 ? (
-            <div className="mt-8 grid gap-6 md:grid-cols-2">
-              {newsPosts.slice(0, 2).map((post) => (
-                <article key={post.slug} className="border border-[#e8e3db]">
-                  <a href={`/news/${post.slug}`} className="block h-full p-6">
-                    <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" />
-                    <p className="mt-5 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
-                    <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{post.title}</h3>
-                    <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
-                    <span className="mt-6 inline-flex text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      Читать
-                    </span>
-                  </a>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-8 border border-[#e8e3db] bg-white px-8 py-10 text-[18px] text-[#5f5f5a]">
-              Публикаций пока нет.
-            </div>
-          )}
-          </div>
-        </section>
       </div>
       <SiteFooter />
     </main>

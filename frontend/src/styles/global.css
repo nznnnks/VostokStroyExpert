@@ -10,10 +10,17 @@ body {
 
 html {
   background: #e1ddd6;
+  scroll-behavior: smooth;
 }
 
 body {
   background: #e1ddd6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 * {

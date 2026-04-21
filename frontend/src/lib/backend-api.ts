@@ -270,6 +270,8 @@ export type NewsPostView = {
   category: string;
   content: string[];
   dateLabel: string;
+  publishedAt?: string | null;
+  createdAt: string;
   status: string;
   metaTitle?: string;
   metaDescription?: string;
@@ -578,6 +580,8 @@ function mapApiNews(item: ApiNews): NewsPostView {
     category: item.category ?? "Новости",
     content: item.contentBlocks?.length ? item.contentBlocks : [],
     dateLabel: formatDate(item.publishedAt ?? item.createdAt),
+    publishedAt: item.publishedAt ?? null,
+    createdAt: item.createdAt,
     status: mapNewsStatus(item.status),
     metaTitle: item.metaTitle ?? undefined,
     metaDescription: item.metaDescription ?? undefined,
@@ -1730,6 +1734,7 @@ export async function createAdminNews(payload: {
   category?: string;
   images?: string[];
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  publishedAt?: string;
   metaTitle?: string;
   metaDescription?: string;
   metaKeywords?: string;
@@ -1756,6 +1761,7 @@ export async function updateAdminNews(
     category?: string;
     images?: string[];
     status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+    publishedAt?: string;
     metaTitle?: string;
     metaDescription?: string;
     metaKeywords?: string;
