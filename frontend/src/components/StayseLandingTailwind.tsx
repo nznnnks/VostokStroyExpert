@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
@@ -132,46 +132,96 @@ const blog = [
     title: "Почему инженерия должна быть частью тихого интерьера",
     text: "Разбираем, как оборудование высокого класса интегрируется в пространство без визуального и акустического давления.",
     wide: true,
+    publishedAt: "2026-04-20T11:30:00+03:00",
   },
   {
     image: "/image/news-2.png",
     title: "Сервис и контроль системы после запуска",
     text: "Что важно предусмотреть заранее, чтобы климатическая система не требовала постоянного внимания.",
+    publishedAt: "2026-04-20T11:05:00+03:00",
   },
   {
     image: "/image/news-3.png",
     title: "Что нужно знать про VRF-решения",
     text: "Коротко о сценариях применения и тонкостях подбора для объектов разного масштаба.",
+    publishedAt: "2026-04-20T10:20:00+03:00",
   },
   {
     image: "/image/news-4.png",
     title: "Надёжность как главный критерий премиальной инженерии",
     text: "Почему стабильная работа системы важнее перегруженного набора характеристик в спецификации.",
+    publishedAt: "2026-04-20T09:15:00+03:00",
   },
 ];
 
+const clampTextStyle = (lines: number) =>
+  ({
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: lines,
+    overflow: "hidden",
+  }) as const;
+
+const formatRelativePublication = (value: string, nowTimestamp: number | null) => {
+  if (nowTimestamp === null) return "недавно";
+
+  const diffMs = nowTimestamp - new Date(value).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return "только что";
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "только что";
+  if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "минуту" : diffMinutes < 5 ? "минуты" : "минут"} назад`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "час" : diffHours < 5 ? "часа" : "часов"} назад`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ${diffDays === 1 ? "день" : diffDays < 5 ? "дня" : "дней"} назад`;
+};
+
 const reviews = [
-  [
-    "/image/reviews-1.svg",
-    "Команда спроектировала решение очень аккуратно: техника не спорит с интерьером, работает тихо и даёт ощущение полной собранности пространства.",
-    "Анна Морозова",
-    "дизайнер интерьеров",
-  ],
-  [
-    "/image/reviews-2.svg",
-    "Получили понятный процесс, хороший контроль на всех этапах и систему, которая реально ощущается как премиальный сервис, а не как набор оборудования.",
-    "Илья Сергеев",
-    "управляющий объектом",
-  ],
-];
+  {
+    rating: 5,
+    text: "Инженерную систему для бутика собрали очень аккуратно: воздух ровный, техника не шумит, архитектура пространства не пострадала. Получили именно премиальное ощущение, а не набор оборудования.",
+    company: 'ООО "Архитект Дизайн"',
+    meta: "частный интерьерный проект",
+  },
+  {
+    rating: 5,
+    text: "Процесс был понятный от первой диагностики до запуска. Команда взяла на себя согласование, настройку и проверку режимов, поэтому объект вошёл в эксплуатацию без нервов и переделок.",
+    company: 'ООО "Ритейл-Плюс"',
+    meta: "коммерческий объект",
+  },
+  {
+    rating: 5,
+    text: "Для ресторана критично было убрать лишний шум и сохранить стабильный климат в зале и на кухне. Система работает спокойно, персонал не отвлекается, а гости это просто не замечают.",
+    company: 'ООО "Гастро Групп"',
+    meta: "ресторанный проект",
+  },
+  {
+    rating: 5,
+    text: "Понравилось, что инженерию не навязывали, а подстраивали под архитектуру. Все решения объясняли по-человечески, а после запуска оставили понятное сопровождение и контрольные точки.",
+    company: 'ООО "Премиум Девелопмент"',
+    meta: "объект высокого класса",
+  },
+  {
+    rating: 5,
+    text: "После запуска не осталось ощущения, что систему нужно постоянно контролировать. Температура стабильная, сервис реагирует быстро, а само решение работает спокойно и предсказуемо.",
+    company: 'ООО "Городская Среда"',
+    meta: "проект mixed-use формата",
+  },
+  {
+    rating: 5,
+    text: "Для нас было важно, чтобы инженерию встроили деликатно и без визуального шума. Команда аккуратно прошла все этапы, а объект сдали без лишних согласований и доработок.",
+    company: 'ООО "Статус Концепт"',
+    meta: "приватный объект",
+  },
+] as const;
 
 export function StayseLandingTailwind() {
   const [animatedStats, setAnimatedStats] = useState([0, 1]);
   const [heroStatsVisible, setHeroStatsVisible] = useState(false);
-  const [showHeroModel, setShowHeroModel] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 768px)").matches;
-  });
+  const reviewsTrackRef = useRef<HTMLDivElement | null>(null);
+  const [mobileReviewsVisible, setMobileReviewsVisible] = useState(3);
+  const [showHeroModel, setShowHeroModel] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -222,6 +272,10 @@ export function StayseLandingTailwind() {
   }, []);
 
   useEffect(() => {
+    setNowTimestamp(Date.now());
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const mediaQueryList = window.matchMedia("(min-width: 768px)");
@@ -236,10 +290,28 @@ export function StayseLandingTailwind() {
     mediaQueryList.addListener(update);
     return () => mediaQueryList.removeListener(update);
   }, []);
+
+  const scrollReviews = (direction: "prev" | "next") => {
+    const track = reviewsTrackRef.current;
+    if (!track) return;
+    const firstCard = track.querySelector<HTMLElement>("[data-review-card]");
+    const cardWidth = firstCard?.offsetWidth ?? 420;
+    const gap = 24;
+    track.scrollBy({
+      left: direction === "next" ? cardWidth + gap : -(cardWidth + gap),
+      behavior: "smooth",
+    });
+  };
   const blogTopRow = blog.slice(0, 2);
   const blogBottomRow = blog.slice(2, 4);
+  const mobileBlogLead = blog[0];
+  const mobileBlogMiddle = blog.slice(1, 3);
+  const mobileBlogTail = blog[3];
   const renderBlogCard = (article: (typeof blog)[number], isWide: boolean, imageClassName: string, contentClassName: string) => (
-    <article key={article.title} className={`group relative overflow-hidden transition duration-500 ease-out hover:-translate-y-1 hover:opacity-100 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${isWide ? "md:col-span-8" : "md:col-span-4"}`}>
+    <article
+      key={article.title}
+      className={`group relative flex h-full flex-col overflow-hidden border border-[#ddd6cc] bg-white transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${isWide ? "md:col-span-8" : "md:col-span-4"}`}
+    >
       <a href="/news" aria-label={`Открыть новость: ${article.title}`} className="absolute inset-0 z-10" />
       <img
         src={article.image}
@@ -250,29 +322,75 @@ export function StayseLandingTailwind() {
         height="760"
         className={`w-full object-cover transition duration-700 ease-out group-hover:scale-[1.025] ${imageClassName}`}
       />
-      {isWide ? (
-        <div className={`grid border border-t-0 border-[#ece8e1] bg-white p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-8 md:p-6 ${contentClassName}`}>
-          <p className="max-w-[90%] text-[clamp(15px,0.55vw+12px,20px)] leading-[1.5] text-[#2d2d2a]">{article.text}</p>
-          <a
-            href="/news"
-            className="relative z-20 inline-flex h-11 w-fit items-center justify-center self-start bg-[#1a1a1a] px-7 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] md:self-end [font-family:'JetBrains_Mono',monospace]"
+      <div className={`flex h-full flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] px-5 py-4 md:px-6 md:py-5 ${contentClassName}`}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 md:gap-5">
+          <h3
+            className="max-w-none pr-2 text-[clamp(24px,1.55vw,42px)] font-semibold leading-[0.9] tracking-[-0.03em] text-[#0d0d0b] [font-family:'Cormorant_Garamond',serif]"
+            style={clampTextStyle(2)}
           >
-            смотреть
-          </a>
+            {article.title}
+          </h3>
+          <span className="shrink-0 pt-1 text-[clamp(12px,0.55vw+10px,17px)] leading-none text-[#9a9891]">
+            {formatRelativePublication(article.publishedAt, nowTimestamp)}
+          </span>
         </div>
-      ) : (
-        <div className={`border border-t-0 border-[#ece8e1] bg-white p-5 md:p-6 ${contentClassName}`}>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-5">
-            <p className="max-w-[22ch] text-[clamp(15px,0.55vw+12px,20px)] leading-[1.5] text-[#2d2d2a]">{article.text}</p>
-            <a
-              href="/news"
-              className="relative z-20 inline-flex h-11 w-fit items-center justify-center self-start bg-[#1a1a1a] px-7 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2a2a2a] md:self-end [font-family:'JetBrains_Mono',monospace]"
-            >
-              смотреть
-            </a>
-          </div>
+        <p
+          className="mt-4 max-w-[34ch] text-[clamp(15px,0.5vw+13px,21px)] leading-[1.28] text-[#30302c] md:max-w-[52ch]"
+          style={clampTextStyle(isWide ? 2 : 3)}
+        >
+          {article.text}
+        </p>
+        <div className="mt-auto flex justify-end pt-5">
+          <span className="inline-flex h-12 min-w-[144px] items-center justify-center bg-[#1a1a1a] px-8 text-[clamp(12px,0.4vw+10px,14px)] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace]">
+            читать
+          </span>
         </div>
-      )}
+      </div>
+    </article>
+  );
+  const renderMobileBlogCard = (article: (typeof blog)[number], isWide: boolean) => (
+    <article
+      key={`${article.title}-${isWide ? "wide" : "narrow"}`}
+      className={`group relative flex h-full flex-col overflow-hidden border border-[#ddd6cc] bg-white transition duration-500 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(0,0,0,0.08)] ${
+        isWide ? "" : "min-w-0"
+      }`}
+    >
+      <a href="/news" aria-label={`Открыть новость: ${article.title}`} className="absolute inset-0 z-10" />
+      <img
+        src={article.image}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        width="1200"
+        height="760"
+        className={`w-full object-cover transition duration-700 ease-out group-hover:scale-[1.025] ${
+          isWide ? "aspect-[16/7.7]" : "aspect-[4/3.2]"
+        }`}
+      />
+      <div className={`flex h-full flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] ${isWide ? "px-4 py-3" : "px-3 py-3"}`}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <h3
+            className={`max-w-none pr-2 font-semibold leading-[0.92] tracking-[-0.03em] text-[#0d0d0b] [font-family:'Cormorant_Garamond',serif] ${
+              isWide ? "text-[clamp(22px,5.6vw,32px)]" : "text-[clamp(18px,4.6vw,24px)]"
+            }`}
+            style={clampTextStyle(isWide ? 2 : 3)}
+          >
+            {article.title}
+          </h3>
+          <span className="shrink-0 pt-1 text-[12px] leading-none text-[#9a9891]">
+            {formatRelativePublication(article.publishedAt, nowTimestamp)}
+          </span>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <span
+            className={`inline-flex items-center justify-center bg-[#1a1a1a] text-[11px] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace] ${
+              isWide ? "h-11 min-w-[132px] px-6" : "h-10 min-w-[112px] px-4"
+            }`}
+          >
+            читать
+          </span>
+        </div>
+      </div>
     </article>
   );
 
@@ -455,7 +573,7 @@ export function StayseLandingTailwind() {
                 </div>
                 <a
                   href="/about"
-                  className="inline-flex min-h-[78px] w-full items-center justify-center self-start rounded-[20px] border border-[#d8c6a3] bg-white px-8 text-center text-[clamp(18px,1vw+14px,28px)] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.82)] transition duration-300 ease-out hover:-translate-y-1 hover:border-[#c9ae7a] hover:shadow-[0_24px_40px_rgba(0,0,0,0.2)] sm:min-h-[92px] sm:w-[320px] sm:self-end"
+                  className="inline-flex min-h-[78px] w-full items-center justify-center self-start rounded-[20px] bg-white px-8 text-center text-[clamp(18px,1vw+14px,28px)] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.82)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_24px_40px_rgba(0,0,0,0.2)] sm:min-h-[92px] sm:w-[320px] sm:self-end"
                 >
                   О нас
                 </a>
@@ -468,38 +586,38 @@ export function StayseLandingTailwind() {
               </div>
             </div>
 
-            <div className="mt-5 bg-white/98 px-3 py-3 xl:px-0 xl:py-4 2xl:mt-12">
+            <div className="mt-5 bg-white/98 px-0 py-3 xl:py-4 2xl:mt-12">
               <div className="xl:max-w-none">
                 <div className="sm:hidden">
                   <div className="space-y-2 overflow-hidden">
-                    <div className="flex w-max gap-2 -translate-x-16">
-                      {trustLogoTopRow.map(({ path, alt }) => (
+                    <div className="flex w-max gap-2">
+                      {trustLogoTopRow.map(({ path, alt }, index) => (
                         <article
-                          key={path}
-                          className="flex h-[94px] w-[172px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
+                          key={`${path}-${index}`}
+                          className="flex h-[94px] w-[calc((100vw-8px)/2)] min-w-0 shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
                         >
                           <img
                             src={path}
                             alt={alt}
                             loading="lazy"
                             decoding="async"
-                            className="max-h-[48px] w-full max-w-[148px] object-contain object-center"
+                            className="max-h-[48px] w-full max-w-[150px] object-contain object-center"
                           />
                         </article>
                       ))}
                     </div>
-                    <div className="flex w-max gap-2 -translate-x-4">
-                      {trustLogoBottomRow.map(({ path, alt }) => (
+                    <div className="flex w-max gap-2">
+                      {trustLogoBottomRow.map(({ path, alt }, index) => (
                         <article
-                          key={path}
-                          className="flex h-[94px] w-[172px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
+                          key={`${path}-${index}`}
+                          className="flex h-[94px] w-[calc((100vw-8px)/2)] min-w-0 shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
                         >
                           <img
                             src={path}
                             alt={alt}
                             loading="lazy"
                             decoding="async"
-                            className="max-h-[48px] w-full max-w-[148px] object-contain object-center"
+                            className="max-h-[48px] w-full max-w-[150px] object-contain object-center"
                           />
                         </article>
                       ))}
@@ -546,41 +664,40 @@ export function StayseLandingTailwind() {
                   </div>
                 </div>
 
-                <div className="hidden overflow-hidden space-y-3 xl:block">
-                  <div className="flex w-max gap-3 -translate-x-[3.5rem] 2xl:gap-4 2xl:-translate-x-[4.5rem]">
+                <div className="hidden space-y-3 xl:block 2xl:space-y-4">
+                  <div className="grid grid-cols-7 gap-3 2xl:gap-4">
                     {trustLogoDesktopTopRow.map(({ path, alt }, index) => (
                       <article
                         key={`${path}-${index}`}
-                        className="group flex h-[112px] w-[250px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] xl:w-[260px] 2xl:h-[118px] 2xl:w-[300px]"
+                        className="group flex h-[112px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] 2xl:h-[118px] 2xl:px-5"
                       >
                         <img
                           src={path}
                           alt={alt}
                           loading="lazy"
                           decoding="async"
-                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px]"
+                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px] 2xl:max-w-[190px]"
                         />
                       </article>
                     ))}
                   </div>
 
-                  <div className="flex w-max gap-3 translate-x-[1.5rem] 2xl:gap-4 2xl:translate-x-[2rem]">
+                  <div className="mx-auto grid w-[calc(100%-96px)] grid-cols-6 gap-3 2xl:w-[calc(100%-120px)] 2xl:gap-4">
                     {trustLogoDesktopBottomRow.map(({ path, alt }, index) => (
                       <article
                         key={`${path}-${index}`}
-                        className="group flex h-[112px] w-[250px] shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] xl:w-[260px] 2xl:h-[118px] 2xl:w-[300px]"
+                        className="group flex h-[112px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] 2xl:h-[118px] 2xl:px-5"
                       >
                         <img
                           src={path}
                           alt={alt}
                           loading="lazy"
                           decoding="async"
-                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px]"
+                          className="max-h-[66px] w-full max-w-[172px] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)] xl:max-h-[68px] 2xl:max-h-[70px] 2xl:max-w-[190px]"
                         />
                       </article>
                     ))}
                   </div>
-
                 </div>
               </div>
             </div>
@@ -588,7 +705,7 @@ export function StayseLandingTailwind() {
             <div className="mt-6 mb-8 px-3 sm:hidden">
               <a
                 href="/about"
-                className="inline-flex min-h-[74px] w-full items-center justify-center rounded-[20px] border border-[#b99863] bg-white px-5 text-center text-[22px] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.86)]"
+                className="inline-flex min-h-[74px] w-full items-center justify-center rounded-[20px] bg-white px-5 text-center text-[22px] font-semibold leading-none tracking-[0.01em] text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.86)]"
               >
                 <span className="whitespace-nowrap">Больше о нас</span>
               </a>
@@ -629,7 +746,7 @@ export function StayseLandingTailwind() {
                   aria-label={`Открыть направление: ${service.title}`}
                   className="absolute inset-0 z-10"
                 />
-                <div className="relative w-full overflow-hidden rounded-none md:mx-auto md:w-full md:max-w-[400px] md:rounded-[22px]">
+                <div className="relative w-full overflow-hidden rounded-none md:mx-auto md:w-full md:max-w-[460px] md:rounded-[22px] xl:max-w-[480px] 2xl:max-w-[520px]">
                   <div className={`pointer-events-none absolute left-1/2 top-[8%] h-[58%] w-[46%] -translate-x-1/2 rounded-full opacity-65 blur-[2px] ${service.accentClassName}`} />
                   <div className={`pointer-events-none absolute bottom-[2%] left-1/3 h-[18%] w-[26%] -translate-x-1/2 rotate-[-8deg] opacity-95 ${service.accentClassName}`} style={{ clipPath: "polygon(0 0, 100% 0, 100% 68%, 0 100%)" }} />
                   <div className="relative aspect-[1.32] overflow-hidden rounded-none bg-[#f4f1ea] md:aspect-[1.3] md:rounded-[22px]">
@@ -667,7 +784,7 @@ export function StayseLandingTailwind() {
                   {service.title}
                 </h3>
                 <p className="mt-6 hidden max-w-[340px] flex-1 text-[clamp(14px,0.6vw+12px,20px)] leading-[1.55] text-[#2f2f2c] md:block [font-family:'Cormorant_Garamond',serif]">{service.text}</p>
-                <div className="relative z-20 mt-5 flex items-center justify-center gap-8 px-4 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-auto md:justify-between md:gap-4 md:px-0 md:pt-8 md:pr-4">
+                <div className="relative z-20 mt-5 flex items-center justify-center gap-8 px-4 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-auto md:justify-between md:gap-5 md:px-3 md:pt-8 xl:px-4 2xl:px-5">
                   <a href="/checkout" className="inline-flex h-11 min-w-[132px] items-center justify-center bg-[#050505] px-5 text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1f1f1f] xl:h-12 xl:min-w-[164px] xl:px-7">заказать</a>
                   <a href={serviceHrefByTitle[service.title] ?? "/services"} className="inline-flex items-center text-[#2d2d29] transition-colors duration-300 hover:text-[#8f6c38] xl:text-[17px] 2xl:text-[18px]">подробнее</a>
                 </div>
@@ -677,15 +794,55 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-      <section id="steps" className="px-3 py-14 sm:px-5 md:px-10 md:py-20">
+      <section id="steps" className="bg-[#0d0d0b] px-3 py-14 text-[#e1ddd6] sm:px-5 md:px-10 md:py-20">
         <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
-          <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Любая задача в 4 этапа</h2>
-          <div className="mt-10 grid justify-items-center gap-8 sm:mt-12 sm:grid-cols-2 sm:justify-items-stretch sm:gap-x-8 sm:gap-y-10 xl:grid-cols-4 xl:gap-12">
+          <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] text-[#e1ddd6] [font-family:'Cormorant_Garamond',serif]">Любая задача в 4 этапа</h2>
+
+          <div className="relative mt-9 space-y-4 md:hidden">
+            <div className="pointer-events-none absolute left-1/2 top-4 h-[calc(100%-2rem)] w-px -translate-x-1/2 bg-[#242420]" />
+            {steps.map(([image, title, text], index) => {
+              const isRight = index % 2 === 1;
+
+              return (
+                <article
+                  key={title}
+                  className={`relative z-[1] w-[82%] rounded-[24px] border border-[#252520] bg-[#11110f] px-5 py-5 shadow-[0_16px_34px_rgba(0,0,0,0.28)] ${
+                    isRight ? "ml-auto text-right" : "mr-auto text-left"
+                  }`}
+                >
+                  <div className={`flex items-center gap-3 ${isRight ? "justify-end" : "justify-start"}`}>
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#2d2c28] bg-[#0d0d0b]">
+                      <img
+                        src={image}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        width="44"
+                        height="44"
+                        className="h-7 w-7 object-contain opacity-90 [filter:brightness(0)_invert(92%)_sepia(7%)_saturate(172%)_hue-rotate(357deg)_brightness(96%)_contrast(90%)]"
+                      />
+                    </span>
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-[#807d75] [font-family:'JetBrains_Mono',monospace]">
+                      0{index + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-[26px] leading-none text-[#e1ddd6] [font-family:'Cormorant_Garamond',serif]">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-[15px] leading-[1.45] text-[#d6d2ca]">
+                    {text}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-10 hidden justify-items-center gap-8 md:grid sm:mt-12 sm:grid-cols-2 sm:justify-items-stretch sm:gap-x-8 sm:gap-y-10 xl:grid-cols-4 xl:gap-12">
             {steps.map(([image, title, text]) => (
               <article key={title} className="max-w-[320px] text-center transition duration-500 ease-out hover:-translate-y-1 sm:max-w-none sm:text-left">
-                <img src={image} alt="" loading="lazy" decoding="async" width="48" height="48" className="mx-auto h-11 w-11 object-contain transition duration-300 ease-out hover:scale-110 sm:mx-0 sm:h-12 sm:w-12" />
-                <h3 className="mt-4 text-[clamp(20px,1.1vw+16px,32px)] leading-none [font-family:'Cormorant_Garamond',serif]">{title}</h3>
-                <p className="mt-2 text-[clamp(14px,0.55vw+12px,19px)] leading-[1.6] text-[#2f2f2c]">{text}</p>
+                <img src={image} alt="" loading="lazy" decoding="async" width="48" height="48" className="mx-auto h-11 w-11 object-contain opacity-90 transition duration-300 ease-out hover:scale-110 sm:mx-0 sm:h-12 sm:w-12 [filter:brightness(0)_invert(92%)_sepia(7%)_saturate(172%)_hue-rotate(357deg)_brightness(96%)_contrast(90%)]" />
+                <h3 className="mt-4 text-[clamp(20px,1.1vw+16px,32px)] leading-none text-[#e1ddd6] [font-family:'Cormorant_Garamond',serif]">{title}</h3>
+                <p className="mt-2 text-[clamp(14px,0.55vw+12px,19px)] leading-[1.6] text-[#e1ddd6]">{text}</p>
               </article>
             ))}
           </div>
@@ -699,23 +856,31 @@ export function StayseLandingTailwind() {
             <a href="/news" className="pb-2 text-[clamp(12px,0.45vw+10px,17px)] uppercase tracking-[1.2px] text-[#2f2f2c] [font-family:'JetBrains_Mono',monospace]">Все новости</a>
           </div>
           <div className="mt-12 space-y-6 xl:space-y-8">
-            <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
+            <div className="space-y-4 md:hidden">
+              {mobileBlogLead ? renderMobileBlogCard(mobileBlogLead, true) : null}
+              <div className="grid grid-cols-2 gap-4">
+                {mobileBlogMiddle.map((article) => renderMobileBlogCard(article, false))}
+              </div>
+              {mobileBlogTail ? renderMobileBlogCard(mobileBlogTail, true) : null}
+            </div>
+
+            <div className="hidden gap-6 md:grid lg:grid-cols-12 xl:gap-8">
               {blogTopRow.map((article, index) =>
                 renderBlogCard(
                   article,
                   index === 0,
-                  index === 0 ? "aspect-[16/9] md:h-[420px] md:aspect-auto" : "aspect-[4/3] md:h-[420px] md:aspect-auto",
-                  "md:h-[196px] 2xl:h-[212px]",
+                  index === 0 ? "aspect-[16/9] md:h-[300px] md:aspect-auto" : "aspect-[4/3] md:h-[300px] md:aspect-auto",
+                  "min-h-[180px] md:min-h-[188px]",
                 ),
               )}
             </div>
-            <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
+            <div className="hidden gap-6 md:grid lg:grid-cols-12 xl:gap-8">
               {blogBottomRow.map((article, index) =>
                 renderBlogCard(
                   article,
                   index === 1,
-                  index === 1 ? "aspect-[16/9] md:h-[360px] md:aspect-auto" : "aspect-[4/3] md:h-[360px] md:aspect-auto",
-                  "md:h-[196px] 2xl:h-[212px]",
+                  index === 1 ? "aspect-[16/9] md:h-[260px] md:aspect-auto" : "aspect-[4/3] md:h-[260px] md:aspect-auto",
+                  "min-h-[180px] md:min-h-[188px]",
                 ),
               )}
             </div>
@@ -723,50 +888,100 @@ export function StayseLandingTailwind() {
         </div>
       </section>
 
-        <section className="px-3 py-14 sm:px-5 md:px-10 md:py-20">
-        <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
-          <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] [font-family:'Cormorant_Garamond',serif]">Мнения клиентов</h2>
-          <div className="mt-10 grid gap-10 sm:mt-12 xl:grid-cols-2 xl:gap-x-28 xl:gap-y-12">
-            {reviews.map(([avatar, text, author, role]) => (
-              <article key={author as string} className="grid gap-6 lg:gap-8">
-                <p className="max-w-[620px] text-[clamp(24px,1.1vw+15px,44px)] leading-[1.28] italic tracking-[0.01em] text-[#1c1c19] [font-family:'Cormorant_Garamond',serif]">
-                  {text}
-                </p>
-                <footer className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-5 md:gap-6 lg:justify-start lg:gap-8 xl:gap-10">
-                  <div className="flex min-w-0 items-center gap-3 md:gap-4">
-                    <img src={avatar as string} alt={author as string} loading="lazy" decoding="async" width="120" height="120" className="h-11 w-11 rounded-full object-cover" />
-                    <div className="min-w-0">
-                      <strong className="block text-[clamp(26px,0.85vw+16px,38px)] leading-[1.04] tracking-[0.005em] [font-family:'Cormorant_Garamond',serif]">{author}</strong>
-                      <span className="block text-[clamp(20px,0.7vw+13px,30px)] leading-[1.1] text-[#5f5f5b] [font-family:'Cormorant_Garamond',serif]">{role}</span>
-                    </div>
+        <section className="bg-[#0d0d0b] px-3 py-12 sm:px-4 md:px-6 lg:px-8 md:py-16">
+          <div className="mx-auto max-w-[1480px] 2xl:max-w-[1860px]">
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="text-[clamp(32px,3.2vw,68px)] leading-[0.95] text-[#e1ddd6] [font-family:'Cormorant_Garamond',serif]">Мнения клиентов</h2>
+            </div>
+
+            <div className="mt-8 space-y-5 md:hidden">
+              {reviews.slice(0, mobileReviewsVisible).map((review) => (
+                <article
+                  key={`mobile-${review.company}`}
+                  className="rounded-[28px] border border-[#d9dfe8] bg-white px-5 py-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)]"
+                >
+                  <div className="flex gap-1 text-[22px] leading-none text-[#f39a10]">
+                    {Array.from({ length: review.rating }).map((_, index) => (
+                      <span key={`${review.company}-mobile-${index}`}>★</span>
+                    ))}
                   </div>
-                  <a href="/about" className="inline-flex h-10 w-fit shrink-0 items-center justify-center self-start bg-[#1a1a1a] px-5 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#2b2b2b] sm:self-center xl:h-11 xl:px-6 2xl:h-12 2xl:px-7 [font-family:'JetBrains_Mono',monospace]">
-                    отзыв
-                  </a>
-                </footer>
-              </article>
-            ))}
+                  <p className="mt-6 text-[17px] leading-[1.48] text-[#4d5c77]">
+                    {review.text}
+                  </p>
+                  <div className="mt-6 border-t border-[#dfe4ea] pt-5">
+                    <strong className="block text-[17px] font-semibold leading-[1.18] text-[#111827]">
+                      {review.company}
+                    </strong>
+                    <span className="mt-1.5 block text-[13px] leading-[1.28] text-[#8d96a9]">
+                      {review.meta}
+                    </span>
+                  </div>
+                </article>
+              ))}
+
+              {mobileReviewsVisible < reviews.length ? (
+                <button
+                  type="button"
+                  onClick={() => setMobileReviewsVisible((current) => Math.min(current + 3, reviews.length))}
+                  className="flex h-14 w-full items-center justify-center rounded-[18px] border border-[#d9dfe8] bg-white text-[13px] uppercase tracking-[0.24em] text-[#111827] transition hover:bg-[#f7f7f5]"
+                >
+                  Загрузить ещё
+                </button>
+              ) : null}
+            </div>
+
+            <div
+              ref={reviewsTrackRef}
+              className="mt-8 hidden snap-x snap-mandatory gap-5 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] md:ml-[calc(50%-50vw)] md:mr-[calc(50%-50vw)] md:flex [&::-webkit-scrollbar]:hidden md:mt-10 md:gap-6"
+            >
+              {reviews.map((review) => (
+                <article
+                  key={review.company}
+                  data-review-card
+                  className="flex min-h-[272px] w-[min(82vw,520px)] shrink-0 snap-start flex-col rounded-[26px] border border-[#2d2c29] bg-[#141412] px-6 py-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] md:min-h-[288px] md:w-[min(37vw,520px)] md:px-7 md:py-6"
+                >
+                  <div className="flex gap-1 text-[24px] leading-none text-[#f39a10]">
+                    {Array.from({ length: review.rating }).map((_, index) => (
+                      <span key={`${review.company}-${index}`}>★</span>
+                    ))}
+                  </div>
+                  <p className="mt-5 text-[clamp(19px,0.75vw+14px,27px)] leading-[1.45] text-[#e1ddd6]">
+                    {review.text}
+                  </p>
+                  <div className="mt-auto border-t border-[#2a2926] pt-5">
+                    <strong className="block text-[clamp(22px,0.75vw+16px,31px)] font-semibold leading-[1.08] text-[#e1ddd6]">
+                      {review.company}
+                    </strong>
+                    <span className="mt-1.5 block text-[clamp(15px,0.45vw+12px,20px)] leading-[1.2] text-[#b4aea5]">
+                      {review.meta}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
         </section>
 
-        <section id="contact" className="bg-white px-3 py-18 sm:px-5 md:px-10 md:py-28">
-        <div className="mx-auto grid max-w-[1480px] gap-14 border-b border-[#e8e3db] pb-16 xl:grid-cols-[minmax(460px,560px)_minmax(0,1fr)] xl:gap-20 2xl:max-w-[1860px]">
-          <div>
-            <h2 className="max-w-[10ch] text-[clamp(40px,3.6vw,96px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif] xl:max-w-[11ch]">Бесплатная консультация</h2>
-            <div className="mt-8 space-y-8">
-              <div>
+        <section id="contact" className="bg-white px-3 pt-18 pb-8 sm:px-5 md:px-10 md:py-28">
+        <div className="mx-auto grid max-w-[1480px] gap-14 border-b border-[#e8e3db] pb-8 md:pb-16 xl:grid-cols-[minmax(460px,560px)_minmax(0,1fr)] xl:gap-20 2xl:max-w-[1860px]">
+          <div className="grid gap-8 md:gap-10">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(132px,164px)] items-start gap-5 md:block">
+              <h2 className="max-w-[6.2ch] text-[clamp(40px,3.6vw,96px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif] md:max-w-[10ch] xl:max-w-[11ch]">
+                Бесплатная консультация
+              </h2>
+              <div className="justify-self-end pt-3 text-right md:mt-8 md:justify-self-auto md:pt-0 md:text-left">
                 <p className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Офис</p>
-                <p className="mt-3 text-[clamp(16px,0.9vw+12px,22px)] leading-8 text-[#111]">г. Москва, Калужская, 12</p>
+                <p className="mt-3 text-[clamp(15px,0.75vw+11px,22px)] leading-[1.45] text-[#111] md:leading-8">г. Москва, Калужская, 12</p>
               </div>
-              <div>
-                <p className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Запросы</p>
-                <address className="mt-3 not-italic text-[clamp(16px,0.9vw+12px,22px)] leading-8 text-[#111]">
-                  concierge@aeris-climate.com
-                  <br />
-                  +7 999 200 40 00
-                </address>
-              </div>
+            </div>
+
+            <div>
+              <p className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Запросы</p>
+              <address className="mt-3 not-italic text-[clamp(16px,0.9vw+12px,22px)] leading-[1.65] text-[#111] md:leading-8">
+                concierge@aeris-climate.com
+                <br />
+                +7 999 200 40 00
+              </address>
             </div>
           </div>
 
@@ -806,7 +1021,12 @@ export function StayseLandingTailwind() {
             <label className="grid gap-2 2xl:col-span-2">
               <span className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">О проекте</span>
               <div className="relative">
-                <select className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(18px,1.1vw+14px,30px)] text-[#181816] [font-family:'Cormorant_Garamond',serif] xl:h-[5.5rem] 2xl:h-24" defaultValue="" name="projectType" required>
+                <select
+                  className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(16px,0.45vw+14px,22px)] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] xl:h-[5.5rem] 2xl:h-24"
+                  defaultValue=""
+                  name="projectType"
+                  required
+                >
                   <option value="" disabled>
                     Жилой / Коммерческий / Другой
                   </option>

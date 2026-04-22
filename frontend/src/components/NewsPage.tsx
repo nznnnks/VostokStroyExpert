@@ -6,6 +6,25 @@ type NewsPageProps = {
   posts?: NewsPostView[];
 };
 
+function formatRelativePublication(value?: string | null) {
+  if (!value) {
+    return "—";
+  }
+
+  const diffMs = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return "только что";
+
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "только что";
+  if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "минуту" : diffMinutes < 5 ? "минуты" : "минут"} назад`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "час" : diffHours < 5 ? "часа" : "часов"} назад`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ${diffDays === 1 ? "день" : diffDays < 5 ? "дня" : "дней"} назад`;
+}
+
 export function NewsPage({ posts = [] }: NewsPageProps) {
   return (
     <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
@@ -30,7 +49,12 @@ export function NewsPage({ posts = [] }: NewsPageProps) {
                   <a href={`/news/${post.slug}`} className="flex h-full flex-col">
                     {post.image ? <img src={post.image} alt="" aria-hidden="true" width="1200" height="760" className="aspect-[16/10] w-full object-cover" /> : null}
                     <div className="flex flex-1 flex-col p-6">
-                      <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                        <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">{post.category}</p>
+                        <time dateTime={post.publishedAt ?? post.createdAt} className="shrink-0 text-[clamp(0.8rem,0.65vw,1rem)] leading-none text-[#8f8f89]">
+                          {formatRelativePublication(post.publishedAt ?? post.createdAt)}
+                        </time>
+                      </div>
                       <h2 className="mt-3 text-[clamp(1.8rem,2.6vw,2.5rem)] leading-[1.02] [font-family:'Cormorant_Garamond',serif]">{post.title}</h2>
                       <p className="mt-4 text-[clamp(0.95rem,1.1vw,1.15rem)] leading-7 text-[#5f5f5a]">{post.excerpt}</p>
                       <span className="mt-auto inline-flex pt-6 text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
