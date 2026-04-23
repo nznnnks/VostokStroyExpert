@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 import type { Product } from "../data/products";
 import { slugify } from "../lib/slug";
@@ -17,10 +17,6 @@ type CategoryCard = {
 };
 
 export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) {
-  const railRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
   const categories = useMemo<CategoryCard[]>(() => {
     const map = new Map<string, { count: number; image: string }>();
 
@@ -46,46 +42,6 @@ export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) 
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));
   }, [products]);
 
-  useEffect(() => {
-    const el = railRef.current;
-    if (!el) return;
-
-    const threshold = 2;
-
-    const update = () => {
-      const maxScrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
-      setCanScrollLeft(el.scrollLeft > threshold);
-      setCanScrollRight(el.scrollLeft < maxScrollLeft - threshold);
-    };
-
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-
-    let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(update);
-      ro.observe(el);
-    } else {
-      window.addEventListener("resize", update);
-    }
-
-    return () => {
-      el.removeEventListener("scroll", update);
-      if (ro) ro.disconnect();
-      else window.removeEventListener("resize", update);
-    };
-  }, [categories.length]);
-
-  function scrollRail(direction: "left" | "right") {
-    const el = railRef.current;
-    if (!el) return;
-    const amount = Math.max(el.clientWidth * 0.82, 320);
-    el.scrollBy({
-      left: direction === "right" ? amount : -amount,
-      behavior: "smooth",
-    });
-  }
-
   return (
     <div className="min-h-screen bg-[#f6f3ee] text-[#2b2a27]">
       <SiteHeader fullBleed />
@@ -93,17 +49,14 @@ export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) 
       <main className="mx-auto w-full max-w-[1700px] px-5 pb-14 pt-8 md:px-8 md:pt-10">
         <div>
           <h1 className="text-[42px] leading-[1.05] md:text-[56px] [font-family:'Cormorant_Garamond',serif]">Каталог</h1>
-          <p className="mt-4 max-w-[760px] text-[18px] leading-8 text-[#7a7a75]">Выберите категорию и пролистайте ленту вправо, чтобы открыть остальные разделы.</p>
+          <p className="mt-4 max-w-[760px] text-[18px] leading-8 text-[#7a7a75]">Выберите категорию.</p>
         </div>
 
-        <section className="relative mt-8">
-          <div ref={railRef} className="overflow-x-auto overflow-y-hidden pb-4 [scrollbar-width:thin] [scrollbar-color:#d6d0c8_transparent]">
+        <section className="mt-10">
+          {categories.length ? (
             <div
-              className="grid content-start auto-cols-[minmax(230px,72vw)] grid-flow-col grid-rows-2 gap-4 md:auto-cols-[minmax(260px,30vw)] md:gap-6 xl:auto-cols-[minmax(280px,18vw)]"
-              style={{
-                gridTemplateRows: "repeat(2, minmax(240px, 320px))",
-                gridAutoFlow: "column dense",
-              }}
+              className="mt-8 grid grid-cols-1 gap-4 auto-rows-[minmax(240px,320px)] sm:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4"
+              style={{ gridAutoFlow: "dense" }}
             >
               {categories.map((category, index) => (
                 <a
@@ -131,39 +84,19 @@ export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) 
                     </div>
 
                     <div className="bg-white px-5 py-5 md:px-6">
-                      <h2 className="text-[16px] font-medium leading-[1.25] md:text-[18px] [font-family:Manrope,system-ui]">{category.name}</h2>
+                      <h2 className="text-[16px] font-medium leading-[1.25] md:text-[18px] [font-family:Manrope,system-ui]">
+                        {category.name}
+                      </h2>
                     </div>
                   </div>
                 </a>
               ))}
             </div>
-          </div>
-
-          {canScrollLeft ? (
-            <button
-              type="button"
-              onClick={() => scrollRail("left")}
-              className="absolute left-0 top-1/2 z-10 flex h-16 w-16 -translate-y-1/2 items-center justify-center rounded-[18px] border border-[#e7e1d9] bg-white text-[#2b2a27] shadow-[0_18px_40px_rgba(38,35,31,0.10)] transition-transform hover:translate-y-[-50%] hover:scale-[1.03]"
-              aria-label="Прокрутить категории влево"
-            >
-              <svg className="rotate-180" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          ) : null}
-
-          {canScrollRight ? (
-            <button
-              type="button"
-              onClick={() => scrollRail("right")}
-              className="absolute right-0 top-1/2 z-10 flex h-16 w-16 -translate-y-1/2 items-center justify-center rounded-[18px] border border-[#e7e1d9] bg-white text-[#2b2a27] shadow-[0_18px_40px_rgba(38,35,31,0.10)] transition-transform hover:translate-y-[-50%] hover:scale-[1.03]"
-              aria-label="Прокрутить категории вправо"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          ) : null}
+          ) : (
+            <div className="mt-8 rounded-[18px] border border-[#e7e1d9] bg-white px-6 py-8 text-[#7a7a75]">
+              Категории не найдены.
+            </div>
+          )}
         </section>
       </main>
 
@@ -175,11 +108,10 @@ export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) 
 function getCategorySizeClass(index: number) {
   const pattern = index % 12;
 
-  if (pattern === 0 || pattern === 7) return "row-span-2";
-  if (pattern === 3 || pattern === 9) return "col-span-2";
-  if (pattern === 5) return "col-span-2 row-span-2";
+  if (pattern === 0 || pattern === 7) return "md:row-span-2";
+  if (pattern === 3 || pattern === 9) return "lg:col-span-2";
+  if (pattern === 5) return "lg:col-span-2 md:row-span-2";
   return "";
 }
 
 export default CatalogCategoriesPage;
-

@@ -37,6 +37,7 @@ const formatRelativePublication = (value?: string | null) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{post?.metaTitle ?? post?.title ?? "Новость"}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content={post?.metaDescription ?? post?.excerpt ?? "Новости компании и отрасли."} />
     {post?.metaKeywords ? <meta name="keywords" content={post.metaKeywords} /> : null}
     <link rel="preconnect" href="https://fonts.googleapis.com" />

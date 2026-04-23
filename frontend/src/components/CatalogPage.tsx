@@ -1,13 +1,15 @@
-﻿import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 
 import { formatPrice, type Product } from "../data/products";
+import { slugify } from "../lib/slug";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
 type CatalogPageProps = {
   products: Product[];
   initialCategory?: string;
+  variant?: "default" | "landing";
 };
 
 type CatalogDynamicFilter = {
@@ -24,21 +26,34 @@ type CatalogDynamicFilter = {
   fallbackKey?: "power" | "volume";
 };
 
-export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
+export function CatalogPage({ products, initialCategory, variant = "default" }: CatalogPageProps) {
   const resultsTopRef = useRef<HTMLDivElement>(null);
+  const isLanding = variant === "landing";
   const isCategoryPage = Boolean(initialCategory && initialCategory !== "all");
-  const categories = useMemo(() => {
-    const counts = new Map<string, number>();
+
+  const categoryCards = useMemo(() => {
+    const map = new Map<string, { count: number; image: string }>();
 
     for (const product of products) {
-      counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+      const prev = map.get(product.category);
+      if (!prev) {
+        map.set(product.category, { count: 1, image: product.image });
+      } else {
+        map.set(product.category, {
+          count: prev.count + 1,
+          image: prev.image || product.image,
+        });
+      }
     }
 
-    const categoryItems = Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ru"))
-      .map(([value, count]) => ({ value, label: value, count }));
-
-    return [{ value: "all", label: "Все категории", count: products.length }, ...categoryItems];
+    return Array.from(map.entries())
+      .map(([name, meta]) => ({
+        name,
+        slug: slugify(name),
+        count: meta.count,
+        image: meta.image,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));
   }, [products]);
 
   const brands = useMemo(() => uniqueValues(products.map((product) => product.brand)), [products]);
@@ -131,13 +146,13 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
     return Array.from(grouped.values());
   }, [dynamicFilters]);
 
-  const maxProductPrice = getSafeMax(products.map((product) => product.price), 100000);
-  const itemsPerPage = 6;
+  const globalMaxProductPrice = getSafeMax(products.map((product) => product.price), 100000);
+  const itemsPerPage = isLanding ? 12 : 6;
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory ?? "all");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxProductPrice]);
-  const [priceRangeDraft, setPriceRangeDraft] = useState<[number, number]>([0, maxProductPrice]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, globalMaxProductPrice]);
+  const [priceRangeDraft, setPriceRangeDraft] = useState<[number, number]>([0, globalMaxProductPrice]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -147,6 +162,27 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [allFiltersOpen, setAllFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (!allFiltersOpen && !filtersOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [allFiltersOpen, filtersOpen]);
+
+  useEffect(() => {
+    if (!allFiltersOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAllFiltersOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [allFiltersOpen]);
 
   useEffect(() => {
     setSelectedNumericFilters((prev) => {
@@ -177,7 +213,7 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
     });
   }, [dynamicFilters]);
 
-  const filteredProducts = useMemo(() => {
+  const productsBeforePriceFilter = useMemo(() => {
     return products.filter((product) => {
       const normalizedQuery = query.trim().toLowerCase();
       const matchesQuery =
@@ -186,7 +222,6 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
         product.brand.toLowerCase().includes(normalizedQuery) ||
         product.article.toLowerCase().includes(normalizedQuery);
       const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
       const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(product.country);
       const matchesType = selectedTypes.length === 0 || selectedTypes.includes(product.type);
@@ -221,18 +256,43 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
       return (
         matchesQuery &&
         matchesCategory &&
-        matchesPrice &&
         matchesBrand &&
         matchesCountry &&
         matchesType &&
         matchesDynamicFilters
       );
     });
-  }, [products, query, selectedCategory, priceRange, selectedBrands, selectedCountries, selectedTypes, dynamicFilters, selectedNumericFilters, selectedTextFilters]);
+  }, [products, query, selectedCategory, selectedBrands, selectedCountries, selectedTypes, dynamicFilters, selectedNumericFilters, selectedTextFilters]);
+
+  const maxProductPrice = useMemo(() => {
+    return getSafeMax(
+      productsBeforePriceFilter.map((product) => product.price),
+      globalMaxProductPrice,
+    );
+  }, [productsBeforePriceFilter, globalMaxProductPrice]);
+
+  function clampPriceRangeToMax(range: [number, number], max: number): [number, number] {
+    const safeMax = Number.isFinite(max) ? max : globalMaxProductPrice;
+    const nextFrom = Math.max(0, Math.min(range[0], safeMax));
+    const nextTo = Math.max(0, Math.min(range[1], safeMax));
+    if (nextFrom <= nextTo) return [nextFrom, nextTo];
+    return [Math.max(0, nextTo - 1000), nextTo];
+  }
+
+  useEffect(() => {
+    setPriceRange((current) => clampPriceRangeToMax(current, maxProductPrice));
+    setPriceRangeDraft((current) => clampPriceRangeToMax(current, maxProductPrice));
+  }, [maxProductPrice]);
+
+  const filteredProducts = useMemo(() => {
+    return productsBeforePriceFilter.filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1]);
+  }, [productsBeforePriceFilter, priceRange]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
   const safePage = Math.min(page, totalPages);
-  const pageProducts = filteredProducts.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
+  const pageProducts = isLanding
+    ? filteredProducts.slice(0, safePage * itemsPerPage)
+    : filteredProducts.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
   const visiblePercent = products.length === 0 ? 0 : Math.round((filteredProducts.length / products.length) * 100);
   const resultsAnimationKey = [
     query,
@@ -246,8 +306,39 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
     safePage,
   ].join("|");
 
+  const hasActiveFilters = useMemo(() => {
+    if (query.trim().length > 0) return true;
+    if (selectedBrands.length > 0) return true;
+    if (selectedCountries.length > 0) return true;
+    if (selectedTypes.length > 0) return true;
+    if (priceRange[0] !== 0 || priceRange[1] !== maxProductPrice) return true;
+
+    for (const filter of dynamicFilters) {
+      if (filter.parameterType === "NUMBER") {
+        const selectedRange = selectedNumericFilters[filter.id] ?? [filter.min, filter.max];
+        if (selectedRange[0] !== filter.min || selectedRange[1] !== filter.max) return true;
+      } else {
+        const selectedValues = selectedTextFilters[filter.id] ?? [];
+        if (selectedValues.length > 0) return true;
+      }
+    }
+
+    return false;
+  }, [
+    query,
+    selectedBrands,
+    selectedCountries,
+    selectedTypes,
+    priceRange,
+    maxProductPrice,
+    dynamicFilters,
+    selectedNumericFilters,
+    selectedTextFilters,
+  ]);
+
   useEffect(() => {
     if (!resultsTopRef.current) return;
+    if (isLanding) return;
     resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [safePage]);
 
@@ -279,6 +370,21 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
     setPage(1);
   }
 
+  function resetAllFilters() {
+    setQuery("");
+    setSelectedBrands([]);
+    setSelectedCountries([]);
+    setSelectedTypes([]);
+    setSelectedTextFilters({});
+    setSelectedNumericFilters({});
+    setSelectedNumericFilterDrafts({});
+    setPriceRange([0, globalMaxProductPrice]);
+    setPriceRangeDraft([0, globalMaxProductPrice]);
+    setPage(1);
+    setFiltersOpen(false);
+    setAllFiltersOpen(false);
+  }
+
   function getFilterState(title: string) {
     if (title === "Бренд") {
       return [selectedBrands, setSelectedBrands] as const;
@@ -289,44 +395,13 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
     return [selectedTypes, setSelectedTypes] as const;
   }
 
-  function renderFilters(idPrefix: string) {
+  function renderFilters(idPrefix: string, mode: "compact" | "full", variant: "default" | "overlay" = "default") {
     const mood = visiblePercent >= 80 ? "happy" : visiblePercent >= 40 ? "neutral" : "sad";
+    const isOverlay = variant === "overlay";
     return (
-      <div className="space-y-8">
-        {!isCategoryPage && (
+      <div className={isOverlay ? "space-y-6" : "space-y-8"}>
+        {isOverlay ? null : (
           <section>
-            <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              Категории
-            </h2>
-            <div className="mt-3 border-t border-[#e7e1d9] pt-5">
-              <div className="space-y-5 text-[18px] text-[#6f6f69] 2xl:text-[20px]">
-                {categories.map((category) => {
-                  const active = selectedCategory === category.value;
-                  return (
-                    <button
-                      key={category.value}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(category.value);
-                        setPage(1);
-                      }}
-                      className={`catalog-filter-row flex w-full items-center justify-between border-l-2 pl-4 text-left transition-all duration-300 ${
-                        active
-                          ? "border-[#d3b46a] text-[#111]"
-                          : "border-transparent text-[#8a8a85] hover:border-[#e4cf98] hover:text-[#3d3d39]"
-                      }`}
-                    >
-                      <span>{category.label}</span>
-                      <span className="text-[14px]">({category.count})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section>
           <div className="flex items-center justify-between gap-4 text-[16px] uppercase tracking-[1.4px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <span>Цена</span>
             <span className="flex items-center gap-3 text-right text-[#8a8a85]">
@@ -370,6 +445,7 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
               max={maxProductPrice}
               step={1000}
               value={priceRangeDraft}
+              snapMaxToEnd
               ariaLabelMin="Минимальная цена"
               ariaLabelMax="Максимальная цена"
               formatValue={formatPrice}
@@ -382,36 +458,92 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
             />
           </div>
         </section>
+        )}
 
-        {[
-          ["Бренд", brands],
-          ["Страна производства", countries],
-          ...(!isCategoryPage ? ([["Тип", types]] as const) : ([] as const)),
-        ].map(([title, items]) => (
-          <section key={title}>
-            <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
-            <div className="mt-3 space-y-5 border-t border-[#e7e1d9] pt-5">
-              {items.map((item, index) => {
-                const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
-                const [selected, setSelected] = getFilterState(String(title));
+        {(() => {
+          const filterGroups = [
+            ["Бренд", brands],
+            ...(mode === "full" ? ([["Страна производства", countries]] as const) : ([] as const)),
+            ...(!isCategoryPage && mode === "full" && !isOverlay ? ([["Тип", types]] as const) : ([] as const)),
+          ] as const;
 
-                return (
-                  <label key={item} htmlFor={id} className="flex items-center gap-4 text-[18px] text-[#6f6f69] 2xl:text-[20px]">
-                    <input
-                      id={id}
-                      type="checkbox"
-                      checked={selected.includes(item)}
-                      onChange={() => toggleValue(item, selected, setSelected)}
-                      className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
-                    />
-                    <span>{item}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-        {dynamicFilterGroups.map((group) => {
+          if (isOverlay && filterGroups.length > 1) {
+            return (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {filterGroups.map(([title, items]) => (
+                  <section key={title}>
+                    <h2 className="text-[16px] uppercase tracking-[1.6px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
+                    <div className="mt-2 border-t border-[#e7e1d9] pt-3 [column-gap:22px] xl:columns-2">
+                      {items.map((item, index) => {
+                        const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
+                        const [selected, setSelected] = getFilterState(String(title));
+
+                        return (
+                          <label key={item} htmlFor={id} className="mb-3 flex break-inside-avoid items-center gap-3 text-[14px] text-[#6f6f69] 2xl:text-[15px]">
+                            <input
+                              id={id}
+                              type="checkbox"
+                              checked={selected.includes(item)}
+                              onChange={() => toggleValue(item, selected, setSelected)}
+                              className="catalog-checkbox h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
+                            />
+                            <span>{item}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            );
+          }
+
+          return filterGroups.map(([title, items]) => (
+            <section key={title}>
+              <h2
+                className={`${isOverlay ? "text-[16px] 2xl:text-[18px]" : "text-[20px] 2xl:text-[22px]"} uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+              >
+                {title}
+              </h2>
+              <div
+                className={[
+                  "mt-3 border-t border-[#e7e1d9]",
+                  isOverlay ? "pt-4 [column-gap:26px] xl:columns-2" : "space-y-5 pt-5",
+                ].join(" ")}
+              >
+                {items.map((item, index) => {
+                  const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
+                  const [selected, setSelected] = getFilterState(String(title));
+
+                  return (
+                    <label
+                      key={item}
+                      htmlFor={id}
+                      className={[
+                        "flex items-center gap-4 text-[#6f6f69]",
+                        isOverlay ? "mb-4 break-inside-avoid text-[14px] 2xl:text-[15px]" : "text-[18px] 2xl:text-[20px]",
+                      ].join(" ")}
+                    >
+                      <input
+                        id={id}
+                        type="checkbox"
+                        checked={selected.includes(item)}
+                        onChange={() => toggleValue(item, selected, setSelected)}
+                        className={[
+                          "catalog-checkbox border border-[#e1dbd2] transition-all duration-200",
+                          isOverlay ? "h-5 w-5" : "h-6 w-6",
+                        ].join(" ")}
+                      />
+                      <span>{item}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          ));
+        })()}
+        {mode === "full"
+          ? dynamicFilterGroups.map((group) => {
           const visibleFilters = group.filters;
 
           if (visibleFilters.length === 0) {
@@ -419,9 +551,84 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
           }
 
           return (
-            <section key={group.id} className="space-y-6">
-            <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{group.name}</h2>
-            {visibleFilters.map((filter) =>
+            <section key={group.id} className={isOverlay ? "space-y-4" : "space-y-6"}>
+            <h2
+              className={`${isOverlay ? "text-[16px] 2xl:text-[18px]" : "text-[20px] 2xl:text-[22px]"} uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+            >
+              {group.name}
+            </h2>
+            {isOverlay ? (
+              <>
+                {(() => {
+                  const numberFilters = visibleFilters.filter((filter) => filter.parameterType === "NUMBER");
+                  if (numberFilters.length === 0) return null;
+
+                  return (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                      {numberFilters.map((filter) => (
+                        <RangeFilter
+                          key={filter.id}
+                          title={`${filter.parameterName}${filter.unit ? ` (${filter.unit})` : ""}`}
+                          min={filter.min}
+                          max={filter.max}
+                          step={0.1}
+                          dense
+                          value={selectedNumericFilterDrafts[filter.id] ?? [filter.min, filter.max]}
+                          ariaLabelMin={`Минимум ${filter.parameterName.toLowerCase()}`}
+                          ariaLabelMax={`Максимум ${filter.parameterName.toLowerCase()}`}
+                          onChange={(value) => setSelectedNumericFilterDrafts((prev) => ({ ...prev, [filter.id]: value }))}
+                          onCommit={(value) => {
+                            const current = selectedNumericFilters[filter.id] ?? [filter.min, filter.max];
+                            if (current[0] === value[0] && current[1] === value[1]) return;
+                            setSelectedNumericFilters((prev) => ({ ...prev, [filter.id]: value }));
+                            setPage(1);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {visibleFilters
+                  .filter((filter) => filter.parameterType === "TEXT")
+                  .map((filter) => (
+                    <section key={filter.id}>
+                      <h3 className="text-[14px] uppercase tracking-[1.4px] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        {filter.parameterName}
+                      </h3>
+                      <div className="mt-3 border-t border-[#e7e1d9] pt-4 [column-gap:26px] xl:columns-2">
+                        {filter.values.map((item, index) => {
+                          const id = `${idPrefix}-${filter.id}-${index}`;
+                          const selected = selectedTextFilters[filter.id] ?? [];
+
+                          return (
+                            <label key={item} htmlFor={id} className="mb-4 flex break-inside-avoid items-center gap-4 text-[14px] text-[#6f6f69] 2xl:text-[15px]">
+                              <input
+                                id={id}
+                                type="checkbox"
+                                checked={selected.includes(item)}
+                                onChange={() => {
+                                  setSelectedTextFilters((prev) => {
+                                    const current = prev[filter.id] ?? [];
+                                    return {
+                                      ...prev,
+                                      [filter.id]: current.includes(item) ? current.filter((value) => value !== item) : [...current, item],
+                                    };
+                                  });
+                                  setPage(1);
+                                }}
+                                className="catalog-checkbox h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
+                              />
+                              <span>{item}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+              </>
+            ) : (
+              visibleFilters.map((filter) =>
                 filter.parameterType === "NUMBER" ? (
                   <RangeFilter
                     key={filter.id}
@@ -442,7 +649,9 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                   />
                 ) : (
                   <section key={filter.id}>
-                    <h3 className="text-[18px] uppercase tracking-[1.4px] 2xl:text-[20px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{filter.parameterName}</h3>
+                    <h3 className="text-[18px] uppercase tracking-[1.4px] 2xl:text-[20px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      {filter.parameterName}
+                    </h3>
                     <div className="mt-3 space-y-5 border-t border-[#e7e1d9] pt-5">
                       {filter.values.map((item, index) => {
                         const id = `${idPrefix}-${filter.id}-${index}`;
@@ -473,11 +682,73 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                     </div>
                   </section>
                 ),
-              )}
+              )
+            )}
           </section>
           );
-        })}
+        })
+          : null}
+
+        {mode === "compact" ? (
+          <button
+            type="button"
+            onClick={() => setAllFiltersOpen(true)}
+            className="h-12 w-full border border-[#e7e1d9] bg-white text-[13px] uppercase tracking-[1.4px] text-[#111] transition-colors hover:border-[#d3b46a] md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+          >
+            Все фильтры
+          </button>
+        ) : null}
       </div>
+    );
+  }
+
+  function renderCategoryTiles() {
+    return (
+      <section>
+        <div className="flex items-end justify-between gap-6">
+          <h2 className="text-[20px] uppercase tracking-[1.6px] md:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            Категории
+          </h2>
+          <span className="text-[13px] uppercase tracking-[1.3px] text-[#7a7a75] md:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+            Выберите раздел
+          </span>
+        </div>
+
+        <div
+          className="mt-4 grid content-start grid-cols-2 gap-2 auto-rows-[minmax(120px,170px)] sm:grid-cols-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4 2xl:grid-cols-5"
+          style={{ gridAutoFlow: "dense" }}
+        >
+          {categoryCards.map((category, index) => (
+            <a
+              key={category.slug}
+              href={`/catalog/category/${category.slug}`}
+              className={[
+                "group flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#e7e1d9] bg-white",
+                "transition-shadow hover:shadow-[0_16px_34px_rgba(38,35,31,0.08)]",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2b2a27]/40",
+                getCategorySizeClass(category.name, index),
+              ].join(" ")}
+            >
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-[#f7f7f9] p-2 md:p-3">
+                {category.image ? (
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    loading="lazy"
+                    className="max-h-full w-auto max-w-[90%] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="h-full w-full rounded-[14px] bg-[#f0efec]" aria-hidden />
+                )}
+              </div>
+
+              <div className="bg-white px-3 py-3 md:px-4 md:py-3">
+                <h3 className="text-[13px] font-medium leading-[1.2] md:text-[14px] [font-family:Manrope,system-ui]">{category.name}</h3>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -491,20 +762,65 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
           <div className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <a href="/" className="hover:text-[#111]">Главная</a>
             <span className="mx-2 text-[#b5b2ab]">/</span>
-            <a href="/catalog" className="hover:text-[#111]">Каталог</a>
+           <a href="/catalog" className="hover:text-[#111]">Каталог</a>
             <span className="mx-2 text-[#b5b2ab]">/</span>
-            <span>оборудование и климатические системы</span>
+            <span className="break-words">
+              {isCategoryPage ? (initialCategory ?? "") : "оборудование и климатические системы"}
+            </span>
           </div>
 
           <h1 className="mt-6 text-[clamp(2.2rem,9vw,7rem)] leading-[0.96] tracking-[-0.03em] md:mt-10 md:tracking-[-0.04em] 2xl:leading-[0.92] [font-family:'Cormorant_Garamond',serif]">
             Каталог оборудования
           </h1>
           <p className="mt-4 text-[clamp(0.9rem,3.8vw,1.5rem)] uppercase tracking-[1.3px] text-[#7a7a75] md:mt-8 md:tracking-[1.6px] 2xl:text-[24px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            Найдено: {filteredProducts.length} товаров
+            {filteredProducts.length} товаров в наличии
           </p>
 
           <div className="mt-8 flex flex-col gap-8 md:mt-12 md:gap-10 xl:flex-row 2xl:gap-14">
-            <aside className="hidden w-full xl:block xl:max-w-[360px] 2xl:max-w-[420px]">{renderFilters("desktop")}</aside>
+            <aside className="hidden w-full xl:sticky xl:top-8 xl:block xl:max-h-[calc(100vh-4rem)] xl:overflow-y-auto xl:self-start xl:max-w-[360px] 2xl:max-w-[420px]">
+              {renderFilters("desktop", "compact")}
+            </aside>
+
+            <div className={`fixed inset-0 z-50 ${allFiltersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!allFiltersOpen}>
+              <button
+                type="button"
+                aria-label="Закрыть фильтры"
+                onClick={() => setAllFiltersOpen(false)}
+                className={`absolute inset-0 bg-black/35 transition-opacity duration-300 ${allFiltersOpen ? "opacity-100" : "opacity-0"}`}
+              />
+              <div className={`absolute inset-0 px-4 py-10 transition-opacity duration-300 md:px-10 md:py-14 ${allFiltersOpen ? "opacity-100" : "opacity-0"}`}>
+                <div className="mx-auto h-full max-w-[1480px] 2xl:max-w-[1860px]">
+                  <aside
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Все фильтры"
+                    className="h-full w-full overflow-hidden border border-[#e7e1d9] bg-white px-5 py-5 shadow-2xl md:px-6 md:py-6"
+                  >
+                    <div className="mb-5 flex items-center justify-between border-b border-[#e7e1d9] pb-3 md:mb-6">
+                      <p className="text-[18px] uppercase tracking-[1.4px] [font-family:Jaldi,'JetBrains_Mono',monospace] md:text-[20px]">
+                        Все фильтры
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setAllFiltersOpen(false)}
+                        className="text-[28px] leading-none text-[#111] md:text-[32px]"
+                        aria-label="Закрыть фильтры"
+                      >
+                        x
+                      </button>
+                    </div>
+                    {renderFilters("desktop-all", "full", "overlay")}
+                    <button
+                      type="button"
+                      onClick={() => setAllFiltersOpen(false)}
+                      className="mt-6 h-11 w-full bg-[#111] text-[13px] uppercase tracking-[1.4px] text-white md:mt-7 md:h-12 md:text-[14px] md:tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      Показать товары
+                    </button>
+                  </aside>
+                </div>
+              </div>
+            </div>
 
             <div className={`fixed inset-0 z-50 xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!filtersOpen}>
               <button
@@ -524,7 +840,7 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                     x
                   </button>
                 </div>
-                {renderFilters("mobile")}
+                {renderFilters("mobile", "full")}
                 <button
                   type="button"
                   onClick={() => setFiltersOpen(false)}
@@ -536,7 +852,21 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
             </div>
 
             <div className="flex-1">
-              <div className="flex items-center gap-4">
+              {isLanding && !hasActiveFilters ? <div className="mb-10">{renderCategoryTiles()}</div> : null}
+
+              {isLanding ? (
+                <div className="mb-6 md:mb-8">
+                  <h2 className="text-[22px] uppercase tracking-[1.6px] md:text-[26px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Популярные товары
+                  </h2>
+                  <p className="mt-2 text-[14px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Показано {pageProducts.length} из {filteredProducts.length}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="sticky top-[var(--site-header-offset,76px)] z-30 bg-[#e1ddd6] py-3 md:py-4">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
                 <button
                   type="button"
                   onClick={() => setFiltersOpen(true)}
@@ -544,44 +874,61 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                 >
                   фильтры
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced((prev) => !prev)}
-                  className="flex h-12 w-12 items-center justify-center border border-[#e7e1d9] transition-colors hover:border-[#d3b46a] md:h-16 md:w-16 2xl:h-[72px] 2xl:w-[72px]"
-                  aria-pressed={showAdvanced}
-                  aria-label="Показать расширенные фильтры и сортировку"
-                >
-                  <img src="/catalog/list-icon.png" alt="" aria-hidden="true" width="28" height="28" className="h-5 w-5 object-contain md:h-7 md:w-7" />
-                </button>
-                <div className="flex h-12 flex-1 items-center justify-between border border-[#e7e1d9] px-3 md:h-16 md:px-5 2xl:h-[72px] 2xl:px-6">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Поиск по каталогу"
-                    className="w-full border-0 bg-transparent text-[16px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none md:text-[26px] 2xl:text-[30px] [font-family:DM_Sans,Manrope,sans-serif]"
-                  />
-                  {query ? (
+
+                <div className="ml-auto flex items-center gap-3 md:gap-4">
+                  {hasActiveFilters ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setQuery("");
+                      onClick={resetAllFilters}
+                      className="flex h-12 items-center justify-center border border-[#e7e1d9] bg-[#fff] px-4 text-[13px] uppercase tracking-[1.2px] text-[#111] transition-colors hover:border-[#d3b46a] md:h-16 md:px-5 md:text-[16px] md:tracking-[1.6px] 2xl:h-[72px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      Сбросить
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced((prev) => !prev)}
+                    className="flex h-12 w-12 items-center justify-center border border-[#e7e1d9] bg-[#fff] transition-colors hover:border-[#d3b46a] md:h-16 md:w-16 2xl:h-[72px] 2xl:w-[72px]"
+                    aria-pressed={showAdvanced}
+                    aria-label="Показать расширенные фильтры и сортировку"
+                  >
+                    <img src="/catalog/list-icon.png" alt="" aria-hidden="true" width="28" height="28" className="h-5 w-5 object-contain md:h-7 md:w-7" />
+                  </button>
+
+                  <div className="relative flex h-12 w-[min(76vw,380px)] items-center border border-[#e7e1d9] bg-[#fff] pl-11 pr-3 transition-colors focus-within:border-[#d3b46a] md:h-16 md:w-[380px] md:pl-12 md:pr-4 2xl:h-[72px] 2xl:w-[420px] 2xl:pl-14 2xl:pr-5">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7a7a75] md:left-4 2xl:left-5">
+                      <circle cx="11" cy="11" r="6.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                      <path d="M16.2 16.2l4.3 4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
                         setPage(1);
                       }}
-                      className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
-                      aria-label="Очистить поиск"
-                    >
-                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
-                        <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <img src="/catalog/search-arrow.png" alt="" aria-hidden="true" width="32" height="32" className="h-6 w-6 object-contain md:h-8 md:w-8 2xl:h-9 2xl:w-9" />
-                  )}
+                      placeholder="Поиск по каталогу"
+                      className="w-full border-0 bg-transparent text-[16px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none md:text-[20px] 2xl:text-[22px] [font-family:DM_Sans,Manrope,sans-serif]"
+                    />
+                    {query ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuery("");
+                          setPage(1);
+                        }}
+                        className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
+                        aria-label="Очистить поиск"
+                      >
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
+                          <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
                 </div>
               </div>
 
@@ -601,33 +948,11 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                       ))}
                     </div>
                   </div>
-                  <div className="mt-8 grid gap-8 md:grid-cols-2">
-                    <div>
-                      <p className="text-[14px] uppercase tracking-[2px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Дополнительные фильтры</p>
-                      <p className="mt-3 text-[18px] leading-7 text-[#5f5f5a]">
-                        Здесь можно включить расширенные параметры подбора: шум, класс эффективности, сценарии установки и дополнительные опции.
-                      </p>
-                    </div>
-                    <div className="space-y-4">
-                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
-                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
-                        Тихий режим (до 19 дБ)
-                      </label>
-                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
-                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
-                        Премиальная фильтрация
-                      </label>
-                      <label className="flex items-center gap-3 text-[16px] text-[#6f6f69]">
-                        <input type="checkbox" className="catalog-checkbox h-6 w-6 border border-[#e1dbd2]" />
-                        Монтаж под ключ
-                      </label>
-                    </div>
-                  </div>
                 </div>
               ) : (
                 <div
                   key={resultsAnimationKey}
-                  className="catalog-results mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 2xl:gap-10"
+                  className={`catalog-results mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-2 ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
                 >
                   {pageProducts.map((product, index) => (
                     <article
@@ -686,7 +1011,23 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
                 </div>
               ) : null}
 
-              {totalPages > 1 ? (
+              {isLanding ? (
+                pageProducts.length < filteredProducts.length ? (
+                  <div className="mt-10 border-t border-[#ebe5de] pt-7 md:mt-14 md:pt-10">
+                    <button
+                      type="button"
+                      onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                      className="mx-auto flex h-14 w-full max-w-[420px] items-center justify-center bg-[#111] text-[14px] uppercase tracking-[1.5px] text-white transition-colors hover:bg-[#2a2a26] md:h-16 md:text-[16px] md:tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    >
+                      Загрузить еще
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-8 border-t border-[#ebe5de] pt-6 text-center text-[14px] uppercase tracking-[1.2px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mt-10">
+                    Все товары загружены
+                  </div>
+                )
+              ) : totalPages > 1 ? (
                 <div className="mt-10 border-t border-[#ebe5de] pt-7 md:mt-14 md:pt-10">
                   <div className="mx-auto grid max-w-[420px] grid-cols-[1fr_auto_1fr] items-center gap-3 text-[14px] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mx-0 md:max-w-none md:text-[18px] md:tracking-[2px]">
                     <button
@@ -739,6 +1080,18 @@ export function CatalogPage({ products, initialCategory }: CatalogPageProps) {
   );
 }
 
+function getCategorySizeClass(categoryName: string, index: number) {
+  if (categoryName.trim().toLowerCase() === "конвекторы") {
+    return "";
+  }
+
+  const pattern = index % 12;
+
+  if (pattern === 0 || pattern === 7) return "md:row-span-2";
+  if (pattern === 5) return "md:row-span-2";
+  return "";
+}
+
 type DoubleRangeProps = {
   min: number;
   max: number;
@@ -746,12 +1099,26 @@ type DoubleRangeProps = {
   value: [number, number];
   ariaLabelMin: string;
   ariaLabelMax: string;
+  snapMaxToEnd?: boolean;
+  showPercent?: boolean;
   formatValue: (value: number) => string;
   onChange: (value: [number, number]) => void;
   onCommit: (value: [number, number]) => void;
 };
 
-function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, formatValue, onChange, onCommit }: DoubleRangeProps) {
+function DoubleRange({
+  min,
+  max,
+  step,
+  value,
+  ariaLabelMin,
+  ariaLabelMax,
+  snapMaxToEnd = false,
+  showPercent = true,
+  formatValue,
+  onChange,
+  onCommit,
+}: DoubleRangeProps) {
   const [from, to] = value;
   const lastValueRef = useRef<[number, number]>(value);
 
@@ -775,18 +1142,28 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
       </div>
     );
   }
-  const distance = max - min || 1;
-  const minPercent = ((from - min) / distance) * 100;
-  const maxPercent = ((to - min) / distance) * 100;
+  const trackMax = snapMaxToEnd ? Math.floor((max - min) / step) * step + min : max;
+  const sliderFrom = Math.max(min, Math.min(from, trackMax));
+  const sliderTo = Math.max(min, Math.min(to, trackMax));
+
+  const distance = trackMax - min || 1;
+  const minPercent = ((sliderFrom - min) / distance) * 100;
+  const maxPercent = ((sliderTo - min) / distance) * 100;
 
   function updateMin(next: number) {
-    const nextValue: [number, number] = [Math.min(next, to - step), to];
+    const maxAllowedFrom = (snapMaxToEnd ? sliderTo : to) - step;
+    const nextFrom = Math.max(min, Math.min(next, maxAllowedFrom));
+    const nextValue: [number, number] = [nextFrom, to];
     lastValueRef.current = nextValue;
     onChange(nextValue);
   }
 
   function updateMax(next: number) {
-    const nextValue: [number, number] = [from, Math.max(next, from + step)];
+    const shouldSnapToMax = snapMaxToEnd && next >= trackMax;
+    const nextMax = shouldSnapToMax ? max : next;
+    const minAllowedTo = (snapMaxToEnd ? sliderFrom : from) + step;
+    const nextTo = Math.min(max, Math.max(nextMax, minAllowedTo));
+    const nextValue: [number, number] = [from, nextTo];
     lastValueRef.current = nextValue;
     onChange(nextValue);
   }
@@ -799,15 +1176,15 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
     <div className="catalog-double-range mt-5" style={{ "--range-start": `${minPercent}%`, "--range-end": `${maxPercent}%` } as CSSProperties}>
       <div className="mb-3 flex items-center justify-between text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
         <span>{formatValue(from)}</span>
-        <span>{formatValue(to)}</span>
+        <span>{formatValue(snapMaxToEnd && sliderTo >= trackMax ? max : to)}</span>
       </div>
       <div className="catalog-double-range__control">
         <input
           type="range"
           min={min}
-          max={max}
+          max={trackMax}
           step={step}
-          value={from}
+          value={sliderFrom}
           aria-label={ariaLabelMin}
           data-range="min"
           onChange={(event) => updateMin(Number(event.target.value))}
@@ -819,9 +1196,9 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
         <input
           type="range"
           min={min}
-          max={max}
+          max={trackMax}
           step={step}
-          value={to}
+          value={sliderTo}
           aria-label={ariaLabelMax}
           data-range="max"
           onChange={(event) => updateMax(Number(event.target.value))}
@@ -831,9 +1208,11 @@ function DoubleRange({ min, max, step, value, ariaLabelMin, ariaLabelMax, format
           onBlur={commitCurrentValue}
         />
       </div>
-      <div className="mt-3 text-center text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-        {Math.round(maxPercent - minPercent)}%
-      </div>
+      {showPercent ? (
+        <div className="mt-3 text-center text-[14px] text-[#7a7a75] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          {Math.round(maxPercent - minPercent)}%
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -846,20 +1225,25 @@ type RangeFilterProps = {
   value: [number, number];
   ariaLabelMin: string;
   ariaLabelMax: string;
+  dense?: boolean;
   onChange: (value: [number, number]) => void;
   onCommit: (value: [number, number]) => void;
 };
 
-function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax, onChange, onCommit }: RangeFilterProps) {
+function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax, dense = false, onChange, onCommit }: RangeFilterProps) {
   return (
     <section>
-      <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
-      <div className="mt-3 border-t border-[#e7e1d9] pt-5">
+      <h2 className={`${dense ? "text-[16px] 2xl:text-[18px]" : "text-[20px] 2xl:text-[22px]"} uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}>{title}</h2>
+      <div className={`mt-3 border-t border-[#e7e1d9] ${dense ? "pt-4" : "pt-5"}`}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] 2xl:text-[20px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <div
+            className={`${dense ? "px-3 py-3 text-[14px] 2xl:text-[15px]" : "px-4 py-4 text-[18px] 2xl:text-[20px]"} border border-[#e7e1d9] text-center uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+          >
             мин: {value[0].toFixed(1)}
           </div>
-          <div className="border border-[#e7e1d9] px-4 py-4 text-center text-[18px] uppercase tracking-[1.3px] 2xl:text-[20px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <div
+            className={`${dense ? "px-3 py-3 text-[14px] 2xl:text-[15px]" : "px-4 py-4 text-[18px] 2xl:text-[20px]"} border border-[#e7e1d9] text-center uppercase tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+          >
             макс: {value[1].toFixed(1)}
           </div>
         </div>
@@ -870,6 +1254,7 @@ function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax,
           value={value}
           ariaLabelMin={ariaLabelMin}
           ariaLabelMax={ariaLabelMax}
+          showPercent={!dense}
           formatValue={(rangeValue) => rangeValue.toFixed(1)}
           onChange={onChange}
           onCommit={onCommit}

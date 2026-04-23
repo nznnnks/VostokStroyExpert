@@ -26,6 +26,7 @@ try {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{product.metaTitle ?? product.title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content={product.metaDescription ?? `${product.title}. ${product.brandLabel}. ${product.category}.`} />
     {product.metaKeywords ? <meta name="keywords" content={product.metaKeywords} /> : null}
     <link rel="preconnect" href="https://fonts.googleapis.com" />

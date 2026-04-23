@@ -597,7 +597,12 @@ function mapApiProduct(product: ApiProduct): Product {
   const volumeFilter = filters.find((item) => item.parameterSlug === "volume" && item.parameterType === "NUMBER");
   const power = typeof product.power === "number" ? product.power : powerFilter?.numericValue ?? 0;
   const volume = typeof product.volume === "number" ? product.volume : volumeFilter?.numericValue ?? 0;
-  const actualPrice = typeof product.finalPrice === "number" ? product.finalPrice : product.price;
+  const rawPrice = (product as unknown as { price?: unknown }).price;
+  const rawFinalPrice = (product as unknown as { finalPrice?: unknown }).finalPrice;
+  const parsedPrice = typeof rawPrice === "number" ? rawPrice : typeof rawPrice === "string" ? Number(rawPrice) : NaN;
+  const parsedFinalPrice =
+    typeof rawFinalPrice === "number" ? rawFinalPrice : typeof rawFinalPrice === "string" ? Number(rawFinalPrice) : NaN;
+  const actualPrice = Number.isFinite(parsedFinalPrice) ? parsedFinalPrice : Number.isFinite(parsedPrice) ? parsedPrice : product.price;
 
   return {
     slug: product.slug,
