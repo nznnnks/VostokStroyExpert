@@ -320,74 +320,105 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
             )}
           </div>
 
-          <div className="mt-10 grid gap-10 md:mt-16 md:gap-12 xl:grid-cols-[1fr_530px]">
-            {activeDetailsTab === "description" ? (
-              <>
-                <div id="description">
-                  <h2 className="text-[clamp(2rem,3.4vw,4rem)] leading-none [font-family:'Cormorant_Garamond',serif]">
-                    {product.title}
-                  </h2>
-                  <div className="mt-6 max-w-[930px] space-y-6 text-[clamp(1rem,1.2vw,1.5rem)] leading-[1.7] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif] md:mt-10 md:space-y-10">
-                    <p>{product.description?.[0]}</p>
-                    <p>{product.description?.[1]}</p>
-                  </div>
-                </div>
-
-                <aside className="border border-[#e8e3db]">
-                  <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
-                    Отзывы
-                  </div>
-                  <div className="px-5 py-6 md:px-8 md:py-10">
-                    <div className="space-y-6">
-                      {reviews.map((review) => (
-                        <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={review.avatar}
-                              alt=""
-                              aria-hidden="true"
-                              width="44"
-                              height="44"
-                              loading="lazy"
-                              decoding="async"
-                              className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
-                            />
-                            <div className="min-w-0">
-                              <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
-                                {review.name}
-                              </p>
-                              <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                                {review.rating}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
-                            {review.text}
-                          </p>
-                        </article>
-                      ))}
+          <div className="mt-10 md:mt-16">
+            <div
+              aria-hidden={activeDetailsTab !== "description"}
+              className={`grid transition-[grid-template-rows] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                activeDetailsTab === "description" ? "grid-rows-[1fr]" : "grid-rows-[0fr] pointer-events-none"
+              }`}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div
+                  className={`grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px] transform-gpu transition-[opacity,transform] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform] motion-reduce:transition-none ${
+                    activeDetailsTab === "description" ? "opacity-100 translate-y-0 delay-100" : "opacity-0 -translate-y-1 delay-0"
+                  }`}
+                >
+                  <div
+                    id="description"
+                    className="rounded-[26px] border border-[#e8e3db] bg-[#fff] px-6 py-8 md:px-10 md:py-12"
+                  >
+                    <h2 className="text-[clamp(2rem,3.4vw,4rem)] leading-none [font-family:'Cormorant_Garamond',serif]">
+                      {product.title}
+                    </h2>
+                    <div className="mt-6 max-w-[930px] space-y-6 text-[clamp(1rem,1.2vw,1.5rem)] leading-[1.7] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif] md:mt-10 md:space-y-10">
+                      <p>{product.description?.[0]}</p>
+                      <p>{product.description?.[1]}</p>
                     </div>
                   </div>
-                </aside>
-              </>
-            ) : (
-              <div id="specs" className="border border-[#e8e3db] xl:col-span-2">
-                <div className="flex flex-col gap-2 border-b border-[#e8e3db] px-5 py-7 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] sm:flex-row sm:items-center sm:justify-between md:px-8 md:py-12">
-                  <span>Характеристики</span>
-                  <span className="text-[#111]">{product.brandLabel}</span>
-                </div>
-                {specs.map(([label, value]) => (
-                  <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
-                    <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
-                    <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
-                  </div>
-                ))}
-                <div className="px-5 py-5 md:px-6 md:py-6">
-                  <span className="text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">Артикул</span>
-                  <p className="mt-2 text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{product.article}</p>
+
+                  <aside className="border border-[#e8e3db] bg-[#fff]">
+                    <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
+                      Отзывы
+                    </div>
+                    <div className="px-5 py-6 md:px-8 md:py-10">
+                      <div className="space-y-6">
+                        {reviews.map((review) => (
+                          <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
+                            <div className="flex items-center gap-4">
+                              <img
+                                src={review.avatar}
+                                alt=""
+                                aria-hidden="true"
+                                width="44"
+                                height="44"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
+                                  {review.name}
+                                </p>
+                                <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                                  {review.rating}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
+                              {review.text}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  </aside>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div
+              aria-hidden={activeDetailsTab !== "specs"}
+              className={`grid transition-[grid-template-rows] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                activeDetailsTab === "specs" ? "grid-rows-[1fr]" : "grid-rows-[0fr] pointer-events-none"
+              }`}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div
+                  className={`grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px] transform-gpu transition-[opacity,transform] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform] motion-reduce:transition-none ${
+                    activeDetailsTab === "specs" ? "opacity-100 translate-y-0 delay-100" : "opacity-0 -translate-y-1 delay-0"
+                  }`}
+                >
+                  <div id="specs" className="overflow-hidden rounded-[26px] border border-[#e8e3db] bg-[#fff]">
+                    <div className="flex flex-col gap-2 border-b border-[#e8e3db] px-5 py-7 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] sm:flex-row sm:items-center sm:justify-between md:px-8 md:py-12">
+                      <span>Характеристики</span>
+                      <span className="text-[#111]">{product.brandLabel}</span>
+                    </div>
+                    {specs.map(([label, value]) => (
+                      <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
+                        <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
+                        <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
+                      </div>
+                    ))}
+                    <div className="px-5 py-5 md:px-6 md:py-6">
+                      <span className="text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">Артикул</span>
+                      <p className="mt-2 text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{product.article}</p>
+                    </div>
+                  </div>
+
+                  <div className="hidden xl:block" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
