@@ -6,11 +6,20 @@ const source = resolve(root, "public/assets/stayse");
 const target = resolve(root, "dist/assets/stayse");
 const assetsDir = resolve(root, "dist/assets");
 
+function safeRemoveDir(path) {
+  rmSync(path, { recursive: true, force: true, maxRetries: 12, retryDelay: 60 });
+}
+
 if (existsSync(source)) {
   mkdirSync(assetsDir, { recursive: true });
 
   if (existsSync(target)) {
-    rmSync(target, { recursive: true, force: true });
+    try {
+      safeRemoveDir(target);
+    } catch (error) {
+      console.warn("[sync-stayse-assets] remove failed, retrying...", error?.code ?? error);
+      safeRemoveDir(target);
+    }
   }
 
   cpSync(source, target, { recursive: true, force: true });

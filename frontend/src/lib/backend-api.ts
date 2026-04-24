@@ -574,6 +574,10 @@ function mapProductFilters(product: ApiProduct): ProductFilter[] {
         return null;
       }
 
+      if (item.parameter.isActive === false) {
+        return null;
+      }
+
       return {
         parameterId: item.parameterId,
         parameterName: item.parameter.name,
@@ -618,8 +622,8 @@ function mapApiProduct(product: ApiProduct): Product {
     power,
     volume,
     price: actualPrice,
-    rating: product.rating ?? `Мощность: ${power.toFixed(1)} кВт`,
-    efficiency: product.efficiency ?? "Энергоэффективность уточняется",
+    rating: product.rating ?? (power >= 0.1 ? `Мощность: ${power.toFixed(1)} кВт` : ""),
+    efficiency: product.efficiency && /уточняется/i.test(product.efficiency) ? "" : product.efficiency ?? "",
     efficiencyClass: product.efficiencyClass ?? undefined,
     coverage: product.coverage ?? undefined,
     acoustics: product.acoustics ?? undefined,

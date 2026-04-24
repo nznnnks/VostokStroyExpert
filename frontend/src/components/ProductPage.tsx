@@ -72,12 +72,21 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
   const [isImageTransitioning, setIsImageTransitioning] = useState(false);
   const [activeDetailsTab, setActiveDetailsTab] = useState<"description" | "specs">("description");
   const countryFlag = toFlagEmoji(product.country);
-  const specs = [
+  const topSpecs = [
     ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
     ["Площадь покрытия", product.coverage ?? "До 100 м²"],
     ["Акустика (тихий режим)", product.acoustics ?? "20 дБ"],
     ["Фильтрация", product.filtration ?? "HEPA 13"],
   ];
+  const detailsSpecs =
+    product.filters && product.filters.length > 0
+      ? product.filters
+          .map((item) => {
+            const unitSuffix = item.unit && item.value && !item.value.includes(item.unit) ? ` ${item.unit}` : "";
+            return [item.parameterName, `${item.value}${unitSuffix}`] as const;
+          })
+          .slice(0, 28)
+      : topSpecs;
   const allList = (allProducts ?? []).filter((item) => item.slug !== product.slug);
   const primaryRelated = relatedProducts && relatedProducts.length > 0 ? relatedProducts : allList;
   const combinedRelated = [
@@ -252,7 +261,7 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
               <p className="mt-6 text-[clamp(1.7rem,2.6vw,2.6rem)] leading-none text-[#111] [font-family:DM_Sans,Manrope,sans-serif] md:mt-8">{formatPrice(product.price)}</p>
 
               <dl className="mt-8 divide-y divide-[#e8e3db] border-y border-[#e8e3db] md:mt-14">
-                {specs.map(([label, value]) => (
+                {topSpecs.map(([label, value]) => (
                   <div key={label} className="grid gap-1 py-4 md:grid-cols-[1fr_auto] md:gap-6 md:py-5">
                     <dt className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</dt>
                     <dd className="text-left text-[clamp(0.95rem,1vw,1.15rem)] text-[#111] [font-family:DM_Sans,Manrope,sans-serif] md:text-right">{value}</dd>
@@ -403,12 +412,12 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                       <span>Характеристики</span>
                       <span className="text-[#111]">{product.brandLabel}</span>
                     </div>
-                    {specs.map(([label, value]) => (
-                      <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
-                        <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
-                        <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
-                      </div>
-                    ))}
+                  {detailsSpecs.map(([label, value]) => (
+                    <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
+                      <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
+                      <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
+                    </div>
+                  ))}
                     <div className="px-5 py-5 md:px-6 md:py-6">
                       <span className="text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">Артикул</span>
                       <p className="mt-2 text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{product.article}</p>

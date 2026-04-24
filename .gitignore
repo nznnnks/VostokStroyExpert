@@ -10,4 +10,6 @@ backend/uploads/
 *.mp4
 *.glb
 photo_*.jpeg
+# local catalog import data (too large for git/GitHub)
+import/catalog.csv
 Снимок экрана *.png

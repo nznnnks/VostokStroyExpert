@@ -215,6 +215,7 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [allFiltersOpen, setAllFiltersOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"popular" | "new" | "price-asc" | "price-desc">("popular");
+  const isSortApplied = sortMode !== "popular";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [pendingCartSlug, setPendingCartSlug] = useState<string | null>(null);
 
@@ -346,6 +347,8 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     );
   }, [productsBeforePriceFilter, globalMaxProductPrice]);
 
+  const previousMaxProductPriceRef = useRef(maxProductPrice);
+
   function clampPriceRangeToMax(range: [number, number], max: number): [number, number] {
     const safeMax = Number.isFinite(max) ? max : globalMaxProductPrice;
     const nextFrom = Math.max(0, Math.min(range[0], safeMax));
@@ -355,8 +358,27 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   }
 
   useEffect(() => {
-    setPriceRange((current) => clampPriceRangeToMax(current, maxProductPrice));
-    setPriceRangeDraft((current) => clampPriceRangeToMax(current, maxProductPrice));
+    const previousMax = previousMaxProductPriceRef.current;
+
+    setPriceRange((current) => {
+      const wasPinnedToMax = current[1] === previousMax;
+      const clamped = clampPriceRangeToMax(current, maxProductPrice);
+      if (wasPinnedToMax && maxProductPrice > previousMax) {
+        return [clamped[0], maxProductPrice];
+      }
+      return clamped;
+    });
+
+    setPriceRangeDraft((current) => {
+      const wasPinnedToMax = current[1] === previousMax;
+      const clamped = clampPriceRangeToMax(current, maxProductPrice);
+      if (wasPinnedToMax && maxProductPrice > previousMax) {
+        return [clamped[0], maxProductPrice];
+      }
+      return clamped;
+    });
+
+    previousMaxProductPriceRef.current = maxProductPrice;
   }, [maxProductPrice]);
 
   const filteredProducts = useMemo(() => {
@@ -553,14 +575,14 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     { id: "new", label: "Сначала новые" },
   ] as const;
 
-  function cycleSortMode() {
+  function toggleSortPanel() {
+    setShowAdvanced((prev) => !prev);
+  }
+
+  function resetSortMode() {
+    setSortMode("popular");
     setPage(1);
-    setSortMode((current) => {
-      if (current === "popular") return "price-asc";
-      if (current === "price-asc") return "price-desc";
-      if (current === "price-desc") return "popular";
-      return "popular";
-    });
+    setShowAdvanced(false);
   }
 
   function getFilterState(title: string) {
@@ -766,7 +788,7 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
         {(() => {
           const filterGroups = [
-            ["Бренд", brands],
+            ...(mode === "full" ? ([["Бренд", brands]] as const) : ([] as const)),
             ...(mode === "full" ? ([["Страна производства", countries]] as const) : ([] as const)),
             ...(!isLandingCategoryFilters && !isCategoryPage && mode === "full" && !isOverlay ? ([["Тип", types]] as const) : ([] as const)),
           ] as const;
@@ -1249,11 +1271,12 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
                         <button
                           type="button"
-                          onClick={cycleSortMode}
+                          onClick={isSortApplied ? resetSortMode : toggleSortPanel}
+                          aria-expanded={showAdvanced}
                           className="flex h-12 items-center justify-center overflow-hidden rounded-[20px] border border-[#e7e1d9] bg-white px-3 text-center text-[11px] uppercase leading-[1.05] tracking-[1px] text-[#111] transition-colors hover:border-[#d3b46a] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                           aria-label="Изменить сортировку"
                         >
-                          <span key={sortMode} className="catalog-sort-label-roll">
+                          <span key={sortMode} className={`catalog-sort-label-roll ${isSortApplied ? "hidden" : ""}`}>
                             {sortMode === "price-asc"
                               ? "по цене ↑"
                               : sortMode === "price-desc"
@@ -1262,6 +1285,11 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                                   ? "сначала новые"
                                   : "по популярности"}
                           </span>
+                          {isSortApplied ? (
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                              <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                          ) : null}
                         </button>
 
                         <button
@@ -1316,12 +1344,24 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
                       <button
                         type="button"
-                        onClick={() => setShowAdvanced((prev) => !prev)}
+                        onClick={isSortApplied ? resetSortMode : () => setShowAdvanced((prev) => !prev)}
                         className="hidden h-12 w-12 items-center justify-center rounded-[20px] border border-[#e7e1d9] bg-white transition-colors hover:border-[#d3b46a] md:flex md:h-16 md:w-16 2xl:h-[72px] 2xl:w-[72px]"
                         aria-pressed={showAdvanced}
                         aria-label="Показать расширенные фильтры и сортировку"
                       >
-                        <img src="/catalog/list-icon.png" alt="" aria-hidden="true" width="28" height="28" className="h-5 w-5 object-contain md:h-7 md:w-7" />
+                        <img
+                          src="/catalog/list-icon.png"
+                          alt=""
+                          aria-hidden="true"
+                          width="28"
+                          height="28"
+                          className={`h-5 w-5 object-contain md:h-7 md:w-7 ${isSortApplied ? "hidden" : ""}`}
+                        />
+                        {isSortApplied ? (
+                          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          </svg>
+                        ) : null}
                       </button>
 
                       <div className="relative hidden h-12 min-w-0 flex-1 items-center rounded-[20px] border border-[#e7e1d9] bg-white pl-11 pr-3 transition-colors focus-within:border-[#d3b46a] md:flex md:h-16 md:w-[380px] md:flex-none md:pl-12 md:pr-4 2xl:h-[72px] 2xl:w-[420px] 2xl:pl-14 2xl:pr-5">
@@ -1358,94 +1398,115 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                       </div>
                     </div>
                   </div>
+
+                  <div
+                    className={`mt-3 overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out ${
+                      showAdvanced ? "pointer-events-auto max-h-[420px] opacity-100 translate-y-0" : "pointer-events-none max-h-0 opacity-0 -translate-y-1"
+                    }`}
+                    aria-hidden={!showAdvanced}
+                  >
+                    <div className="ml-auto w-full md:w-fit">
+                      <div className="rounded-[28px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-2 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px] md:rounded-[32px] md:p-3">
+                        <div className="flex items-center justify-between gap-3 border-b border-[#e7e1d9] pb-3 md:pb-4">
+                          <p className="text-[11px] uppercase tracking-[1.4px] text-[#7a7a75] md:text-[13px] md:tracking-[1.8px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            Сортировка
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced(false)}
+                            className="flex h-9 w-9 items-center justify-center rounded-[16px] border border-[#e7e1d9] bg-white text-[#7a7a75] transition-colors hover:border-[#d3b46a] hover:text-[#111] md:h-10 md:w-10"
+                            aria-label="Закрыть сортировку"
+                          >
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                              <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2 md:mt-4 md:gap-3">
+                          {quickSortOptions.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setSortMode(option.id);
+                                setPage(1);
+                                setShowAdvanced(false);
+                              }}
+                              className={`flex h-11 items-center justify-center rounded-[20px] border px-3 text-[11px] uppercase tracking-[1px] transition-colors md:h-14 md:px-4 md:text-[14px] md:tracking-[1.4px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                                sortMode === option.id
+                                  ? "border-[#111] bg-[#111] text-white"
+                                  : "border-[#e7e1d9] bg-white text-[#111] hover:border-[#d3b46a]"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div ref={resultsTopRef} id="catalog-results-top" />
-                {showAdvanced ? (
-                  <div className="mt-10 border border-[#ebe5de] bg-white p-8 2xl:p-10">
-                  <div className="flex flex-wrap items-center justify-between gap-6 border-b border-[#e7e1d9] pb-6">
-                    <div>
-                      <p className="text-[14px] uppercase tracking-[2px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Сортировка</p>
-                      <p className="mt-2 text-[28px] [font-family:'Cormorant_Garamond',serif]">Выберите порядок показа товаров</p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-[14px] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                      {quickSortOptions.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            setSortMode(option.id);
-                            setPage(1);
-                          }}
-                          className={`border px-4 py-2 ${
-                            sortMode === option.id
-                              ? "border-[#111] bg-[#111] text-white"
-                              : "border-[#111] text-[#111] hover:border-[#d3b46a] hover:text-[#7f6522]"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                ) : (
-                  <div
-                    key={resultsAnimationKey}
-                    className={`catalog-results mt-10 grid grid-cols-2 gap-4 md:gap-8 lg:grid-cols-2 ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
-                  >
-                    {pageProducts.map((product, index) => (
-                      <article
-                        key={product.slug}
-                        style={{ animationDelay: `${index * 60}ms` }}
-                        className="catalog-card group flex h-full flex-col border border-[#ebe5de] bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] md:p-9 2xl:p-11"
-                      >
-                        <a href={`/catalog/${product.slug}`}>
-                          <img
-                            src={product.image}
-                            alt={product.title}
-                            width="600"
-                            height="600"
-                            loading="lazy"
-                            decoding="async"
-                            className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                          />
-                        </a>
-                        <div className="mt-4 flex flex-1 flex-col md:mt-8">
-                          <p className="text-[10px] uppercase tracking-[1.6px] text-[#7a7a75] md:text-[14px] md:tracking-[2.4px] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.brandLabel}</p>
-                          <h3 className="mt-3 min-h-[72px] break-words hyphens-auto text-[16px] leading-[1.12] md:mt-4 md:min-h-[120px] md:text-[26px] md:leading-[1.15] 2xl:min-h-[140px] 2xl:text-[30px] [font-family:DM_Sans,Manrope,sans-serif]">
-                            <a href={`/catalog/${product.slug}`} className="block break-words hyphens-auto">
-                              {product.title}
-                            </a>
-                          </h3>
-                          <div className="mt-3 min-h-[34px] space-y-0.5 text-[11px] leading-[1.35] text-[#7a7a75] md:mt-5 md:min-h-[56px] md:space-y-1 md:text-[17px] md:leading-7 2xl:min-h-[60px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                            <p>{product.rating}</p>
-                            <p>{product.efficiency}</p>
+
+                <div
+                  key={resultsAnimationKey}
+                  className={`catalog-results mt-10 grid grid-cols-2 gap-4 md:gap-8 lg:grid-cols-2 ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
+                >
+                  {pageProducts.map((product, index) => (
+                    <article
+                      key={product.slug}
+                      style={{ animationDelay: `${index * 60}ms` }}
+                      className="catalog-card group flex h-full flex-col border border-[#ebe5de] bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] md:p-6 2xl:p-8"
+                    >
+                      <a href={`/catalog/${product.slug}`}>
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          width="600"
+                          height="600"
+                          loading="lazy"
+                          decoding="async"
+                          className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        />
+                      </a>
+                      <div className="mt-4 flex flex-1 flex-col md:mt-8">
+                        <p className="text-[10px] uppercase tracking-[1.6px] text-[#7a7a75] md:text-[14px] md:tracking-[2.4px] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{product.brandLabel}</p>
+                        <h3 className="mt-3 min-h-[64px] break-words hyphens-auto text-[16px] leading-[1.12] md:mt-4 md:min-h-[92px] md:text-[22px] md:leading-[1.15] 2xl:min-h-[110px] 2xl:text-[26px] [font-family:DM_Sans,Manrope,sans-serif]">
+                          <a href={`/catalog/${product.slug}`} className="block break-words hyphens-auto">
+                            {stripArticleFromTitle(product.title, product.article)}
+                          </a>
+                        </h3>
+                        {sanitizeCardMetaLine(product.rating) || sanitizeCardMetaLine(product.efficiency) ? (
+                          <div className="mt-3 space-y-0.5 text-[11px] leading-[1.35] text-[#7a7a75] md:mt-4 md:space-y-1 md:text-[15px] md:leading-6 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            {sanitizeCardMetaLine(product.rating) ? <p>{sanitizeCardMetaLine(product.rating)}</p> : null}
+                            {sanitizeCardMetaLine(product.efficiency) ? <p>{sanitizeCardMetaLine(product.efficiency)}</p> : null}
                           </div>
-                          <p className="mt-auto pt-5 text-[clamp(1.15rem,3.6vw,1.5rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.9rem,3.8vw,2.6rem)] lg:text-[clamp(1.8rem,2.4vw,2.2rem)] 2xl:text-[clamp(2rem,1.9vw,2.5rem)] [font-family:DM_Sans,Manrope,sans-serif]">
-                            {formatPrice(product.price)}
-                          </p>
-                          <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
-                            <button
-                              type="button"
-                              onClick={() => void handleAddToCart(product.slug)}
-                              disabled={pendingCartSlug === product.slug}
-                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-all duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-16 md:text-[18px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                            >
-                              {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
-                            </button>
-                            <a
-                              href={`/checkout?buy=${product.slug}`}
-                              className="inline-flex min-h-[52px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-16 md:min-h-0 md:text-[18px] md:tracking-[2px] 2xl:h-[70px] 2xl:text-[19px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                            >
-                              купить в 1 клик
-                            </a>
-                          </div>
+                        ) : null}
+                        <p className="mt-auto pt-5 text-[clamp(1.15rem,3.6vw,1.5rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.9rem,3.8vw,2.6rem)] lg:text-[clamp(1.8rem,2.4vw,2.2rem)] 2xl:text-[clamp(2rem,1.9vw,2.5rem)] [font-family:DM_Sans,Manrope,sans-serif]">
+                          {formatPrice(product.price)}
+                        </p>
+                        <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
+                          <button
+                            type="button"
+                            onClick={() => void handleAddToCart(product.slug)}
+                            disabled={pendingCartSlug === product.slug}
+                            className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-all duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                          >
+                            {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
+                          </button>
+                          <a
+                            href={`/checkout?buy=${product.slug}`}
+                            className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                          >
+                            купить в 1 клик
+                          </a>
                         </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
 
                 {pageProducts.length === 0 ? (
                   <div className="mt-10 border border-[#ebe5de] px-8 py-14 text-center text-[24px] text-[#6f6f69] 2xl:text-[28px] [font-family:DM_Sans,Manrope,sans-serif]">
@@ -1717,6 +1778,59 @@ function getSafeMin(values: number[], fallback: number) {
 
 function getSafeMax(values: number[], fallback: number) {
   return values.length ? Math.max(...values) : fallback;
+}
+
+function stripArticleFromTitle(title: string, article?: string) {
+  const rawTitle = title ?? "";
+  const rawArticle = (article ?? "").trim();
+  if (!rawTitle.trim() || !rawArticle) {
+    return rawTitle;
+  }
+
+  // Avoid stripping generic labels: only attempt when the article looks like an actual code.
+  if (!/\d/.test(rawArticle)) {
+    return rawTitle;
+  }
+
+  const variants = Array.from(
+    new Set([
+      rawArticle,
+      rawArticle.replace(/_/g, " "),
+      rawArticle.replace(/\s+/g, " "),
+      rawArticle.replace(/_/g, " ").replace(/\s+/g, " "),
+    ]),
+  )
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  let result = rawTitle;
+
+  for (const variant of variants) {
+    if (variant.length < 3) continue;
+    const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Remove the exact article token, allowing light punctuation around it.
+    result = result.replace(
+      new RegExp(`(?:\\s*[\\(\\[\\{,;|—–-]\\s*)?${escaped}(?:\\s*[\\)\\]\\},;|—–-]\\s*)?`, "gi"),
+      " ",
+    );
+  }
+
+  result = result
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,;|—–-])/g, "$1")
+    .replace(/[,;|—–-]\s*$/g, "")
+    .trim();
+
+  return result || rawTitle;
+}
+
+function sanitizeCardMetaLine(value: string | undefined | null) {
+  const trimmed = (value ?? "").replace(/\s+/g, " ").trim();
+  if (!trimmed) return "";
+  if (/^Мощность:\s*0(?:\.0)?\s*кВт$/i.test(trimmed)) return "";
+  if (/Энергоэффективность\s+уточняется/i.test(trimmed)) return "";
+  return trimmed;
 }
 
 export default CatalogPage;
