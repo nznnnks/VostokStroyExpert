@@ -11,7 +11,7 @@
     "products:clear": "ts-node prisma/clear-products.ts",
     "seed": "ts-node prisma/seed.ts",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "TS_NODE_PROJECT=tsconfig.json node --watch --watch-path=src -r ts-node/register/transpile-only src/main.ts",
     "start:prod": "node dist/src/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

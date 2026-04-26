@@ -21,6 +21,7 @@ import type { Request } from 'express';
 
 import { AdminAccess } from '../auth/decorators/admin-access.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { CatalogQueryDto } from './dto/catalog-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
@@ -38,9 +39,19 @@ function createUploadFileName(originalName: string) {
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Get('catalog')
+  findCatalog(@Query() query: CatalogQueryDto) {
+    return this.productsService.findCatalog(query);
+  }
+
   @Get()
   findAll(@Query() query: PaginationQueryDto) {
     return this.productsService.findAll(query);
+  }
+
+  @Get('slug/:slug')
+  findOneBySlug(@Param('slug') slug: string) {
+    return this.productsService.findOneBySlug(slug);
   }
 
   @Get(':id')

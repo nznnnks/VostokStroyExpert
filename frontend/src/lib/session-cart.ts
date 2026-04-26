@@ -4,6 +4,7 @@ import { loadCatalogProducts, resolveProductIdsBySlugs, type CartView } from "./
 type StoredCartItem = {
   slug: string;
   quantity: number;
+  snapshot?: Pick<Product, "slug" | "title" | "article" | "image" | "price" | "brandLabel">;
 };
 
 const CART_COOKIE_KEY = "vostokstroyexpert-cart";
@@ -48,7 +49,7 @@ function clearCookie(name: string) {
 }
 
 function normalizeItems(items: StoredCartItem[]) {
-  const merged = new Map<string, number>();
+  const merged = new Map<string, { quantity: number; snapshot?: StoredCartItem["snapshot"] }>();
 
   for (const item of items) {
     const slug = item.slug?.trim();
@@ -58,10 +59,14 @@ function normalizeItems(items: StoredCartItem[]) {
       continue;
     }
 
-    merged.set(slug, (merged.get(slug) ?? 0) + quantity);
+    const current = merged.get(slug);
+    merged.set(slug, {
+      quantity: (current?.quantity ?? 0) + quantity,
+      snapshot: item.snapshot ?? current?.snapshot,
+    });
   }
 
-  return Array.from(merged.entries()).map(([slug, quantity]) => ({ slug, quantity }));
+  return Array.from(merged.entries()).map(([slug, value]) => ({ slug, quantity: value.quantity, snapshot: value.snapshot }));
 }
 
 function readStoredCartItems() {
@@ -124,6 +129,28 @@ function mapCart(products: Product[], items: StoredCartItem[]): CartView {
     });
   }
 
+  for (const item of items) {
+    if (normalizedItems.some((current) => current.slug === item.slug)) {
+      continue;
+    }
+
+    if (!item.snapshot) {
+      continue;
+    }
+
+    normalizedItems.push({
+      id: item.slug,
+      slug: item.slug,
+      title: item.snapshot.title,
+      article: item.snapshot.article,
+      image: item.snapshot.image,
+      qty: item.quantity,
+      totalPrice: item.snapshot.price * item.quantity,
+      kind: "product",
+      brandLabel: item.snapshot.brandLabel,
+    });
+  }
+
   const subtotal = normalizedItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
   return {
@@ -160,6 +187,30 @@ export async function addProductToSessionCartBySlug(slug: string) {
     existing.quantity += 1;
   } else {
     nextItems.push({ slug, quantity: 1 });
+  }
+
+  writeStoredCartItems(nextItems);
+  return buildCartFromCookie();
+}
+
+export async function addProductToSessionCart(product: Product) {
+  const items = readStoredCartItems();
+  const nextItems = [...items];
+  const existing = nextItems.find((item) => item.slug === product.slug);
+  const snapshot = {
+    slug: product.slug,
+    title: product.title,
+    article: product.article,
+    image: product.image,
+    price: product.price,
+    brandLabel: product.brandLabel,
+  } satisfies StoredCartItem["snapshot"];
+
+  if (existing) {
+    existing.quantity += 1;
+    existing.snapshot = snapshot;
+  } else {
+    nextItems.push({ slug: product.slug, quantity: 1, snapshot });
   }
 
   writeStoredCartItems(nextItems);

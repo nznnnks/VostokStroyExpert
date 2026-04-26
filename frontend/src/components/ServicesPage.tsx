@@ -31,11 +31,11 @@ export function ServicesPage({ services }: { services: ServiceView[] }) {
                     aria-hidden="true"
                     width="1024"
                     height="768"
-                    className="absolute inset-0 h-full w-full object-cover opacity-32 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-44"
+                    className="absolute inset-0 h-full w-full object-cover opacity-46 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-58"
                   />
-                  <div className="absolute inset-0 bg-[#050505]/80 transition duration-700 group-hover:bg-[#050505]/74" />
+                  <div className="absolute inset-0 bg-[#050505]/58 transition duration-700 group-hover:bg-[#050505]/48" />
                   <div className="absolute inset-0 opacity-50 transition duration-700 group-hover:opacity-70">
-                    <div className="absolute bottom-0 left-0 h-64 w-full bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.5)_58%,rgba(0,0,0,0.88)_100%)]" />
+                    <div className="absolute bottom-0 left-0 h-64 w-full bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.32)_58%,rgba(0,0,0,0.66)_100%)]" />
                   </div>
                   <div className="absolute inset-0 border border-white/10 transition duration-500 group-hover:border-[#b99863]/55" />
                   <div className="absolute right-5 top-5 h-9 w-9 border-r border-t border-[#e1ddd6]/20 opacity-0 transition duration-500 group-hover:opacity-100" />

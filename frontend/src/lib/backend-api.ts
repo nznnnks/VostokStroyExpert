@@ -15,6 +15,7 @@ type ApiCategory = {
 };
 
 export type AdminCategoryView = ApiCategory;
+export type CatalogCategoryView = ApiCategory;
 
 type ApiFilterGroup = {
   id: string;
@@ -96,6 +97,50 @@ type ApiProduct = {
   category?: ApiCategory | null;
   discount?: ApiDiscount;
   filterValues?: ApiProductFilterValue[];
+};
+
+type ApiCatalogMeta = {
+  brands: string[];
+  countries: string[];
+  types: string[];
+  maxPrice: number;
+  categoryCards: Array<{
+    name: string;
+    slug: string;
+    count: number;
+    image?: string;
+  }>;
+  categoryTypeTree: Array<{
+    category: string;
+    slug: string;
+    count: number;
+    types: Array<{ type: string; count: number }>;
+  }>;
+  currentCategoryTypes: Array<{ type: string; count: number }>;
+  dynamicFilters: Array<{
+    id: string;
+    groupId: string;
+    groupName: string;
+    groupSlug: string;
+    parameterName: string;
+    parameterSlug: string;
+    parameterType: "TEXT" | "NUMBER";
+    unit?: string;
+    values: string[];
+    numericValues: number[];
+    min: number;
+    max: number;
+  }>;
+};
+
+type ApiCatalogResponse = {
+  items: ApiProduct[];
+  page: number;
+  limit: number;
+  total: number;
+  totalAll: number;
+  hasMore: boolean;
+  meta: ApiCatalogMeta | null;
 };
 
 type ApiNews = {
@@ -617,6 +662,7 @@ function mapApiProduct(product: ApiProduct): Product {
     title: product.name,
     article: product.sku,
     category: product.category?.name ?? "Каталог",
+    categorySlug: product.category?.slug ?? undefined,
     country: product.country ?? "Не указано",
     type: product.type ?? "Оборудование",
     power,
@@ -635,6 +681,32 @@ function mapApiProduct(product: ApiProduct): Product {
     metaKeywords: product.metaKeywords ?? undefined,
   };
 }
+
+export type CatalogListingQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  brands?: string[];
+  countries?: string[];
+  types?: string[];
+  sort?: "popular" | "new" | "price-asc" | "price-desc";
+  textFilters?: Record<string, string[]>;
+  numericFilters?: Record<string, [number, number]>;
+  includeMeta?: boolean;
+};
+
+export type CatalogListingResponse = {
+  items: Product[];
+  page: number;
+  limit: number;
+  total: number;
+  totalAll: number;
+  hasMore: boolean;
+  meta: ApiCatalogMeta | null;
+};
 
 function mapApiNews(item: ApiNews): NewsPostView {
   const images = Array.isArray(item.images) ? item.images : [];
@@ -743,25 +815,82 @@ export async function loadCatalogProducts(): Promise<Product[]> {
   return Array.isArray(data) ? data.map(mapApiProduct) : [];
 }
 
+export async function loadCatalogListing(query: CatalogListingQuery = {}): Promise<CatalogListingResponse> {
+  const data = await apiRequest<ApiCatalogResponse>("/api/products/catalog", {
+    query: {
+      page: query.page ?? 1,
+      limit: query.limit ?? 24,
+      search: query.search?.trim() || undefined,
+      category: query.category?.trim() || undefined,
+      minPrice: typeof query.minPrice === "number" ? query.minPrice : undefined,
+      maxPrice: typeof query.maxPrice === "number" ? query.maxPrice : undefined,
+      sort: query.sort ?? "popular",
+      brands: query.brands?.length ? JSON.stringify(query.brands) : undefined,
+      countries: query.countries?.length ? JSON.stringify(query.countries) : undefined,
+      types: query.types?.length ? JSON.stringify(query.types) : undefined,
+      textFilters:
+        query.textFilters && Object.keys(query.textFilters).length > 0 ? JSON.stringify(query.textFilters) : undefined,
+      numericFilters:
+        query.numericFilters && Object.keys(query.numericFilters).length > 0
+          ? JSON.stringify(query.numericFilters)
+          : undefined,
+      includeMeta: query.includeMeta ?? true,
+    },
+  });
+
+  return {
+    items: Array.isArray(data.items) ? data.items.map(mapApiProduct) : [],
+    page: data.page,
+    limit: data.limit,
+    total: data.total,
+    totalAll: data.totalAll,
+    hasMore: data.hasMore,
+    meta: data.meta,
+  };
+}
+
+export async function loadCatalogCategories(): Promise<CatalogCategoryView[]> {
+  const data = await apiRequest<ApiCategory[]>("/api/categories", {
+    query: { limit: 100 },
+  });
+
+  return Array.isArray(data) ? data : [];
+}
+
 export async function loadCatalogProductBySlug(slug: string) {
-  const data = await loadPublicProductsRaw();
-  const current = data.find((item) => item.slug === slug);
-
-  if (!current) {
-    throw new Error(`Product with slug ${slug} was not found.`);
-  }
-
+  const current = await apiRequest<ApiProduct>(`/api/products/slug/${encodeURIComponent(slug)}`);
   const mappedCurrent = mapApiProduct(current);
-  const relatedProducts = data
-    .filter((item) => item.slug !== slug)
-    .filter((item) => item.category?.id === current.category?.id || item.brand === current.brand)
-    .slice(0, 4)
-    .map(mapApiProduct);
+  const relatedFetchLimit = 24;
+
+  const emptyListing: CatalogListingResponse = {
+    items: [],
+    page: 1,
+    limit: relatedFetchLimit,
+    total: 0,
+    totalAll: 0,
+    hasMore: false,
+    meta: null,
+  };
+
+  const sameCategoryPromise = mappedCurrent.categorySlug
+    ? loadCatalogListing({ category: mappedCurrent.categorySlug, limit: relatedFetchLimit, includeMeta: false }).catch(() => emptyListing)
+    : Promise.resolve(emptyListing);
+  const sameBrandPromise = mappedCurrent.brand
+    ? loadCatalogListing({ brands: [mappedCurrent.brand], limit: relatedFetchLimit, includeMeta: false }).catch(() => emptyListing)
+    : Promise.resolve(emptyListing);
+
+  const [sameCategory, sameBrand] = await Promise.all([sameCategoryPromise, sameBrandPromise]);
+
+  const allProducts = [...sameCategory.items, ...sameBrand.items]
+    .filter((item) => item.slug !== mappedCurrent.slug)
+    .filter((item, index, items) => items.findIndex((entry) => entry.slug === item.slug) === index);
+
+  const relatedProducts = allProducts.slice(0, 12);
 
   return {
     product: mappedCurrent,
     relatedProducts,
-    allProducts: data.map(mapApiProduct),
+    allProducts,
   };
 }
 

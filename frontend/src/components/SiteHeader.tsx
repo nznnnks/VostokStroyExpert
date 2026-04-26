@@ -50,6 +50,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isTransitionVisible, setIsTransitionVisible] = useState(false);
+  const [pathname, setPathname] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [catalogProducts, setCatalogProducts] = useState<Product[] | null>(
     null,
@@ -70,7 +71,6 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const startPageTransition = () => {
     if (typeof window === "undefined") return;
     window.sessionStorage.setItem(PAGE_TRANSITION_STORAGE_KEY, "1");
-    setIsTransitionVisible(true);
   };
 
   const openMobileMenu = () => {
@@ -121,6 +121,11 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
       document.removeEventListener("mousedown", onClick);
     };
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setPathname(window.location.pathname);
+  }, []);
 
   useEffect(() => {
     if (lockScrolledState) return;
@@ -309,6 +314,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   }, []);
 
   const trimmedQuery = searchQuery.trim().toLowerCase();
+  const isCatalogHeader = isCatalogPath(pathname);
   const searchSource = catalogProducts ?? [];
   const searchResults = trimmedQuery
     ? searchSource.filter((item) =>
@@ -506,47 +512,75 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               ) : null}
             </a>
             <div className="flex items-center gap-1 sm:hidden">
-              <a
-                href="https://wa.me/79252700229"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="WhatsApp"
-                className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="15"
-                  height="15"
-                  aria-hidden="true"
-                  fill="currentColor"
+              {isCatalogHeader ? (
+                <a
+                  href="/cart"
+                  aria-label="Корзина"
+                  className="relative inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c]"
                 >
-                  <path d="M20.5 3.5A10.2 10.2 0 0 0 4 15.7L2.8 21.2l5.7-1.5a10.2 10.2 0 0 0 4.8 1.2h.1A10.2 10.2 0 0 0 20.5 3.5Zm-7.1 15.6h-.1a8.5 8.5 0 0 1-4.3-1.2l-.3-.2-3.4.9.9-3.3-.2-.3a8.5 8.5 0 1 1 7.4 4.1Zm4.7-6.3c-.3-.1-1.8-.9-2-.9-.3-.1-.4-.1-.6.1l-.9 1c-.2.2-.3.2-.6.1a6.9 6.9 0 0 1-2-1.2 7.8 7.8 0 0 1-1.5-1.9c-.2-.3 0-.4.1-.6l.4-.5.3-.4a.6.6 0 0 0 0-.6l-.9-2.2c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-1 1-.9 2.4 0 1.4 1 2.7 1.2 2.9.1.2 2 3.2 5 4.3 2.9 1.1 2.9.7 3.4.7.5 0 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3Z" />
-                </svg>
-              </a>
-              <a
-                href="https://t.me/vostok_support"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Telegram"
-                className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="15"
-                  height="15"
-                  aria-hidden="true"
-                  fill="currentColor"
-                >
-                  <path d="M21.9 4.6c.2-.8-.7-1.5-1.5-1.1L2.7 10.6c-.9.4-.8 1.7.1 2l4.6 1.5 1.8 5.6c.3.9 1.5 1 2 .2l2.6-4.1 4.9 3.6c.8.6 1.9.1 2.1-.9l2.1-14.9zM8.6 13.4l9.8-6c.2-.1.5.1.3.3l-8 7.3-.3 3.9-1.7-5.3z" />
-                </svg>
-              </a>
-              <a
-                href="/#contact"
-                onClick={handleRequestClick}
-                className="hidden h-9 items-center justify-center bg-[#050505] px-3 text-[11px] uppercase tracking-[0.8px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] min-[390px]:inline-flex sm:h-9 sm:px-3 sm:text-[12px] sm:tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-              >
-                Заявка
-              </a>
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path
+                      d="M6 7h13l-1.5 8.5a2 2 0 0 1-2 1.5H9a2 2 0 0 1-2-1.5L5 4H2"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="9.5" cy="19.5" r="1.4" fill="currentColor" />
+                    <circle cx="16.5" cy="19.5" r="1.4" fill="currentColor" />
+                  </svg>
+                  {cartItemsCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-white px-1 py-0.5 text-[9px] leading-none text-[#111]">
+                      {cartItemsCount > 99 ? "99+" : cartItemsCount}
+                    </span>
+                  ) : null}
+                </a>
+              ) : (
+                <>
+                  <a
+                    href="https://wa.me/79252700229"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="WhatsApp"
+                    className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="15"
+                      height="15"
+                      aria-hidden="true"
+                      fill="currentColor"
+                    >
+                      <path d="M20.5 3.5A10.2 10.2 0 0 0 4 15.7L2.8 21.2l5.7-1.5a10.2 10.2 0 0 0 4.8 1.2h.1A10.2 10.2 0 0 0 20.5 3.5Zm-7.1 15.6h-.1a8.5 8.5 0 0 1-4.3-1.2l-.3-.2-3.4.9.9-3.3-.2-.3a8.5 8.5 0 1 1 7.4 4.1Zm4.7-6.3c-.3-.1-1.8-.9-2-.9-.3-.1-.4-.1-.6.1l-.9 1c-.2.2-.3.2-.6.1a6.9 6.9 0 0 1-2-1.2 7.8 7.8 0 0 1-1.5-1.9c-.2-.3 0-.4.1-.6l.4-.5.3-.4a.6.6 0 0 0 0-.6l-.9-2.2c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-1 1-.9 2.4 0 1.4 1 2.7 1.2 2.9.1.2 2 3.2 5 4.3 2.9 1.1 2.9.7 3.4.7.5 0 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3Z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://t.me/vostok_support"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Telegram"
+                    className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="15"
+                      height="15"
+                      aria-hidden="true"
+                      fill="currentColor"
+                    >
+                      <path d="M21.9 4.6c.2-.8-.7-1.5-1.5-1.1L2.7 10.6c-.9.4-.8 1.7.1 2l4.6 1.5 1.8 5.6c.3.9 1.5 1 2 .2l2.6-4.1 4.9 3.6c.8.6 1.9.1 2.1-.9l2.1-14.9zM8.6 13.4l9.8-6c.2-.1.5.1.3.3l-8 7.3-.3 3.9-1.7-5.3z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="/#contact"
+                    onClick={handleRequestClick}
+                    className="hidden h-9 items-center justify-center bg-[#050505] px-3 text-[11px] uppercase tracking-[0.8px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] min-[390px]:inline-flex sm:h-9 sm:px-3 sm:text-[12px] sm:tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                  >
+                    Заявка
+                  </a>
+                </>
+              )}
             </div>
             <AuthHeaderButton
               className={`hidden h-[clamp(40px,3.2vw,60px)] place-items-center px-[clamp(18px,2vw,38px)] text-center text-[clamp(15px,0.6vw+12.5px,20px)] uppercase leading-none tracking-[1.2px] transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,0,0,0.14)] sm:inline-grid [font-family:Jaldi,'JetBrains_Mono',monospace] xl:h-[64px] xl:px-11 2xl:h-[68px] 2xl:px-12 ${
