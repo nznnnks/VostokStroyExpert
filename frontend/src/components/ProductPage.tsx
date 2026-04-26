@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatPrice, type Product } from "../data/products";
-import { slugify } from "../lib/slug";
+import { loadCatalogListing } from "../lib/catalog-api";
+import {
+  SESSION_CART_UPDATED_EVENT,
+  addProductToSessionCart,
+  loadSessionCart,
+  updateSessionCartItem,
+} from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
@@ -64,13 +70,35 @@ type ProductPageProps = {
   allProducts?: Product[];
 };
 
+function dedupeProducts(items: Product[]) {
+  return items.filter((item, index, list) => list.findIndex((entry) => entry.slug === item.slug) === index);
+}
+
 export function ProductPage({ product, relatedProducts, allProducts }: ProductPageProps) {
-  const [visibleCount, setVisibleCount] = useState(4);
   const gallery = product.gallery ?? [product.image];
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [previousImage, setPreviousImage] = useState<string | null>(null);
   const [isImageTransitioning, setIsImageTransitioning] = useState(false);
   const [activeDetailsTab, setActiveDetailsTab] = useState<"description" | "specs">("description");
+  const [cartQty, setCartQty] = useState(0);
+  const [cartPending, setCartPending] = useState(false);
+  const [cartAnimated, setCartAnimated] = useState(false);
+  const categorySlug = product.categorySlug ?? "";
+  const initialRelatedPool = useMemo(
+    () =>
+      dedupeProducts(
+        [...(relatedProducts ?? []), ...(allProducts ?? [])].filter((item) => item.slug !== product.slug),
+      ),
+    [allProducts, product.slug, relatedProducts],
+  );
+  const [visibleRelated, setVisibleRelated] = useState<Product[]>(() => initialRelatedPool.slice(0, 6));
+  const [relatedAnimatedCount, setRelatedAnimatedCount] = useState(6);
+  const [relatedPage, setRelatedPage] = useState(2);
+  const [catalogFallbackPage, setCatalogFallbackPage] = useState(1);
+  const [isLoadingMoreRelated, setIsLoadingMoreRelated] = useState(false);
+  const [hasMoreRelated, setHasMoreRelated] = useState(
+    initialRelatedPool.length > 6 || Boolean(product.categorySlug || product.brand),
+  );
   const countryFlag = toFlagEmoji(product.country);
   const topSpecs = [
     ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
@@ -87,19 +115,11 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
           })
           .slice(0, 28)
       : topSpecs;
-  const allList = (allProducts ?? []).filter((item) => item.slug !== product.slug);
-  const primaryRelated = relatedProducts && relatedProducts.length > 0 ? relatedProducts : allList;
-  const combinedRelated = [
-    ...primaryRelated,
-    ...allList.filter((item) => !primaryRelated.find((entry) => entry.slug === item.slug)),
-  ];
-  const visibleRelated = combinedRelated.slice(0, visibleCount);
-  const canLoadMore = visibleCount < combinedRelated.length;
+  const visibleRelatedCount = visibleRelated.length;
   const descriptionTitle = product.slug === "monolith-v2" ? "Создано для архитектурной интеграции" : `О модели ${product.title}`;
   const activeImage = gallery[activeImageIndex] ?? gallery[0];
   const canGoPrevImage = gallery.length > 1 && activeImageIndex > 0;
   const canGoNextImage = gallery.length > 1 && activeImageIndex < gallery.length - 1;
-  const categorySlug = product.category ? slugify(product.category) : "";
   const categoryHref = categorySlug ? `/catalog/category/${categorySlug}` : "/catalog";
   const brandCard = (
     <a
@@ -129,11 +149,128 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     setActiveImageIndex(0);
     setPreviousImage(null);
     setIsImageTransitioning(false);
+    setVisibleRelated(initialRelatedPool.slice(0, 6));
+    setRelatedAnimatedCount(6);
+    setRelatedPage(2);
+    setCatalogFallbackPage(1);
+    setHasMoreRelated(initialRelatedPool.length > 6 || Boolean(product.categorySlug || product.brand));
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
       if (hash === "specs") setActiveDetailsTab("specs");
       if (hash === "description") setActiveDetailsTab("description");
     }
+  }, [initialRelatedPool, product.brand, product.categorySlug, product.slug]);
+
+  async function handleLoadMoreRelated() {
+    if (isLoadingMoreRelated || !hasMoreRelated) return;
+
+    if (initialRelatedPool.length > visibleRelated.length) {
+      setRelatedAnimatedCount(visibleRelated.length);
+      setVisibleRelated(initialRelatedPool.slice(0, visibleRelated.length + 6));
+      setHasMoreRelated(
+        initialRelatedPool.length > visibleRelated.length + 6 || Boolean(categorySlug || product.brand),
+      );
+      return;
+    }
+
+    setIsLoadingMoreRelated(true);
+    try {
+      let nextPage = relatedPage;
+      let categoryHasMore = Boolean(categorySlug);
+      let brandHasMore = Boolean(product.brand);
+      const existingSlugs = new Set(visibleRelated.map((item) => item.slug));
+      existingSlugs.add(product.slug);
+      const collected: Product[] = [];
+      let attempts = 0;
+
+      while (collected.length < 6 && (categoryHasMore || brandHasMore) && attempts < 4) {
+        attempts += 1;
+        const [sameCategory, sameBrand] = await Promise.all([
+          categorySlug
+            ? loadCatalogListing({ category: categorySlug, page: nextPage, limit: 6, includeMeta: false })
+            : Promise.resolve({ items: [], hasMore: false }),
+          product.brand
+            ? loadCatalogListing({ brands: [product.brand], page: nextPage, limit: 6, includeMeta: false })
+            : Promise.resolve({ items: [], hasMore: false }),
+        ]);
+
+        nextPage += 1;
+        categoryHasMore = sameCategory.hasMore;
+        brandHasMore = sameBrand.hasMore;
+
+        const merged = dedupeProducts([...sameCategory.items, ...sameBrand.items]).filter((item) => !existingSlugs.has(item.slug));
+        for (const item of merged) {
+          if (collected.length >= 6) break;
+          existingSlugs.add(item.slug);
+          collected.push(item);
+        }
+      }
+
+      let nextCatalogFallbackPage = catalogFallbackPage;
+      let catalogHasMore = true;
+
+      while (collected.length < 6 && catalogHasMore && attempts < 8) {
+        attempts += 1;
+        const fallbackResponse = await loadCatalogListing({
+          page: nextCatalogFallbackPage,
+          limit: 6,
+          includeMeta: false,
+        });
+
+        nextCatalogFallbackPage += 1;
+        catalogHasMore = fallbackResponse.hasMore;
+
+        const fallbackItems = fallbackResponse.items.filter((item) => !existingSlugs.has(item.slug));
+        for (const item of fallbackItems) {
+          if (collected.length >= 6) break;
+          existingSlugs.add(item.slug);
+          collected.push(item);
+        }
+      }
+
+      if (collected.length > 0) {
+        setRelatedAnimatedCount(visibleRelated.length);
+        setVisibleRelated((current) => [...current, ...collected]);
+      }
+
+      setRelatedPage(nextPage);
+      setCatalogFallbackPage(nextCatalogFallbackPage);
+      setHasMoreRelated(categoryHasMore || brandHasMore || catalogHasMore);
+    } finally {
+      setIsLoadingMoreRelated(false);
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    const syncCartQty = async () => {
+      try {
+        const cart = await loadSessionCart();
+        if (!active) return;
+        const nextQty = cart.items.find((item) => item.slug === product.slug)?.qty ?? 0;
+        setCartQty(nextQty);
+      } catch {
+        if (!active) return;
+      }
+    };
+
+    void syncCartQty();
+
+    const handleCartUpdated = () => {
+      void syncCartQty();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(SESSION_CART_UPDATED_EVENT, handleCartUpdated as EventListener);
+    }
+
+    return () => {
+      active = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener(SESSION_CART_UPDATED_EVENT, handleCartUpdated as EventListener);
+      }
+    };
   }, [product.slug]);
 
   useEffect(() => {
@@ -160,6 +297,32 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
 
   function showNextImage() {
     goToImage(activeImageIndex + 1);
+  }
+
+  async function handleAddToCart() {
+    if (cartPending) return;
+    setCartPending(true);
+    try {
+      const cart = await addProductToSessionCart(product);
+      setCartQty(cart.items.find((item) => item.slug === product.slug)?.qty ?? 0);
+      setCartAnimated(true);
+    } finally {
+      setCartPending(false);
+      window.setTimeout(() => setCartAnimated(false), 420);
+    }
+  }
+
+  async function handleCartQuantityChange(quantity: number) {
+    if (cartPending) return;
+    setCartPending(true);
+    try {
+      const cart = await updateSessionCartItem(product.slug, quantity);
+      setCartQty(cart.items.find((item) => item.slug === product.slug)?.qty ?? 0);
+      setCartAnimated(true);
+    } finally {
+      setCartPending(false);
+      window.setTimeout(() => setCartAnimated(false), 420);
+    }
   }
 
   return (
@@ -270,9 +433,62 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
               </dl>
 
               <div className="mt-8 grid gap-4 md:mt-12 md:gap-5">
-                <a href={`/cart?add=${product.slug}`} className="inline-flex h-[52px] items-center justify-center bg-[#111] px-8 text-[clamp(0.9rem,0.9vw,1.15rem)] uppercase tracking-[2.2px] text-white [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:tracking-[3px]">
-                  в корзину
-                </a>
+                {cartQty > 0 ? (
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                    <div
+                      className={`grid h-[52px] min-w-0 grid-cols-[52px_minmax(0,1fr)_52px] overflow-hidden bg-[#111] text-white transition-all duration-300 md:h-18 md:grid-cols-[60px_minmax(0,1fr)_60px] ${cartAnimated ? "scale-[1.012] shadow-[0_18px_36px_rgba(17,17,17,0.16)]" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => void handleCartQuantityChange(Math.max(0, cartQty - 1))}
+                        disabled={cartPending}
+                        className="flex items-center justify-center border-r border-white/12 text-[24px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        aria-label="Уменьшить количество"
+                      >
+                        −
+                      </button>
+                      <div className="flex items-center justify-center px-3">
+                        <span
+                          key={`${product.slug}-${cartQty}`}
+                          className="inline-flex items-baseline gap-2 animate-[cartQtyPop_380ms_cubic-bezier(0.22,1,0.36,1)] text-[14px] uppercase tracking-[1.6px] md:text-[16px] md:tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        >
+                          <span className="text-[22px] leading-none tabular-nums md:text-[26px]">{cartQty}</span>
+                          <span>в корзине</span>
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleAddToCart()}
+                        disabled={cartPending}
+                        className="flex items-center justify-center border-l border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        aria-label="Увеличить количество"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <a
+                      href="/cart"
+                      className="group inline-flex h-[52px] items-center justify-between gap-4 border border-[#d9d0c3] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe8de_100%)] px-5 text-[clamp(0.82rem,0.82vw,0.96rem)] uppercase tracking-[1.8px] text-[#111] shadow-[0_10px_24px_rgba(17,17,17,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3b46a] hover:shadow-[0_16px_34px_rgba(17,17,17,0.10)] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:px-6 md:tracking-[2.3px]"
+                    >
+                      <span className="text-left leading-[1.05]">перейти в корзину</span>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#d7ccbd] bg-white/70 text-[#111] transition-all duration-300 group-hover:border-[#d3b46a] group-hover:bg-white group-hover:translate-x-0.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path d="M5 12h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          <path d="M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleAddToCart()}
+                    disabled={cartPending}
+                    className="inline-flex h-[52px] items-center justify-center bg-[#111] px-8 text-[clamp(0.9rem,0.9vw,1.15rem)] uppercase tracking-[2.2px] text-white transition-colors hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:tracking-[3px]"
+                  >
+                    {cartPending ? "добавляем" : "в корзину"}
+                  </button>
+                )}
                 <a href={`/checkout?product=${product.slug}`} className="inline-flex h-[52px] items-center justify-center border border-[#111] px-8 text-[clamp(0.9rem,0.9vw,1.15rem)] uppercase tracking-[2.2px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:tracking-[3px]">
                   купить в 1 клик
                 </a>
@@ -319,27 +535,20 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                 Характеристики
               </button>
             </div>
-
-            {activeDetailsTab === "description" ? (
-              <div className="hidden xl:block pb-2 pt-5 text-right text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                Отзывы
-              </div>
-            ) : (
-              <div className="hidden xl:block pb-2 pt-5" aria-hidden="true" />
-            )}
+            <div className="hidden xl:block pb-2 pt-5 text-right text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              Отзывы
+            </div>
           </div>
 
           <div className="mt-10 md:mt-16">
-            <div
-              aria-hidden={activeDetailsTab !== "description"}
-              className={`grid transition-[grid-template-rows] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
-                activeDetailsTab === "description" ? "grid-rows-[1fr]" : "grid-rows-[0fr] pointer-events-none"
-              }`}
-            >
-              <div className="min-h-0 overflow-hidden">
+            <div className="grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px]">
+              <div className="relative min-h-[420px]">
                 <div
-                  className={`grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px] transform-gpu transition-[opacity,transform] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform] motion-reduce:transition-none ${
-                    activeDetailsTab === "description" ? "opacity-100 translate-y-0 delay-100" : "opacity-0 -translate-y-1 delay-0"
+                  aria-hidden={activeDetailsTab !== "description"}
+                  className={`transition-[opacity,transform,filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform,filter] motion-reduce:transition-none ${
+                    activeDetailsTab === "description"
+                      ? "relative z-[1] opacity-100 translate-y-0 blur-0"
+                      : "pointer-events-none absolute inset-0 opacity-0 -translate-y-3 blur-[2px]"
                   }`}
                 >
                   <div
@@ -354,57 +563,14 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                       <p>{product.description?.[1]}</p>
                     </div>
                   </div>
-
-                  <aside className="border border-[#e8e3db] bg-[#fff]">
-                    <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
-                      Отзывы
-                    </div>
-                    <div className="px-5 py-6 md:px-8 md:py-10">
-                      <div className="space-y-6">
-                        {reviews.map((review) => (
-                          <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
-                            <div className="flex items-center gap-4">
-                              <img
-                                src={review.avatar}
-                                alt=""
-                                aria-hidden="true"
-                                width="44"
-                                height="44"
-                                loading="lazy"
-                                decoding="async"
-                                className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
-                              />
-                              <div className="min-w-0">
-                                <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
-                                  {review.name}
-                                </p>
-                                <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                                  {review.rating}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
-                              {review.text}
-                            </p>
-                          </article>
-                        ))}
-                      </div>
-                    </div>
-                  </aside>
                 </div>
-              </div>
-            </div>
 
-            <div
-              aria-hidden={activeDetailsTab !== "specs"}
-              className={`grid transition-[grid-template-rows] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
-                activeDetailsTab === "specs" ? "grid-rows-[1fr]" : "grid-rows-[0fr] pointer-events-none"
-              }`}
-            >
-              <div className="min-h-0 overflow-hidden">
                 <div
-                  className={`grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px] transform-gpu transition-[opacity,transform] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform] motion-reduce:transition-none ${
-                    activeDetailsTab === "specs" ? "opacity-100 translate-y-0 delay-100" : "opacity-0 -translate-y-1 delay-0"
+                  aria-hidden={activeDetailsTab !== "specs"}
+                  className={`transition-[opacity,transform,filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity,transform,filter] motion-reduce:transition-none ${
+                    activeDetailsTab === "specs"
+                      ? "relative z-[1] opacity-100 translate-y-0 blur-0"
+                      : "pointer-events-none absolute inset-0 opacity-0 -translate-y-3 blur-[2px]"
                   }`}
                 >
                   <div id="specs" className="overflow-hidden rounded-[26px] border border-[#e8e3db] bg-[#fff]">
@@ -412,21 +578,56 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                       <span>Характеристики</span>
                       <span className="text-[#111]">{product.brandLabel}</span>
                     </div>
-                  {detailsSpecs.map(([label, value]) => (
-                    <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
-                      <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
-                      <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
-                    </div>
-                  ))}
+                    {detailsSpecs.map(([label, value]) => (
+                      <div key={label} className="flex flex-col gap-1 border-b border-[#e8e3db] px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6 md:py-6">
+                        <span className="text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</span>
+                        <span className="text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{value}</span>
+                      </div>
+                    ))}
                     <div className="px-5 py-5 md:px-6 md:py-6">
                       <span className="text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[2px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">Артикул</span>
                       <p className="mt-2 text-[clamp(0.95rem,1vw,1.15rem)] [font-family:'Cormorant_Garamond',serif]">{product.article}</p>
                     </div>
                   </div>
-
-                  <div className="hidden xl:block" aria-hidden="true" />
                 </div>
               </div>
+
+              <aside className="border border-[#e8e3db] bg-[#fff]">
+                <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
+                  Отзывы
+                </div>
+                <div className="px-5 py-6 md:px-8 md:py-10">
+                  <div className="space-y-6">
+                    {reviews.map((review) => (
+                      <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={review.avatar}
+                            alt=""
+                            aria-hidden="true"
+                            width="44"
+                            height="44"
+                            loading="lazy"
+                            decoding="async"
+                            className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
+                              {review.name}
+                            </p>
+                            <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                              {review.rating}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
+                          {review.text}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </aside>
             </div>
           </div>
         </div>
@@ -435,9 +636,17 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
       <section className="px-4 py-8 md:px-10 md:py-14">
         <div className="mx-auto max-w-[1480px]">
           <h2 className="text-[clamp(2rem,3.6vw,4.2rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Возможно пригодится</h2>
-          <div className="mt-12 grid gap-x-10 gap-y-14 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {visibleRelated.map((relatedProduct) => (
-              <article key={relatedProduct.slug}>
+          <div
+            className={`mt-12 grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-14 ${
+              visibleRelatedCount >= 3 ? "xl:grid-cols-3" : "xl:grid-cols-2"
+            }`}
+          >
+            {visibleRelated.map((relatedProduct, index) => (
+              <article
+                key={relatedProduct.slug}
+                style={{ animationDelay: `${index * 70}ms` }}
+                className={`flex h-full flex-col ${index >= relatedAnimatedCount ? "" : "animate-[catalog-card-in_620ms_cubic-bezier(0.22,1,0.36,1)_both]"}`}
+              >
                 <a href={`/catalog/${relatedProduct.slug}`}>
                   <img
                     src={relatedProduct.image}
@@ -449,12 +658,12 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                     className="aspect-[0.92/1] w-full object-cover"
                   />
                 </a>
-                <div className="mt-6">
+                <div className="mt-6 flex flex-1 flex-col">
                   <p className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[2px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace]">{relatedProduct.brandLabel}</p>
                   <h3 className="mt-2 text-[clamp(1.6rem,2.4vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">
                     <a href={`/catalog/${relatedProduct.slug}`}>{relatedProduct.title}</a>
                   </h3>
-                  <p className="mt-4 text-[clamp(1rem,1.2vw,1.45rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(relatedProduct.price)}</p>
+                  <p className="mt-auto pt-4 text-[clamp(1rem,1.2vw,1.45rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(relatedProduct.price)}</p>
                 </div>
               </article>
             ))}
@@ -463,11 +672,11 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
           <div className="mt-12 flex justify-center md:mt-16">
             <button
               type="button"
-              onClick={() => setVisibleCount((current) => Math.min(combinedRelated.length, current + 4))}
-              disabled={!canLoadMore}
+              onClick={() => void handleLoadMoreRelated()}
+              disabled={!hasMoreRelated || isLoadingMoreRelated}
               className="inline-flex h-14 w-full max-w-[340px] items-center justify-center bg-[#111] px-10 text-[clamp(0.95rem,0.9vw,1.15rem)] uppercase tracking-[2.4px] text-white transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40 [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:w-auto md:px-14 md:tracking-[3px]"
             >
-              загрузить еще
+              {isLoadingMoreRelated ? "загружаем" : "загрузить еще"}
             </button>
           </div>
           </div>

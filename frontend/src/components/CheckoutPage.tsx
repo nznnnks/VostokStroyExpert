@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
 import { createOrder, type CartView } from "../lib/backend-api";
@@ -11,6 +11,64 @@ const paymentOptions = [
   ["installment", "B2B - рассрочка", "Временно недоступно", "/checkout/bank.svg"],
 ];
 
+const YANDEX_MAPS_API_KEY = "f7686050-c67e-4ae2-adb5-bf59b6bee101";
+const YANDEX_SUGGEST_API_KEY = "b6fa94c3-dc7a-4feb-945d-40ce8c6c82b0";
+
+type YandexSuggestItem = {
+  title?: string;
+  subtitle?: string;
+  formattedAddress?: string;
+};
+
+type YandexSuggestView = {
+  destroy: () => void;
+  events: {
+    add: (event: string, handler: (payload: { get: (key: string) => unknown }) => void) => void;
+  };
+};
+
+type YandexMapsApi = {
+  ready: (callback: () => void) => void;
+  SuggestView: new (
+    element: HTMLInputElement | string,
+    options?: Record<string, unknown>,
+  ) => YandexSuggestView;
+  geocode: (
+    request: string,
+    options?: Record<string, unknown>,
+  ) => {
+    then: (
+      onFulfilled: (result: {
+        geoObjects: {
+          getLength: () => number;
+          get: (index: number) => {
+            getAddressLine: () => string;
+            geometry?: { getCoordinates?: () => number[] };
+            properties?: {
+              get: (key: string) => unknown;
+            };
+          };
+        };
+      }) => void,
+    ) => {
+      catch: (onRejected: (error: unknown) => void) => unknown;
+    };
+  };
+};
+
+declare global {
+  interface Window {
+    ymaps?: YandexMapsApi;
+  }
+}
+
+type AddressVerificationState = {
+  confirmed: boolean;
+  formattedAddress: string;
+  coords: string;
+  postalCode: string;
+};
+
 export function CheckoutPage() {
   const [cart, setCart] = useState<CartView | null>(null);
   const [cartLoading, setCartLoading] = useState(true);
@@ -19,6 +77,49 @@ export function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string>("");
   const [submitSuccess, setSubmitSuccess] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [isAddressLoading, setIsAddressLoading] = useState(true);
+  const [addressVerification, setAddressVerification] = useState<AddressVerificationState>({
+    confirmed: false,
+    formattedAddress: "",
+    coords: "",
+    postalCode: "",
+  });
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestViewRef = useRef<YandexSuggestView | null>(null);
+
+  function extractAddressFieldsFromMetadata(metadata: unknown, fallbackAddress: string) {
+    const geocoderMeta = metadata as
+      | {
+          text?: string;
+          Address?: {
+            formatted?: string;
+            Components?: Array<{ kind?: string; name?: string }>;
+            postal_code?: string;
+          };
+        }
+      | undefined;
+
+    const components = geocoderMeta?.Address?.Components ?? [];
+    const findComponent = (...kinds: string[]) =>
+      components.find((component) => component.kind && kinds.includes(component.kind))?.name ?? "";
+
+    const locality =
+      findComponent("locality") ||
+      findComponent("district");
+    const street = findComponent("street");
+    const house = findComponent("house");
+    const postal = geocoderMeta?.Address?.postal_code || findComponent("postal_code");
+
+    return {
+      formattedAddress: geocoderMeta?.text || geocoderMeta?.Address?.formatted || fallbackAddress,
+      cityValue: locality,
+      lineValue: [street, house].filter(Boolean).join(", ") || fallbackAddress,
+      postalCodeValue: postal,
+    };
+  }
 
   useEffect(() => {
     let active = true;
@@ -60,15 +161,126 @@ export function CheckoutPage() {
   }, []);
 
   const hydratedItems = useMemo(() => cart?.items ?? [], [cart]);
-  const primaryItem = hydratedItems[0];
   const subtotal = cart?.subtotal ?? 0;
   const vat = Math.round(subtotal * 0.2);
   const total = cart?.total ?? subtotal + vat;
+  const isAddressConfirmed = addressVerification.confirmed;
   const summaryRows = [
     ["Стоимость товара", formatPrice(subtotal)],
     ["Доставка", subtotal > 0 ? "Рассчитывается далее" : "0 ₽"],
     ["НДС (20%)", formatPrice(vat)],
   ];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    const initSuggest = () => {
+      const ymaps = window.ymaps;
+      const input = addressInputRef.current;
+      if (!ymaps || !input) return;
+
+      ymaps.ready(() => {
+        if (cancelled || !addressInputRef.current) return;
+
+        suggestViewRef.current?.destroy();
+        const suggestView = new ymaps.SuggestView(addressInputRef.current, {
+          provider: "yandex#map",
+          results: 6,
+        });
+        suggestViewRef.current = suggestView;
+        setIsAddressLoading(false);
+
+        suggestView.events.add("select", (event) => {
+          const item = event.get("item") as { value?: string; displayName?: string } | undefined;
+          const selectedAddress = item?.value || item?.displayName || "";
+
+          if (!selectedAddress) {
+            setSubmitError("Не удалось распознать выбранный адрес.");
+            return;
+          }
+
+          setSubmitError("");
+          setIsAddressLoading(true);
+
+          ymaps
+            .geocode(selectedAddress, { results: 1 })
+            .then((result) => {
+              const first = result.geoObjects.get(0);
+              if (!first) {
+                throw new Error("Выбранный адрес не найден в Яндекс Картах.");
+              }
+
+              const formattedAddress = first.getAddressLine?.() ?? selectedAddress;
+              const coords = first.geometry?.getCoordinates?.() ?? [];
+              const metadata = first.properties?.get("metaDataProperty.GeocoderMetaData");
+              const extracted = extractAddressFieldsFromMetadata(metadata, formattedAddress);
+
+              setCity(extracted.cityValue || city);
+              setAddressLine(selectedAddress);
+              if (extracted.postalCodeValue) {
+                setPostalCode(extracted.postalCodeValue);
+              }
+              setAddressVerification({
+                confirmed: true,
+                formattedAddress: extracted.formattedAddress,
+                coords: Array.isArray(coords) ? coords.join(" ") : "",
+                postalCode: extracted.postalCodeValue,
+              });
+              setIsAddressLoading(false);
+            })
+            .catch((error) => {
+              const message = error instanceof Error ? error.message : "Не удалось подтвердить адрес.";
+              setAddressVerification({
+                confirmed: false,
+                formattedAddress: "",
+                coords: "",
+                postalCode: "",
+              });
+              setSubmitError(message);
+              setIsAddressLoading(false);
+            });
+        });
+      });
+    };
+
+    if (window.ymaps) {
+      initSuggest();
+      return () => {
+        cancelled = true;
+        suggestViewRef.current?.destroy();
+        suggestViewRef.current = null;
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=${encodeURIComponent(YANDEX_MAPS_API_KEY)}&suggest_apikey=${encodeURIComponent(YANDEX_SUGGEST_API_KEY)}`;
+    script.async = true;
+    script.onload = () => initSuggest();
+    script.onerror = () => {
+      setIsAddressLoading(false);
+      setSubmitError("Не удалось загрузить Яндекс Карты для подсказок адреса.");
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      suggestViewRef.current?.destroy();
+      suggestViewRef.current = null;
+    };
+  }, []);
+
+  function handleCityChange(value: string) {
+    setCity(value);
+    setAddressVerification((prev) => ({ ...prev, confirmed: false, formattedAddress: "", coords: "", postalCode: "" }));
+  }
+
+  function handleAddressChange(value: string) {
+    setAddressLine(value);
+    setAddressVerification((prev) => ({ ...prev, confirmed: false, formattedAddress: "", coords: "", postalCode: "" }));
+    setSubmitError("");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,17 +302,15 @@ export function CheckoutPage() {
       return;
     }
 
+    if (!isAddressConfirmed) {
+      setSubmitError("Выберите адрес из подсказок Яндекса, чтобы оформить заказ.");
+      return;
+    }
+
     const formData = new FormData(event.currentTarget);
     const contactName = `${formData.get("first_name") ?? ""} ${formData.get("last_name") ?? ""}`.trim();
     const contactPhone = String(formData.get("phone") ?? "").trim();
-    const addressParts = [
-      formData.get("city"),
-      formData.get("postal_code"),
-      formData.get("address"),
-    ]
-      .map((value) => String(value ?? "").trim())
-      .filter(Boolean);
-    const deliveryAddress = addressParts.join(", ");
+    const deliveryAddress = addressLine.trim() || addressVerification.formattedAddress;
 
     setIsSubmitting(true);
     try {
@@ -114,7 +324,9 @@ export function CheckoutPage() {
         contactName: contactName || undefined,
         contactPhone: contactPhone || undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryMethod: "Курьерская доставка",
+        deliveryMethod: addressVerification.coords
+          ? `Курьерская доставка (${addressVerification.coords})`
+          : "Курьерская доставка",
         items: itemsPayload,
         payment: {
           method: selectedPayment === "card" ? "CARD" : "INVOICE",
@@ -167,16 +379,31 @@ export function CheckoutPage() {
               <div className="mt-8 grid gap-8 md:mt-14 md:gap-12 md:grid-cols-2">
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Имя</span>
-                  <input name="first_name" autoComplete="given-name" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                  <input
+                    name="first_name"
+                    autoComplete="given-name"
+                    placeholder="Например, Иван"
+                    className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                  />
                 </label>
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Фамилия</span>
-                  <input name="last_name" autoComplete="family-name" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                  <input
+                    name="last_name"
+                    autoComplete="family-name"
+                    placeholder="Например, Иванов"
+                    className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                  />
                 </label>
               </div>
               <label className="mt-8 block md:mt-12">
                 <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Телефон</span>
-                <input name="phone" autoComplete="tel" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                <input
+                  name="phone"
+                  autoComplete="tel"
+                  placeholder="+7 (999) 123-45-67"
+                  className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                />
               </label>
             
 
@@ -188,19 +415,57 @@ export function CheckoutPage() {
               <div className="mt-8 grid gap-8 md:mt-14 md:gap-12 md:grid-cols-[1fr_220px]">
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Город</span>
-                  <input name="city" autoComplete="address-level2" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                  <input
+                    name="city"
+                    autoComplete="address-level2"
+                    placeholder="Например, Москва"
+                    value={city}
+                    onChange={(event) => handleCityChange(event.target.value)}
+                    className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                  />
                 </label>
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Индекс</span>
-                  <input name="postal_code" autoComplete="postal-code" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                  <input
+                    name="postal_code"
+                    autoComplete="postal-code"
+                    placeholder="101000"
+                    value={postalCode}
+                    onChange={(event) => setPostalCode(event.target.value)}
+                    className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                  />
                 </label>
               </div>
-              <label className="mt-8 block md:mt-12">
+              <label className="mt-8 block md:mt-12 relative">
                 <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   Улица, дом, квартира
                 </span>
-                <input name="address" autoComplete="street-address" className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none" />
+                <input
+                  ref={addressInputRef}
+                  name="address"
+                  autoComplete="street-address"
+                  placeholder="Начните вводить адрес и выберите вариант из списка"
+                  value={addressLine}
+                  onChange={(event) => handleAddressChange(event.target.value)}
+                  className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                />
+                {isAddressLoading ? (
+                  <p className="mt-3 text-[12px] uppercase tracking-[1.2px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Загружаем Яндекс-подсказки...
+                  </p>
+                ) : null}
               </label>
+              <div className="mt-4 min-h-[24px]">
+                {isAddressConfirmed ? (
+                  <p className="text-[12px] uppercase tracking-[1.2px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Адрес подтвержден: {addressVerification.formattedAddress}
+                  </p>
+                ) : (
+                  <p className="text-[12px] uppercase tracking-[1.2px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    Для оформления заказа выберите адрес из подсказок Яндекса.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="mt-10 md:mt-20">
@@ -270,7 +535,7 @@ export function CheckoutPage() {
               ) : null}
               <button
                 type="submit"
-                disabled={isSubmitting || cartLoading || Boolean(cartError)}
+                disabled={isSubmitting || cartLoading || Boolean(cartError) || !isAddressConfirmed}
                 className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[clamp(1rem,1.2vw,1.4rem)] uppercase tracking-[4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
               >
                 подтвердить заказ
@@ -285,33 +550,40 @@ export function CheckoutPage() {
           <aside className="self-start border border-[#e8e3db] p-8 md:p-12">
             <h2 className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Ваш заказ</h2>
 
-            {primaryItem ? (
-              <div className="mt-12 flex items-center gap-5">
-                <a href={primaryItem.kind === "product" ? `/catalog/${primaryItem.slug}` : "/services"}>
-                  <img
-                    src={primaryItem.image}
-                    alt={primaryItem.title}
-                    width="120"
-                    height="120"
-                    loading="lazy"
-                    decoding="async"
-                    className="h-[92px] w-[92px] object-cover"
-                  />
-                </a>
-                <div>
-                  <p className="text-[clamp(1rem,1.1vw,1.3rem)] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {primaryItem.brandLabel ?? "AERIS PRECISION"}
-                  </p>
-                  <p className="mt-1 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {primaryItem.title}
-                  </p>
-                  <p className="mt-2 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {primaryItem.qty} шт.
-                  </p>
-                  <p className="mt-4 text-[clamp(1.2rem,1.5vw,1.65rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    {formatPrice(primaryItem.totalPrice)}
-                  </p>
-                </div>
+            {hydratedItems.length > 0 ? (
+              <div className="mt-12 space-y-6">
+                {hydratedItems.map((item, index) => (
+                  <div
+                    key={`${item.kind}-${item.slug}-${index}`}
+                    className={index === 0 ? "flex items-center gap-5" : "flex items-center gap-5 border-t border-[#e8e3db] pt-6"}
+                  >
+                    <a href={item.kind === "product" ? `/catalog/${item.slug}` : "/services"}>
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        width="120"
+                        height="120"
+                        loading="lazy"
+                        decoding="async"
+                        className="h-[92px] w-[92px] object-cover"
+                      />
+                    </a>
+                    <div>
+                      <p className="text-[clamp(1rem,1.1vw,1.3rem)] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        {item.brandLabel ?? "AERIS PRECISION"}
+                      </p>
+                      <p className="mt-1 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        {item.title}
+                      </p>
+                      <p className="mt-2 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        {item.qty} шт.
+                      </p>
+                      <p className="mt-4 text-[clamp(1.2rem,1.5vw,1.65rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                        {formatPrice(item.totalPrice)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : null}
 

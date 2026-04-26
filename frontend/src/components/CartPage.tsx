@@ -24,6 +24,7 @@ export function CartPage() {
   const [cart, setCart] = useState<CartView | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isCheckoutFloating, setIsCheckoutFloating] = useState(false);
@@ -161,9 +162,11 @@ export function CartPage() {
   }
 
   async function removeItem(itemId: string) {
+    setRemovingItemId(itemId);
     setActionLoading(true);
 
     try {
+      await new Promise((resolve) => window.setTimeout(resolve, 260));
       const nextCart = await removeSessionCartItem(itemId);
       setCart(nextCart);
       setError(null);
@@ -171,6 +174,7 @@ export function CartPage() {
       setError(nextError instanceof Error ? nextError : new Error("Не удалось удалить позицию."));
     } finally {
       setActionLoading(false);
+      setRemovingItemId((current) => (current === itemId ? null : current));
     }
   }
 
@@ -227,8 +231,8 @@ export function CartPage() {
       <SiteHeader />
 
       <section className="px-4 py-6 md:px-10 md:py-16" style={{ paddingBottom: totalsSectionPaddingBottom }}>
-        <div className="mx-auto grid max-w-[1480px] gap-6 md:gap-10 xl:grid-cols-[1fr_500px]">
-          <div>
+        <div className="mx-auto grid max-w-[1480px] gap-6 md:gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] 2xl:grid-cols-[minmax(0,1fr)_500px]">
+          <div className="min-w-0">
             <p className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
               <a href="/" className="hover:text-[#111]">Главная</a>
               <span className="mx-2 text-[#b5b2ab]">/</span>
@@ -241,7 +245,7 @@ export function CartPage() {
 
             {!loading && !error ? (
               <>
-                <div className="mt-10 hidden grid-cols-[1.2fr_180px_160px_60px] items-center border-b border-[#e8e3db] pb-5 text-[14px] uppercase tracking-[1.5px] text-[#7a7a75] md:grid [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <div className="mt-10 hidden grid-cols-[minmax(0,1.2fr)_150px_130px_44px] items-center gap-6 border-b border-[#e8e3db] pb-5 text-[13px] uppercase tracking-[1.4px] text-[#7a7a75] lg:grid xl:grid-cols-[minmax(0,1.2fr)_170px_150px_52px] xl:text-[14px] xl:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   <span>Изделие</span>
                   <span>Кол-во</span>
                   <span>Цена</span>
@@ -252,9 +256,11 @@ export function CartPage() {
                   {items.map((item) => (
                     <article
                       key={item.id}
-                      className="grid grid-cols-1 gap-4 py-6 md:grid-cols-[160px_1fr_180px_160px_60px] md:items-center md:gap-8 md:py-12"
+                      className={`grid grid-cols-1 gap-4 py-6 transition-[opacity,transform,filter] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:grid-cols-[140px_minmax(0,1fr)_150px_130px_44px] lg:items-center lg:gap-6 lg:py-10 xl:grid-cols-[160px_minmax(0,1fr)_170px_150px_52px] xl:gap-8 xl:py-12 ${
+                        removingItemId === item.id ? "pointer-events-none -translate-y-2 scale-[0.985] opacity-0 blur-[2px]" : "translate-y-0 scale-100 opacity-100 blur-0"
+                      }`}
                     >
-                      <div className="flex items-start gap-5 md:block">
+                      <div className="flex items-start gap-5 lg:block">
                         <img
                           src={item.image}
                           alt={item.title}
@@ -262,9 +268,9 @@ export function CartPage() {
                           height="220"
                           loading="lazy"
                           decoding="async"
-                          className="aspect-square w-[110px] shrink-0 object-cover sm:w-[140px] md:w-full"
+                          className="aspect-square w-[110px] shrink-0 object-cover sm:w-[140px] lg:w-full"
                         />
-                        <div className="md:hidden">
+                        <div className="lg:hidden">
                           <h2 className="text-[clamp(1.3rem,1.8vw,1.8rem)] leading-tight [font-family:'Cormorant_Garamond',serif]">
                             {item.kind === "product" ? <a href={`/catalog/${item.slug}`}>{item.title}</a> : item.title}
                           </h2>
@@ -273,33 +279,53 @@ export function CartPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="hidden md:block">
-                        <h2 className="text-[clamp(1.6rem,2.2vw,2.2rem)] leading-none [font-family:'Cormorant_Garamond',serif]">
+                      <div className="hidden min-w-0 lg:block">
+                        <h2 className="text-[clamp(1.45rem,1.7vw,2.2rem)] leading-[0.94] [font-family:'Cormorant_Garamond',serif]">
                           {item.kind === "product" ? <a href={`/catalog/${item.slug}`}>{item.title}</a> : item.title}
                         </h2>
                         <p className="mt-4 text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                           REF: {item.article}
                         </p>
                       </div>
-                      <div className="flex items-center justify-between gap-4 md:block">
-                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Кол-во</span>
-                        <div className="flex h-10 w-[132px] items-center justify-between border border-[#e8e3db] px-3 text-[clamp(0.95rem,1vw,1.25rem)] [font-family:DM_Sans,Manrope,sans-serif] sm:h-11 sm:w-[150px] sm:px-4 md:h-14 md:w-auto md:px-5">
-                          <button type="button" disabled={actionLoading || item.qty <= 1} onClick={() => changeQuantity(item.id, Math.max(1, item.qty - 1))}>
-                            <img src="/cart/minus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      <div className="flex items-center justify-between gap-4 lg:block">
+                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] lg:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Кол-во</span>
+                        <div className="flex h-10 w-[132px] items-center justify-between border border-[#e8e3db] px-3 text-[clamp(0.95rem,1vw,1.25rem)] [font-family:DM_Sans,Manrope,sans-serif] sm:h-11 sm:w-[150px] sm:px-4 lg:h-12 lg:w-full lg:px-3 xl:h-14 xl:px-5">
+                          <button
+                            type="button"
+                            disabled={actionLoading || item.qty <= 1}
+                            onClick={() => changeQuantity(item.id, Math.max(1, item.qty - 1))}
+                            className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[#f1ebe2] hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100 disabled:hover:bg-transparent lg:h-9 lg:w-9 xl:h-10 xl:w-10"
+                          >
+                            <img src="/cart/minus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3 w-3 lg:h-3 lg:w-3 xl:h-3.5 xl:w-3.5" />
                           </button>
-                          <span>{String(item.qty).padStart(2, "0")}</span>
-                          <button type="button" disabled={actionLoading} onClick={() => changeQuantity(item.id, item.qty + 1)}>
-                            <img src="/cart/plus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          <span
+                            key={`${item.id}-${item.qty}`}
+                            className="inline-block min-w-[2ch] text-center tabular-nums animate-[cartQtyPop_320ms_cubic-bezier(0.22,1,0.36,1)]"
+                          >
+                            {String(item.qty).padStart(2, "0")}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={actionLoading}
+                            onClick={() => changeQuantity(item.id, item.qty + 1)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[#f1ebe2] hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100 disabled:hover:bg-transparent lg:h-9 lg:w-9 xl:h-10 xl:w-10"
+                          >
+                            <img src="/cart/plus.svg" alt="" aria-hidden="true" width="14" height="14" className="h-3 w-3 lg:h-3 lg:w-3 xl:h-3.5 xl:w-3.5" />
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between md:block">
-                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] md:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Цена</span>
-                        <p className="whitespace-nowrap text-[clamp(1.15rem,1.6vw,1.75rem)] [font-family:DM_Sans,Manrope,sans-serif]">{formatPrice(item.totalPrice)}</p>
+                      <div className="flex min-w-0 items-center justify-between lg:block">
+                        <span className="text-[clamp(0.65rem,0.5vw,0.8rem)] uppercase tracking-[1.4px] text-[#7a7a75] lg:hidden [font-family:Jaldi,'JetBrains_Mono',monospace]">Цена</span>
+                        <p className="min-w-0 whitespace-nowrap text-[clamp(1.05rem,1.25vw,1.75rem)] [font-family:DM_Sans,Manrope,sans-serif] lg:text-[clamp(1rem,1.15vw,1.45rem)] xl:text-[clamp(1.15rem,1.35vw,1.75rem)]">{formatPrice(item.totalPrice)}</p>
                       </div>
-                      <div className="flex items-center justify-end md:justify-center">
-                        <button type="button" disabled={actionLoading} onClick={() => removeItem(item.id)} className="flex items-center justify-center">
-                          <img src="/cart/remove.svg" alt="Удалить товар" width="28" height="28" className="h-6 w-6 md:h-7 md:w-7" />
+                      <div className="flex items-center justify-end lg:justify-center">
+                        <button
+                          type="button"
+                          disabled={actionLoading}
+                          onClick={() => removeItem(item.id)}
+                          className="group flex h-11 w-11 items-center justify-center rounded-full text-[#7d7b76] transition-all duration-200 hover:bg-[#f1ebe2] hover:text-[#111] hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100 disabled:hover:bg-transparent lg:h-10 lg:w-10 xl:h-12 xl:w-12"
+                        >
+                          <img src="/cart/remove.svg" alt="Удалить товар" width="28" height="28" className="h-6 w-6 transition-transform duration-200 group-hover:rotate-90 lg:h-6 lg:w-6 xl:h-7 xl:w-7" />
                         </button>
                       </div>
                     </article>
@@ -316,14 +342,14 @@ export function CartPage() {
             </a>
           </div>
 
-          <aside className="border border-[#e8e3db] p-5 sm:p-6 md:p-14">
+          <aside className="min-w-0 border border-[#e8e3db] p-5 sm:p-6 md:p-10 xl:p-12 2xl:p-14">
             <h2 className="text-[clamp(1.8rem,3.2vw,3.1rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Итого</h2>
 
             <div className="mt-8 space-y-5 md:mt-12 md:space-y-8">
               {totals.map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-4 md:gap-6">
-                  <span className="text-[clamp(0.95rem,1vw,1.25rem)] text-[#6f6f69]">{label}</span>
-                  <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-[clamp(0.95rem,1vw,1.25rem)]">{value}</span>
+                  <span className="min-w-0 text-[clamp(0.9rem,0.95vw,1.2rem)] text-[#6f6f69]">{label}</span>
+                  <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-[clamp(0.95rem,0.95vw,1.2rem)]">{value}</span>
                 </div>
               ))}
             </div>

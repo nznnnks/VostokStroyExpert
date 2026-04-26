@@ -175,6 +175,13 @@ model Product {
   discounts        Discount[]
   cartItems        CartItem[]
   orderItems       OrderItem[]
+
+  @@index([status, createdAt])
+  @@index([status, price])
+  @@index([categoryId, status, createdAt])
+  @@index([brand, status])
+  @@index([country, status])
+  @@index([type, status])
 }
 
 model FilterGroup {
@@ -218,6 +225,9 @@ model ProductFilterValue {
 
   @@unique([productId, parameterId])
   @@index([parameterId])
+  @@index([parameterId, value])
+  @@index([parameterId, numericValue])
+  @@index([productId, parameterId, numericValue])
 }
 
 model Service {

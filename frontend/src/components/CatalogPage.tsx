@@ -2,13 +2,24 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 
 import { formatPrice, type Product } from "../data/products";
+import { loadCatalogListing, type CatalogListingResponse } from "../lib/catalog-api";
 import { slugify } from "../lib/slug";
-import { addProductToSessionCartBySlug } from "../lib/session-cart";
+import {
+  SESSION_CART_UPDATED_EVENT,
+  addProductToSessionCart,
+  loadSessionCart,
+  updateSessionCartItem,
+} from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
 type CatalogPageProps = {
-  products: Product[];
+  initialProducts: Product[];
+  initialMeta: CatalogListingResponse["meta"];
+  initialTotal: number;
+  initialTotalAll: number;
+  initialHasMore: boolean;
+  initialLimit?: number;
   initialCategory?: string;
   variant?: "default" | "landing";
 };
@@ -17,7 +28,9 @@ type CatalogDynamicFilter = {
   id: string;
   groupId: string;
   groupName: string;
+  groupSlug?: string;
   parameterName: string;
+  parameterSlug?: string;
   parameterType: "TEXT" | "NUMBER";
   unit?: string;
   values: string[];
@@ -27,12 +40,34 @@ type CatalogDynamicFilter = {
   fallbackKey?: "power" | "volume";
 };
 
-export function CatalogPage({ products, initialCategory, variant = "default" }: CatalogPageProps) {
+export function CatalogPage({
+  initialProducts,
+  initialMeta,
+  initialTotal,
+  initialTotalAll,
+  initialHasMore,
+  initialLimit = 24,
+  initialCategory,
+  variant = "default",
+}: CatalogPageProps) {
   const resultsTopRef = useRef<HTMLDivElement>(null);
+  const desktopFiltersRef = useRef<HTMLElement | null>(null);
+  const landingCategoryTreeRef = useRef(initialMeta.categoryTypeTree);
   const hasMountedQueryEffectRef = useRef(false);
   const pendingOverlayScrollRef = useRef<"restore" | "results">("restore");
   const isLanding = variant === "landing";
   const isCategoryPage = Boolean(initialCategory && initialCategory !== "all");
+  const [desktopFiltersTop, setDesktopFiltersTop] = useState(24);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [catalogMeta, setCatalogMeta] = useState<CatalogListingResponse["meta"]>(initialMeta);
+  const [catalogTotal, setCatalogTotal] = useState(initialTotal);
+  const [catalogTotalAll, setCatalogTotalAll] = useState(initialTotalAll);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isFetchingResults, setIsFetchingResults] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const requestIdRef = useRef(0);
+  const suppressCatalogReloadRef = useRef(false);
+  const previousDynamicFilterBoundsRef = useRef<Record<string, [number, number]>>({});
   const formatFilterCountLabel = (count: number) => {
     const mod10 = count % 10;
     const mod100 = count % 100;
@@ -40,150 +75,24 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} фильтра`;
     return `${count} фильтров`;
   };
-  const productOrderMap = useMemo(() => new Map(products.map((product, index) => [product.slug, index])), [products]);
-  const categoryTypeTree = useMemo(() => {
-    const grouped = new Map<string, { category: string; count: number; types: Map<string, number> }>();
-
-    for (const product of products) {
-      const current = grouped.get(product.category) ?? {
-        category: product.category,
-        count: 0,
-        types: new Map<string, number>(),
-      };
-
-      current.count += 1;
-      current.types.set(product.type, (current.types.get(product.type) ?? 0) + 1);
-      grouped.set(product.category, current);
-    }
-
-    return Array.from(grouped.values())
-      .map((item) => ({
-        category: item.category,
-        count: item.count,
-        types: Array.from(item.types.entries())
-          .map(([type, count]) => ({ type, count }))
-          .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type, "ru")),
-      }))
-      .sort((left, right) => right.count - left.count || left.category.localeCompare(right.category, "ru"));
-  }, [products]);
-  const currentCategoryTypes = useMemo(() => {
-    if (!isCategoryPage || !initialCategory) return [];
-
-    return products
-      .filter((product) => product.category === initialCategory)
-      .reduce<Map<string, number>>((acc, product) => {
-        acc.set(product.type, (acc.get(product.type) ?? 0) + 1);
-        return acc;
-      }, new Map<string, number>());
-  }, [initialCategory, isCategoryPage, products]);
-  const currentCategoryTypeOptions = useMemo(() => {
-    return Array.from(currentCategoryTypes.entries())
-      .map(([type, count]) => ({ type, count }))
-      .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type, "ru"));
-  }, [currentCategoryTypes]);
-
-  const categoryCards = useMemo(() => {
-    const map = new Map<string, { count: number; image: string }>();
-
-    for (const product of products) {
-      const prev = map.get(product.category);
-      if (!prev) {
-        map.set(product.category, { count: 1, image: product.image });
-      } else {
-        map.set(product.category, {
-          count: prev.count + 1,
-          image: prev.image || product.image,
-        });
-      }
-    }
-
-    return Array.from(map.entries())
-      .map(([name, meta]) => ({
-        name,
-        slug: slugify(name),
-        count: meta.count,
-        image: meta.image,
-      }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));
-  }, [products]);
-
-  const brands = useMemo(() => uniqueValues(products.map((product) => product.brand)), [products]);
-  const countries = useMemo(() => uniqueValues(products.map((product) => product.country)), [products]);
-  const types = useMemo(() => uniqueValues(products.map((product) => product.type)), [products]);
-  const dynamicFilters = useMemo(() => {
-    const filtersMap = new Map<
-      string,
-      Omit<CatalogDynamicFilter, "min" | "max" | "values"> & { values: Set<string> }
-    >();
-
-    for (const product of products) {
-      for (const filter of product.filters ?? []) {
-        const current = filtersMap.get(filter.parameterId) ?? {
-          id: filter.parameterId,
-          groupId: filter.groupId,
-          groupName: filter.groupName,
-          parameterName: filter.parameterName,
-          parameterType: filter.parameterType,
-          unit: filter.unit,
-          values: new Set<string>(),
-          numericValues: [],
-        };
-
-        current.values.add(filter.value);
-        if (filter.parameterType === "NUMBER" && typeof filter.numericValue === "number") {
-          current.numericValues.push(filter.numericValue);
-        }
-
-        filtersMap.set(filter.parameterId, current);
-      }
-    }
-
-    const hasPowerFilter = Array.from(filtersMap.values()).some((item) => item.id === "legacy-power" || item.parameterName.toLowerCase() === "мощность");
-    const hasVolumeFilter = Array.from(filtersMap.values()).some((item) => item.id === "legacy-volume" || item.parameterName.toLowerCase() === "объем");
-
-    if (!hasPowerFilter) {
-      const numericValues = products.map((product) => product.power).filter((value) => value > 0);
-      if (numericValues.length > 0) {
-        filtersMap.set("legacy-power", {
-          id: "legacy-power",
-          groupId: "legacy-main",
-          groupName: "Основные параметры",
-          parameterName: "Мощность",
-          parameterType: "NUMBER",
-          unit: "кВт",
-          values: new Set<string>(),
-          numericValues,
-          fallbackKey: "power",
-        });
-      }
-    }
-
-    if (!hasVolumeFilter) {
-      const numericValues = products.map((product) => product.volume).filter((value) => value > 0);
-      if (numericValues.length > 0) {
-        filtersMap.set("legacy-volume", {
-          id: "legacy-volume",
-          groupId: "legacy-main",
-          groupName: "Основные параметры",
-          parameterName: "Объем",
-          parameterType: "NUMBER",
-          unit: "л",
-          values: new Set<string>(),
-          numericValues,
-          fallbackKey: "volume",
-        });
-      }
-    }
-
-    return Array.from(filtersMap.values())
-      .map((item) => ({
+  const categoryTypeTree = isLanding ? landingCategoryTreeRef.current : catalogMeta.categoryTypeTree;
+  const currentCategoryTypeOptions = catalogMeta.currentCategoryTypes;
+  const categoryCards = useMemo(
+    () => catalogMeta.categoryCards.map((item) => ({ ...item, image: item.image ?? "/catalog/product-1.png" })),
+    [catalogMeta.categoryCards],
+  );
+  const brands = catalogMeta.brands;
+  const countries = catalogMeta.countries;
+  const types = catalogMeta.types;
+  const dynamicFilters = useMemo(
+    () =>
+      catalogMeta.dynamicFilters.map((item) => ({
         ...item,
-        min: item.parameterType === "NUMBER" ? getSafeMin(item.numericValues, 0) : 0,
-        max: item.parameterType === "NUMBER" ? getSafeMax(item.numericValues, 0) : 0,
-        values: Array.from(item.values).sort((left, right) => left.localeCompare(right, "ru")),
-      }) satisfies CatalogDynamicFilter)
-      .sort((left, right) => left.groupName.localeCompare(right.groupName, "ru") || left.parameterName.localeCompare(right.parameterName, "ru"));
-  }, [products]);
+        fallbackKey:
+          item.id === "legacy-power" ? "power" : item.id === "legacy-volume" ? "volume" : undefined,
+      })) satisfies CatalogDynamicFilter[],
+    [catalogMeta.dynamicFilters],
+  );
 
   const dynamicFilterGroups = useMemo(() => {
     const grouped = new Map<string, { id: string; name: string; filters: CatalogDynamicFilter[] }>();
@@ -197,8 +106,8 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     return Array.from(grouped.values());
   }, [dynamicFilters]);
 
-  const globalMaxProductPrice = getSafeMax(products.map((product) => product.price), 100000);
-  const itemsPerPage = isLanding ? 12 : 6;
+  const globalMaxProductPrice = Math.max(100000, catalogMeta.maxPrice || 0);
+  const itemsPerPage = initialLimit;
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory ?? "all");
@@ -214,10 +123,14 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [allFiltersOpen, setAllFiltersOpen] = useState(false);
+  const [categoriesCollapsed, setCategoriesCollapsed] = useState(false);
+  const [brandsCollapsed, setBrandsCollapsed] = useState(false);
   const [sortMode, setSortMode] = useState<"popular" | "new" | "price-asc" | "price-desc">("popular");
   const isSortApplied = sortMode !== "popular";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [pendingCartSlug, setPendingCartSlug] = useState<string | null>(null);
+  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+  const [animatedCartSlug, setAnimatedCartSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!allFiltersOpen && !filtersOpen) return;
@@ -250,6 +163,37 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   }, [allFiltersOpen, filtersOpen]);
 
   useEffect(() => {
+    let active = true;
+
+    const syncCartQuantities = async () => {
+      try {
+        const cart = await loadSessionCart();
+        if (!active) return;
+        setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
+      } catch {
+        if (!active) return;
+      }
+    };
+
+    void syncCartQuantities();
+
+    const handleCartUpdated = () => {
+      void syncCartQuantities();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(SESSION_CART_UPDATED_EVENT, handleCartUpdated as EventListener);
+    }
+
+    return () => {
+      active = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener(SESSION_CART_UPDATED_EVENT, handleCartUpdated as EventListener);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!allFiltersOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -261,23 +205,108 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   }, [allFiltersOpen]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const element = desktopFiltersRef.current;
+    if (!element) return;
+
+    let rafId: number | null = null;
+
+    const updateDesktopFiltersPosition = () => {
+      if (window.innerWidth < 1280) {
+        setDesktopFiltersTop(24);
+        return;
+      }
+
+      const headerOffsetRaw = getComputedStyle(document.documentElement)
+        .getPropertyValue("--site-header-offset")
+        .trim();
+      const headerOffset = Number.parseFloat(headerOffsetRaw) || 76;
+      const viewportHeight = window.innerHeight;
+      const elementHeight = element.getBoundingClientRect().height;
+      const availableHeight = Math.max(viewportHeight - headerOffset - 24, 0);
+      const centeredOffset = Math.max((availableHeight - elementHeight) / 2, 12);
+
+      setDesktopFiltersTop((current) => {
+        const next = Math.round(headerOffset + centeredOffset);
+        return current === next ? current : next;
+      });
+    };
+
+    const scheduleUpdate = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateDesktopFiltersPosition();
+      });
+    };
+
+    scheduleUpdate();
+    const resizeObserver =
+      "ResizeObserver" in window ? new ResizeObserver(() => scheduleUpdate()) : null;
+    resizeObserver?.observe(element);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      resizeObserver?.disconnect();
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+    };
+  }, [
+    brandsCollapsed,
+    categoriesCollapsed,
+    dynamicFilters.length,
+    initialCategory,
+    isCategoryPage,
+    products.length,
+    showAdvanced,
+  ]);
+
+  useEffect(() => {
+    const previousBounds = previousDynamicFilterBoundsRef.current;
     setSelectedNumericFilters((prev) => {
       const next: Record<string, [number, number]> = {};
       for (const filter of dynamicFilters) {
         if (filter.parameterType !== "NUMBER") continue;
         const current = prev[filter.id];
-        next[filter.id] = current ? [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])] : [filter.min, filter.max];
+        const priorBounds = previousBounds[filter.id];
+        const wasUsingPreviousDefault =
+          current &&
+          priorBounds &&
+          current[0] === priorBounds[0] &&
+          current[1] === priorBounds[1];
+
+        next[filter.id] =
+          !current || wasUsingPreviousDefault
+            ? [filter.min, filter.max]
+            : [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])];
       }
-      return next;
+      return shallowRangeRecordEqual(prev, next) ? prev : next;
     });
     setSelectedNumericFilterDrafts((prev) => {
       const next: Record<string, [number, number]> = {};
       for (const filter of dynamicFilters) {
         if (filter.parameterType !== "NUMBER") continue;
         const current = prev[filter.id];
-        next[filter.id] = current ? [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])] : [filter.min, filter.max];
+        const priorBounds = previousBounds[filter.id];
+        const wasUsingPreviousDefault =
+          current &&
+          priorBounds &&
+          current[0] === priorBounds[0] &&
+          current[1] === priorBounds[1];
+
+        next[filter.id] =
+          !current || wasUsingPreviousDefault
+            ? [filter.min, filter.max]
+            : [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])];
       }
-      return next;
+      return shallowRangeRecordEqual(prev, next) ? prev : next;
     });
     setSelectedTextFilters((prev) => {
       const next: Record<string, string[]> = {};
@@ -285,67 +314,17 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
         if (filter.parameterType !== "TEXT") continue;
         next[filter.id] = prev[filter.id]?.filter((value) => filter.values.includes(value)) ?? [];
       }
-      return next;
+      return shallowTextRecordEqual(prev, next) ? prev : next;
     });
+
+    previousDynamicFilterBoundsRef.current = Object.fromEntries(
+      dynamicFilters
+        .filter((filter) => filter.parameterType === "NUMBER")
+        .map((filter) => [filter.id, [filter.min, filter.max] as [number, number]]),
+    );
   }, [dynamicFilters]);
 
-  const productsBeforePriceFilter = useMemo(() => {
-    return products.filter((product) => {
-      const normalizedQuery = query.trim().toLowerCase();
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        product.title.toLowerCase().includes(normalizedQuery) ||
-        product.brand.toLowerCase().includes(normalizedQuery) ||
-        product.article.toLowerCase().includes(normalizedQuery);
-      const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-      const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
-      const matchesCountry = selectedCountries.length === 0 || selectedCountries.includes(product.country);
-      const matchesType = selectedTypes.length === 0 || selectedTypes.includes(product.type);
-      const matchesDynamicFilters = dynamicFilters.every((filter) => {
-        if (filter.parameterType === "NUMBER") {
-          const selectedRange = selectedNumericFilters[filter.id] ?? [filter.min, filter.max];
-          const isActive = selectedRange[0] !== filter.min || selectedRange[1] !== filter.max;
-
-          if (!isActive) {
-            return true;
-          }
-
-          const numericValue =
-            filter.fallbackKey === "power"
-              ? product.power
-              : filter.fallbackKey === "volume"
-                ? product.volume
-                : product.filters?.find((item) => item.parameterId === filter.id)?.numericValue ?? null;
-
-          return typeof numericValue === "number" && numericValue >= selectedRange[0] && numericValue <= selectedRange[1];
-        }
-
-        const selectedValues = selectedTextFilters[filter.id] ?? [];
-        if (selectedValues.length === 0) {
-          return true;
-        }
-
-        const filterValue = product.filters?.find((item) => item.parameterId === filter.id)?.value;
-        return Boolean(filterValue && selectedValues.includes(filterValue));
-      });
-
-      return (
-        matchesQuery &&
-        matchesCategory &&
-        matchesBrand &&
-        matchesCountry &&
-        matchesType &&
-        matchesDynamicFilters
-      );
-    });
-  }, [products, query, selectedCategory, selectedBrands, selectedCountries, selectedTypes, dynamicFilters, selectedNumericFilters, selectedTextFilters]);
-
-  const maxProductPrice = useMemo(() => {
-    return getSafeMax(
-      productsBeforePriceFilter.map((product) => product.price),
-      globalMaxProductPrice,
-    );
-  }, [productsBeforePriceFilter, globalMaxProductPrice]);
+  const maxProductPrice = globalMaxProductPrice;
 
   const previousMaxProductPriceRef = useRef(maxProductPrice);
 
@@ -359,12 +338,17 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
   useEffect(() => {
     const previousMax = previousMaxProductPriceRef.current;
+    let shouldSuppressReload = false;
 
     setPriceRange((current) => {
       const wasPinnedToMax = current[1] === previousMax;
       const clamped = clampPriceRangeToMax(current, maxProductPrice);
       if (wasPinnedToMax && maxProductPrice > previousMax) {
+        shouldSuppressReload = true;
         return [clamped[0], maxProductPrice];
+      }
+      if (clamped[0] !== current[0] || clamped[1] !== current[1]) {
+        shouldSuppressReload = true;
       }
       return clamped;
     });
@@ -378,28 +362,14 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
       return clamped;
     });
 
+    if (shouldSuppressReload) {
+      suppressCatalogReloadRef.current = true;
+    }
     previousMaxProductPriceRef.current = maxProductPrice;
   }, [maxProductPrice]);
 
-  const filteredProducts = useMemo(() => {
-    const next = productsBeforePriceFilter.filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1]);
-
-    next.sort((left, right) => {
-      if (sortMode === "price-asc") return left.price - right.price;
-      if (sortMode === "price-desc") return right.price - left.price;
-      if (sortMode === "new") return (productOrderMap.get(right.slug) ?? 0) - (productOrderMap.get(left.slug) ?? 0);
-      return (productOrderMap.get(left.slug) ?? 0) - (productOrderMap.get(right.slug) ?? 0);
-    });
-
-    return next;
-  }, [priceRange, productOrderMap, productsBeforePriceFilter, sortMode]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
-  const safePage = Math.min(page, totalPages);
-  const pageProducts = isLanding
-    ? filteredProducts.slice(0, safePage * itemsPerPage)
-    : filteredProducts.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
-  const visiblePercent = products.length === 0 ? 0 : Math.round((filteredProducts.length / products.length) * 100);
+  const pageProducts = products;
+  const visiblePercent = catalogTotalAll === 0 ? 0 : Math.round((catalogTotal / catalogTotalAll) * 100);
   const resultsAnimationKey = [
     query,
     selectedCategory,
@@ -409,8 +379,63 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     selectedTypes.join("-"),
     JSON.stringify(selectedNumericFilters),
     JSON.stringify(selectedTextFilters),
-    safePage,
   ].join("|");
+
+  async function loadCatalogPage(nextPage: number, mode: "replace" | "append") {
+    const requestId = ++requestIdRef.current;
+    const selectedTextFiltersPayload = Object.fromEntries(
+      Object.entries(selectedTextFilters).filter(([, values]) => values.length > 0),
+    );
+    const selectedNumericFiltersPayload = Object.fromEntries(
+      dynamicFilters
+        .filter((filter) => filter.parameterType === "NUMBER")
+        .map((filter) => [filter.id, selectedNumericFilters[filter.id] ?? [filter.min, filter.max]] as const)
+        .filter((entry) => {
+          const filter = dynamicFilters.find((item) => item.id === entry[0]);
+          if (!filter) return false;
+          return entry[1][0] !== filter.min || entry[1][1] !== filter.max;
+        }),
+    );
+
+    if (mode === "append") {
+      setIsFetchingMore(true);
+    } else {
+      setIsFetchingResults(true);
+    }
+
+    try {
+      const response = await loadCatalogListing({
+        page: nextPage,
+        limit: itemsPerPage,
+        search: query.trim() || undefined,
+        category: selectedCategory !== "all" ? selectedCategory : undefined,
+        minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+        maxPrice: priceRange[1] < maxProductPrice ? priceRange[1] : undefined,
+        brands: selectedBrands,
+        countries: selectedCountries,
+        types: selectedTypes,
+        sort: sortMode,
+        textFilters: selectedTextFiltersPayload,
+        numericFilters: selectedNumericFiltersPayload,
+        includeMeta: mode === "replace",
+      });
+
+      if (requestId !== requestIdRef.current) return;
+
+      setProducts((current) => (mode === "append" ? [...current, ...response.items] : response.items));
+      if (response.meta) {
+        setCatalogMeta(response.meta);
+      }
+      setCatalogTotal(response.total);
+      setCatalogTotalAll(response.totalAll);
+      setHasMore(response.hasMore);
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsFetchingMore(false);
+        setIsFetchingResults(false);
+      }
+    }
+  }
 
   const hasActiveFilters = useMemo(() => {
     if (query.trim().length > 0) return true;
@@ -465,12 +490,6 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   }, [dynamicFilters, isCategoryPage, maxProductPrice, priceRange, selectedBrands, selectedCategory, selectedCountries, selectedNumericFilters, selectedTextFilters, selectedTypes]);
 
   useEffect(() => {
-    if (!resultsTopRef.current) return;
-    if (isLanding) return;
-    resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [safePage]);
-
-  useEffect(() => {
     if (!hasMountedQueryEffectRef.current) {
       hasMountedQueryEffectRef.current = true;
       return;
@@ -511,6 +530,29 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     setPage(1);
   }, [brands]);
 
+  useEffect(() => {
+    if (suppressCatalogReloadRef.current) {
+      suppressCatalogReloadRef.current = false;
+      return;
+    }
+
+    void loadCatalogPage(1, "replace");
+    setPage(1);
+    if (resultsTopRef.current) {
+      resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [
+    query,
+    selectedCategory,
+    selectedBrands,
+    selectedCountries,
+    selectedTypes,
+    selectedTextFilters,
+    selectedNumericFilters,
+    priceRange,
+    sortMode,
+  ]);
+
   function handleShowProducts() {
     if (typeof window === "undefined") return;
 
@@ -520,7 +562,7 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
         params.append("type", type);
       }
       const queryString = params.toString();
-      const href = `/catalog/category/${slugify(selectedCategory)}${queryString ? `?${queryString}` : ""}`;
+      const href = `/catalog/category/${selectedCategory}${queryString ? `?${queryString}` : ""}`;
       window.location.href = href;
       return;
     }
@@ -536,14 +578,35 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     setAllFiltersOpen(false);
   }
 
-  async function handleAddToCart(slug: string) {
+  async function handleAddToCart(product: Product) {
+    if (pendingCartSlug === product.slug) return;
+
+    setPendingCartSlug(product.slug);
+    try {
+      const cart = await addProductToSessionCart(product);
+      setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
+      setAnimatedCartSlug(product.slug);
+    } finally {
+      setPendingCartSlug((current) => (current === product.slug ? null : current));
+      window.setTimeout(() => {
+        setAnimatedCartSlug((current) => (current === product.slug ? null : current));
+      }, 420);
+    }
+  }
+
+  async function handleCartQuantityChange(slug: string, quantity: number) {
     if (pendingCartSlug === slug) return;
 
     setPendingCartSlug(slug);
     try {
-      await addProductToSessionCartBySlug(slug);
+      const cart = await updateSessionCartItem(slug, quantity);
+      setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
+      setAnimatedCartSlug(slug);
     } finally {
       setPendingCartSlug((current) => (current === slug ? null : current));
+      window.setTimeout(() => {
+        setAnimatedCartSlug((current) => (current === slug ? null : current));
+      }, 420);
     }
   }
 
@@ -579,6 +642,20 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
     setShowAdvanced((prev) => !prev);
   }
 
+  function handleLandingCategorySelect(categorySlug: string) {
+    setSelectedCategory(categorySlug);
+    setExpandedCategory(categorySlug);
+    setSelectedTypes([]);
+    setPage(1);
+  }
+
+  function handleLandingCategoryReset() {
+    setSelectedCategory("all");
+    setSelectedTypes([]);
+    setExpandedCategory(null);
+    setPage(1);
+  }
+
   function resetSortMode() {
     setSortMode("popular");
     setPage(1);
@@ -596,9 +673,8 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   }
 
   function renderFilters(idPrefix: string, mode: "compact" | "full", variant: "default" | "overlay" = "default") {
-    const mood = visiblePercent >= 80 ? "happy" : visiblePercent >= 40 ? "neutral" : "sad";
     const isOverlay = variant === "overlay";
-    const isLandingCategoryFilters = isLanding && mode === "full" && !isOverlay;
+    const isLandingCategoryFilters = isLanding && !isOverlay;
     const isCategoryTypeFilters = isCategoryPage && mode === "full" && !isOverlay;
     return (
       <div className={isOverlay ? "space-y-6 2xl:space-y-8 min-[2200px]:space-y-10" : "space-y-8"}>
@@ -630,42 +706,58 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
         {isLandingCategoryFilters ? (
           <section>
-            <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              Категория
-            </h2>
-            <div className="mt-3 border-t border-[#e7e1d9] pt-5">
-              <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                Категория
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCategoriesCollapsed((current) => !current)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center text-[#111]"
+                aria-expanded={!categoriesCollapsed}
+                aria-label={categoriesCollapsed ? "Показать категории" : "Скрыть категории"}
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  width="16"
+                  height="16"
+                  aria-hidden="true"
+                  className={`transition-transform duration-300 ${categoriesCollapsed ? "" : "rotate-180"}`}
+                >
+                  <path d="M4 7.5l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+            <div className={`catalog-filter-accordion mt-3 border-t border-[#e7e1d9] ${categoriesCollapsed ? "" : "catalog-filter-accordion--open"}`}>
+              <div className="catalog-filter-accordion__inner pt-5">
+                <div className="space-y-4">
                 <label className="flex items-center gap-4 text-[18px] text-[#6f6f69] 2xl:text-[20px]">
                   <input
                     type="radio"
                     name={`${idPrefix}-landing-category`}
                     checked={selectedCategory === "all"}
-                    onChange={() => {
-                      setSelectedCategory("all");
-                      setSelectedTypes([]);
-                      setPage(1);
-                    }}
+                    onChange={handleLandingCategoryReset}
                     className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
                   />
                   <span>Все категории</span>
                 </label>
 
                 {categoryTypeTree.map((item) => {
-                  const isExpanded = expandedCategory === item.category;
-                  const isActiveCategory = selectedCategory === item.category;
+                  const isExpanded = expandedCategory === item.slug;
+                  const isActiveCategory = selectedCategory === item.slug;
 
                   return (
                     <div key={item.category} className="border-b border-[#f0ebe4] pb-4 last:border-b-0">
                       <div className="flex items-start justify-between gap-3">
-                        <label className="flex min-w-0 items-start gap-4 text-[18px] text-[#111] 2xl:text-[20px]">
+                        <label
+                          className="flex min-w-0 flex-1 cursor-pointer items-start gap-4 text-left text-[18px] text-[#111] 2xl:text-[20px]"
+                          onClick={() => handleLandingCategorySelect(item.slug)}
+                        >
                           <input
                             type="radio"
                             name={`${idPrefix}-landing-category`}
                             checked={isActiveCategory}
-                            onChange={() => {
-                              setSelectedCategory(item.category);
-                              setPage(1);
-                            }}
+                            onChange={() => handleLandingCategorySelect(item.slug)}
                             className="catalog-checkbox mt-1 h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
                           />
                           <span className="min-w-0">
@@ -678,7 +770,9 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
                         <button
                           type="button"
-                          onClick={() => setExpandedCategory((current) => (current === item.category ? null : item.category))}
+                          onClick={() =>
+                            setExpandedCategory((current) => (current === item.slug ? null : item.slug))
+                          }
                           className="flex h-9 w-9 shrink-0 items-center justify-center text-[#111]"
                           aria-expanded={isExpanded}
                           aria-label={isExpanded ? `Скрыть типы ${item.category}` : `Показать типы ${item.category}`}
@@ -721,39 +815,17 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
           </section>
         ) : null}
 
-        {isOverlay ? null : (
+        {isOverlay || (isLanding && mode === "compact") ? null : (
           <section>
           <div className="flex items-center justify-between gap-4 text-[16px] uppercase tracking-[1.4px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <span>Цена</span>
-            <span className="flex items-center gap-3 text-right text-[#8a8a85]">
-              Отображено {visiblePercent}% товаров
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#d9d3ca] text-[#7a7a75]">
-                {mood === "happy" ? (
-                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
-                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
-                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
-                    <path d="M5.4 11c1.6 2 7.6 2 9.2 0" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                  </svg>
-                ) : mood === "neutral" ? (
-                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
-                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
-                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
-                    <path d="M6 12h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
-                    <circle cx="6.6" cy="7.3" r="1" fill="currentColor" />
-                    <circle cx="13.4" cy="7.3" r="1" fill="currentColor" />
-                    <path d="M5.4 13c1.6-2 7.6-2 9.2 0" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-                  </svg>
-                )}
-              </span>
-            </span>
+            <span className="text-right text-[#8a8a85]">{visiblePercent}%</span>
           </div>
           <div className="mt-4 border-t border-[#e7e1d9] pt-5">
             <div className="grid grid-cols-2 gap-4">
@@ -787,10 +859,15 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
         )}
 
         {(() => {
+          const showCompactDesktopCategoryFilters = mode === "compact" && !isOverlay && isCategoryPage;
           const filterGroups = [
-            ...(mode === "full" ? ([["Бренд", brands]] as const) : ([] as const)),
+            ...((mode === "full" || (mode === "compact" && !isOverlay && (isLanding || isCategoryPage))) ? ([["Бренд", brands]] as const) : ([] as const)),
             ...(mode === "full" ? ([["Страна производства", countries]] as const) : ([] as const)),
-            ...(!isLandingCategoryFilters && !isCategoryPage && mode === "full" && !isOverlay ? ([["Тип", types]] as const) : ([] as const)),
+            ...(
+              (!isLandingCategoryFilters && !isCategoryPage && mode === "full" && !isOverlay) || showCompactDesktopCategoryFilters
+                ? ([["Тип", types]] as const)
+                : ([] as const)
+            ),
           ] as const;
 
           if (isOverlay && filterGroups.length > 1) {
@@ -826,17 +903,53 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
 
           return filterGroups.map(([title, items]) => (
             <section key={title}>
-              <h2
-                className={`${isOverlay ? "text-[16px] 2xl:text-[20px] min-[2200px]:text-[24px]" : "text-[20px] 2xl:text-[22px]"} uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
-              >
-                {title}
-              </h2>
+              {isLanding && mode === "compact" && !isOverlay && title === "Бренд" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-[20px] uppercase tracking-[1.6px] 2xl:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                    {title}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setBrandsCollapsed((current) => !current)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center text-[#111]"
+                    aria-expanded={!brandsCollapsed}
+                    aria-label={brandsCollapsed ? "Показать бренды" : "Скрыть бренды"}
+                  >
+                    <svg
+                      viewBox="0 0 20 20"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      className={`transition-transform duration-300 ${brandsCollapsed ? "" : "rotate-180"}`}
+                    >
+                      <path d="M4 7.5l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <h2
+                  className={`${isOverlay ? "text-[16px] 2xl:text-[20px] min-[2200px]:text-[24px]" : "text-[20px] 2xl:text-[22px]"} uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]`}
+                >
+                  {title}
+                </h2>
+              )}
               <div
                 className={[
                   "mt-3 border-t border-[#e7e1d9]",
-                  isOverlay ? "pt-4 2xl:pt-5 [column-gap:26px] 2xl:[column-gap:32px] xl:columns-2" : "space-y-5 pt-5",
+                  isOverlay
+                    ? "pt-4 2xl:pt-5 [column-gap:26px] 2xl:[column-gap:32px] xl:columns-2"
+                    : isLanding && mode === "compact" && !isOverlay && title === "Бренд"
+                      ? `catalog-filter-accordion ${brandsCollapsed ? "" : "catalog-filter-accordion--open"}`
+                      : "space-y-5 pt-5",
                 ].join(" ")}
               >
+                <div
+                  className={
+                    isLanding && mode === "compact" && !isOverlay && title === "Бренд"
+                      ? "catalog-filter-accordion__inner grid grid-cols-2 gap-x-5 gap-y-4 pt-5"
+                      : undefined
+                  }
+                >
                 {items.map((item, index) => {
                   const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                   const [selected, setSelected] = getFilterState(String(title));
@@ -847,7 +960,11 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                       htmlFor={id}
                       className={[
                         "flex items-center gap-4 text-[#6f6f69]",
-                        isOverlay ? "mb-4 2xl:mb-5 break-inside-avoid text-[14px] 2xl:text-[18px] min-[2200px]:text-[21px]" : "text-[18px] 2xl:text-[20px]",
+                        isOverlay
+                          ? "mb-4 2xl:mb-5 break-inside-avoid text-[14px] 2xl:text-[18px] min-[2200px]:text-[21px]"
+                          : isLanding && mode === "compact" && !isOverlay && title === "Бренд"
+                            ? "min-w-0 text-[16px] 2xl:text-[18px]"
+                            : "text-[18px] 2xl:text-[20px]",
                       ].join(" ")}
                     >
                       <input
@@ -864,6 +981,7 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                     </label>
                   );
                 })}
+                </div>
               </div>
             </section>
           ));
@@ -1019,13 +1137,28 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
           : null}
 
         {mode === "compact" ? (
-          <button
-            type="button"
-            onClick={() => setAllFiltersOpen(true)}
-            className="h-12 w-full border border-[#e7e1d9] bg-white text-[13px] uppercase tracking-[1.4px] text-[#111] transition-colors hover:border-[#d3b46a] md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-          >
-            Все фильтры
-          </button>
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setAllFiltersOpen(true)}
+              className="h-12 w-full border border-[#e7e1d9] bg-white text-[13px] uppercase tracking-[1.4px] text-[#111] transition-colors hover:border-[#d3b46a] md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+            >
+              Все фильтры
+            </button>
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              aria-pressed={hasActiveFilters}
+              className={[
+                "h-12 w-full border text-[13px] uppercase tracking-[1.4px] transition-all md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]",
+                hasActiveFilters
+                  ? "border-[#111] bg-[#111] text-white shadow-[0_14px_28px_rgba(17,17,17,0.16)] ring-1 ring-[#111]/20 hover:bg-[#2a2a26] hover:shadow-[0_18px_34px_rgba(17,17,17,0.22)]"
+                  : "border-[#111] bg-[#111] text-white opacity-72 hover:bg-[#2a2a26] hover:opacity-100",
+              ].join(" ")}
+            >
+              Сбросить фильтры
+            </button>
+          </div>
         ) : null}
       </div>
     );
@@ -1044,7 +1177,7 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
         </div>
 
         <div
-          className="mt-4 grid content-start grid-cols-2 gap-2 auto-rows-[minmax(120px,170px)] sm:grid-cols-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4 2xl:grid-cols-5"
+          className="mt-4 grid content-start grid-cols-2 gap-2 auto-rows-[minmax(180px,240px)] sm:grid-cols-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4 2xl:grid-cols-5"
           style={{ gridAutoFlow: "dense" }}
         >
           {categoryCards.map((category, index) => (
@@ -1052,26 +1185,31 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
               key={category.slug}
               href={`/catalog/category/${category.slug}`}
               className={[
-                "group flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#e7e1d9] bg-white",
+                "group flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#e7e1d9] bg-[#ffffff]",
                 "transition-shadow hover:shadow-[0_16px_34px_rgba(38,35,31,0.08)]",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2b2a27]/40",
-                getCategorySizeClass(category.name, index),
+                getCategorySizeClass(category.slug, index),
               ].join(" ")}
             >
-              <div className="flex min-h-0 flex-1 items-center justify-center bg-[#f7f7f9] p-2 md:p-3">
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-[#ffffff] px-3 py-3 md:px-4 md:py-4">
                 {category.image ? (
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    loading="lazy"
-                    className="max-h-full w-auto max-w-[90%] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                  />
+                  <div className="flex h-full w-full items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]">
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      loading="lazy"
+                      className={[
+                        "h-full max-h-full w-full max-w-full object-contain object-center transition-transform duration-300",
+                        getCategoryImageClass(category.slug),
+                      ].join(" ")}
+                    />
+                  </div>
                 ) : (
                   <div className="h-full w-full rounded-[14px] bg-[#f0efec]" aria-hidden />
                 )}
               </div>
 
-              <div className="bg-white px-3 py-3 md:px-4 md:py-3">
+              <div className="bg-[#ffffff] px-3 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
                 <h3 className="text-[13px] font-medium leading-[1.2] md:text-[14px] [font-family:Manrope,system-ui]">{category.name}</h3>
               </div>
             </a>
@@ -1091,22 +1229,28 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
           <div className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             <a href="/" className="hover:text-[#111]">Главная</a>
             <span className="mx-2 text-[#b5b2ab]">/</span>
-           <a href="/catalog" className="hover:text-[#111]">Каталог</a>
-            <span className="mx-2 text-[#b5b2ab]">/</span>
-            <span className="break-words">
-              {isCategoryPage ? (initialCategory ?? "") : "оборудование и климатические системы"}
-            </span>
+            <a href="/catalog" className="hover:text-[#111]">Каталог</a>
+            {isCategoryPage ? (
+              <>
+                <span className="mx-2 text-[#b5b2ab]">/</span>
+                <span className="break-words">{initialCategory ?? ""}</span>
+              </>
+            ) : null}
           </div>
 
           <h1 className="mt-6 text-[clamp(2.2rem,9vw,7rem)] leading-[0.96] tracking-[-0.03em] md:mt-10 md:tracking-[-0.04em] 2xl:leading-[0.92] [font-family:'Cormorant_Garamond',serif]">
-            Каталог оборудования
+            {isCategoryPage ? initialCategory : "Каталог оборудования"}
           </h1>
           <p className="mt-4 text-[clamp(0.9rem,3.8vw,1.5rem)] uppercase tracking-[1.3px] text-[#7a7a75] md:mt-8 md:tracking-[1.6px] 2xl:text-[24px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            {filteredProducts.length} товаров в наличии
+            Более <span className="inline-block tabular-nums align-baseline">{catalogTotal}</span> товаров в наличии
           </p>
 
           <div className="mt-8 flex flex-col gap-8 md:mt-12 md:gap-10 xl:flex-row 2xl:gap-14">
-            <aside className="hidden w-full xl:sticky xl:top-[calc(var(--site-header-offset,76px)+6px)] xl:block xl:max-h-[calc(100vh-var(--site-header-offset,76px)-14px)] xl:overflow-y-auto xl:self-start xl:max-w-[360px] 2xl:max-w-[420px]">
+            <aside
+              ref={desktopFiltersRef}
+              style={{ top: `${desktopFiltersTop}px` }}
+              className="hidden w-full xl:sticky xl:block xl:max-h-[calc(100svh-var(--site-header-offset,76px)-24px)] xl:overflow-y-auto xl:self-start xl:max-w-[360px] 2xl:max-w-[420px]"
+            >
               {renderFilters("desktop", "compact")}
             </aside>
 
@@ -1222,20 +1366,20 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                     Популярные товары
                   </h2>
                   <p className="mt-2 text-[14px] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                    Показано {pageProducts.length} из {filteredProducts.length}
+                    Показано {pageProducts.length} из {catalogTotal}
                   </p>
                 </div>
               ) : null}
 
               <div className="relative">
                 <div
-                  className={`sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-2 md:z-[120] md:py-4 ${
+                  className={`sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-2 md:hidden ${
                     isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
                   }`}
                 >
-                  <div className="ml-auto w-full md:w-fit">
-                    <div className="flex flex-col gap-2 rounded-[28px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-2 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px] md:flex-row md:flex-wrap md:items-center md:gap-3 md:rounded-[32px] md:p-3">
-                      <div className="grid grid-cols-[1.3fr_1fr_auto] gap-2 md:hidden">
+                  <div className="ml-auto w-full">
+                    <div className="flex flex-col gap-2 rounded-[28px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-2 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px]">
+                      <div className="grid grid-cols-[1.3fr_1fr_auto] gap-2">
                         <div className="relative flex h-12 min-w-0 items-center rounded-[20px] border border-[#e7e1d9] bg-white pl-11 pr-3 transition-colors focus-within:border-[#d3b46a]">
                           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7a7a75]">
                             <circle cx="11" cy="11" r="6.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
@@ -1324,78 +1468,6 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                         </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setFiltersOpen(true)}
-                        className="hidden h-12 items-center justify-center rounded-[20px] border border-[#e7e1d9] bg-white px-4 text-[13px] uppercase tracking-[1.2px] transition-colors hover:border-[#d3b46a] md:flex md:h-16 md:px-5 md:text-[16px] md:tracking-[1.6px] xl:hidden 2xl:h-[72px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                      >
-                        {activeFiltersCount > 0 ? `Фильтры (${activeFiltersCount})` : "Фильтры"}
-                      </button>
-
-                      {hasActiveFilters ? (
-                        <button
-                          type="button"
-                          onClick={resetAllFilters}
-                          className="hidden h-12 items-center justify-center rounded-[20px] border border-[#e7e1d9] bg-white px-4 text-[13px] uppercase tracking-[1.2px] text-[#111] transition-colors hover:border-[#d3b46a] md:flex md:h-16 md:px-5 md:text-[16px] md:tracking-[1.6px] 2xl:h-[72px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                        >
-                          Сбросить
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={isSortApplied ? resetSortMode : () => setShowAdvanced((prev) => !prev)}
-                        className="hidden h-12 w-12 items-center justify-center rounded-[20px] border border-[#e7e1d9] bg-white transition-colors hover:border-[#d3b46a] md:flex md:h-16 md:w-16 2xl:h-[72px] 2xl:w-[72px]"
-                        aria-pressed={showAdvanced}
-                        aria-label="Показать расширенные фильтры и сортировку"
-                      >
-                        <img
-                          src="/catalog/list-icon.png"
-                          alt=""
-                          aria-hidden="true"
-                          width="28"
-                          height="28"
-                          className={`h-5 w-5 object-contain md:h-7 md:w-7 ${isSortApplied ? "hidden" : ""}`}
-                        />
-                        {isSortApplied ? (
-                          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                            <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                          </svg>
-                        ) : null}
-                      </button>
-
-                      <div className="relative hidden h-12 min-w-0 flex-1 items-center rounded-[20px] border border-[#e7e1d9] bg-white pl-11 pr-3 transition-colors focus-within:border-[#d3b46a] md:flex md:h-16 md:w-[380px] md:flex-none md:pl-12 md:pr-4 2xl:h-[72px] 2xl:w-[420px] 2xl:pl-14 2xl:pr-5">
-                        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7a7a75] md:left-4 2xl:left-5">
-                          <circle cx="11" cy="11" r="6.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
-                          <path d="M16.2 16.2l4.3 4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                        </svg>
-                        <input
-                          type="text"
-                          value={query}
-                          onChange={(event) => {
-                            setQuery(event.target.value);
-                            setPage(1);
-                          }}
-                          placeholder="Поиск по каталогу"
-                          className="w-full min-w-0 border-0 bg-transparent text-[16px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none md:text-[20px] 2xl:text-[22px] [font-family:DM_Sans,Manrope,sans-serif]"
-                        />
-                        {query ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuery("");
-                              setPage(1);
-                            }}
-                            className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
-                            aria-label="Очистить поиск"
-                          >
-                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                              <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
-                              <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        ) : null}
-                      </div>
                     </div>
                   </div>
 
@@ -1448,12 +1520,135 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                   </div>
                 </div>
 
-                <div ref={resultsTopRef} id="catalog-results-top" />
+                <div
+                  className={`hidden md:block sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-4 ${
+                    isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 rounded-[32px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-3 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px] 2xl:gap-3">
+                    <div className="min-w-0 flex-1 px-3 text-[16px] uppercase tracking-[1.6px] text-[#8a8a85] 2xl:px-4 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      Отображено {visiblePercent}% товаров
+                    </div>
+                    <button
+                      type="button"
+                      onClick={isSortApplied ? resetSortMode : () => setShowAdvanced((prev) => !prev)}
+                      className={`flex h-16 shrink-0 items-center justify-center rounded-[20px] border border-[#e7e1d9] bg-white text-[16px] uppercase tracking-[1.6px] text-[#111] transition-colors hover:border-[#d3b46a] 2xl:h-[72px] 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                        isSortApplied ? "gap-3 px-5 2xl:gap-4 2xl:px-6" : "px-5 2xl:px-6"
+                      }`}
+                      aria-pressed={showAdvanced}
+                      aria-label="Показать расширенные фильтры и сортировку"
+                    >
+                      <span>
+                        {sortMode === "price-asc"
+                          ? "по цене ↑"
+                          : sortMode === "price-desc"
+                            ? "по цене ↓"
+                            : sortMode === "new"
+                              ? "сначала новые"
+                              : "по умолчанию"}
+                      </span>
+                      {isSortApplied ? (
+                        <span className="flex items-center justify-center text-[#7a7a75] transition-colors hover:text-[#111]">
+                          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                      ) : null}
+                    </button>
+                    <div className="relative flex h-16 w-[380px] items-center rounded-[20px] border border-[#e7e1d9] bg-white pl-12 pr-4 transition-colors focus-within:border-[#d3b46a] 2xl:h-[72px] 2xl:w-[420px] 2xl:pl-14 2xl:pr-5">
+                      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7a7a75] 2xl:left-5">
+                        <circle cx="11" cy="11" r="6.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
+                        <path d="M16.2 16.2l4.3 4.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                      </svg>
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(event) => {
+                          setQuery(event.target.value);
+                          setPage(1);
+                        }}
+                        placeholder="Поиск по каталогу"
+                        className="w-full min-w-0 border-0 bg-transparent text-[20px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none 2xl:text-[22px] [font-family:DM_Sans,Manrope,sans-serif]"
+                      />
+                      {query ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuery("");
+                            setPage(1);
+                          }}
+                          className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
+                          aria-label="Очистить поиск"
+                        >
+                          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
+                            <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-3 overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out ${
+                      showAdvanced ? "pointer-events-auto max-h-[420px] opacity-100 translate-y-0" : "pointer-events-none max-h-0 opacity-0 -translate-y-1"
+                    }`}
+                    aria-hidden={!showAdvanced}
+                  >
+                    <div className="ml-auto w-fit">
+                      <div className="rounded-[32px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-3 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px]">
+                        <div className="flex items-center justify-between gap-3 border-b border-[#e7e1d9] pb-4">
+                          <p className="text-[13px] uppercase tracking-[1.8px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            Сортировка
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced(false)}
+                            className="flex h-10 w-10 items-center justify-center rounded-[16px] border border-[#e7e1d9] bg-white text-[#7a7a75] transition-colors hover:border-[#d3b46a] hover:text-[#111]"
+                            aria-label="Закрыть сортировку"
+                          >
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                              <path d="M7 7l10 10m0-10L7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          {quickSortOptions.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setSortMode(option.id);
+                                setPage(1);
+                                setShowAdvanced(false);
+                              }}
+                              className={`flex h-14 items-center justify-center rounded-[20px] border px-4 text-[14px] uppercase tracking-[1.4px] transition-colors [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                                sortMode === option.id
+                                  ? "border-[#111] bg-[#111] text-white"
+                                  : "border-[#e7e1d9] bg-white text-[#111] hover:border-[#d3b46a]"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div
+                  ref={resultsTopRef}
+                  id="catalog-results-top"
                   key={resultsAnimationKey}
-                  className={`catalog-results mt-10 grid grid-cols-2 gap-4 md:gap-8 lg:grid-cols-2 ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
+                  className={`catalog-results mt-10 scroll-mt-[220px] grid grid-cols-2 gap-4 md:scroll-mt-[240px] md:gap-8 lg:grid-cols-2 xl:scroll-mt-[250px] ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
                 >
+                  {isFetchingResults && pageProducts.length === 0
+                    ? Array.from({ length: itemsPerPage }).map((_, index) => (
+                        <CatalogCardSkeleton key={`catalog-skeleton-${index}`} />
+                      ))
+                    : null}
                   {pageProducts.map((product, index) => (
                     <article
                       key={product.slug}
@@ -1484,18 +1679,57 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                             {sanitizeCardMetaLine(product.efficiency) ? <p>{sanitizeCardMetaLine(product.efficiency)}</p> : null}
                           </div>
                         ) : null}
-                        <p className="mt-auto pt-5 text-[clamp(1.15rem,3.6vw,1.5rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.9rem,3.8vw,2.6rem)] lg:text-[clamp(1.8rem,2.4vw,2.2rem)] 2xl:text-[clamp(2rem,1.9vw,2.5rem)] [font-family:DM_Sans,Manrope,sans-serif]">
-                          {formatPrice(product.price)}
+                        <p className="mt-auto flex max-w-full items-baseline gap-1 pt-5 text-[clamp(1.05rem,3.2vw,1.45rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.75rem,3.4vw,2.35rem)] lg:text-[clamp(1.7rem,2.2vw,2.1rem)] 2xl:text-[clamp(1.95rem,1.8vw,2.4rem)] [font-family:DM_Sans,Manrope,sans-serif]">
+                          <span className="min-w-0 truncate">{new Intl.NumberFormat("ru-RU").format(product.price)}</span>
+                          <span className="shrink-0">₽</span>
                         </p>
                         <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
-                          <button
-                            type="button"
-                            onClick={() => void handleAddToCart(product.slug)}
-                            disabled={pendingCartSlug === product.slug}
-                            className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-all duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                          >
-                            {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
-                          </button>
+                          {(cartQuantities[product.slug] ?? 0) > 0 ? (
+                            <div
+                              className={`grid h-11 min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] overflow-hidden bg-[#111] text-white transition-all duration-300 md:h-14 md:grid-cols-[52px_minmax(0,1fr)_52px] 2xl:h-16 ${animatedCartSlug === product.slug ? "scale-[1.015] shadow-[0_16px_34px_rgba(17,17,17,0.18)]" : ""}`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => void handleCartQuantityChange(product.slug, Math.max(0, (cartQuantities[product.slug] ?? 0) - 1))}
+                                disabled={pendingCartSlug === product.slug}
+                                className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70 md:text-[28px]"
+                                aria-label="Уменьшить количество"
+                              >
+                                −
+                              </button>
+                              <div className="flex min-w-0 items-center justify-center px-1 md:px-2">
+                                <span
+                                  key={`${product.slug}-${cartQuantities[product.slug] ?? 0}`}
+                                  className="inline-flex min-w-0 items-center justify-center gap-1 animate-[cartQtyPop_380ms_cubic-bezier(0.22,1,0.36,1)] text-[9px] uppercase tracking-[1px] md:gap-2 md:text-[13px] md:tracking-[1.6px] 2xl:text-[15px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                                >
+                                  <span className="shrink-0 text-[16px] leading-none tabular-nums md:text-[22px] 2xl:text-[26px]">
+                                    {cartQuantities[product.slug] ?? 0}
+                                  </span>
+                                  {!isLanding ? (
+                                    <span className="hidden min-w-0 truncate whitespace-nowrap lg:inline">в корзине</span>
+                                  ) : null}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => void handleAddToCart(product)}
+                                disabled={pendingCartSlug === product.slug}
+                                className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70 md:text-[26px]"
+                                aria-label="Увеличить количество"
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void handleAddToCart(product)}
+                              disabled={pendingCartSlug === product.slug}
+                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-all duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                            >
+                              {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
+                            </button>
+                          )}
                           <a
                             href={`/checkout?buy=${product.slug}`}
                             className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
@@ -1506,6 +1740,11 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                       </div>
                     </article>
                   ))}
+                  {isFetchingMore
+                    ? Array.from({ length: Math.min(itemsPerPage, 6) }).map((_, index) => (
+                        <CatalogCardSkeleton key={`catalog-append-skeleton-${index}`} />
+                      ))
+                    : null}
                 </div>
 
                 {pageProducts.length === 0 ? (
@@ -1515,64 +1754,34 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
                 ) : null}
               </div>
 
-              {isLanding ? (
-                pageProducts.length < filteredProducts.length ? (
-                  <div className="mt-10 border-t border-[#ebe5de] pt-7 md:mt-14 md:pt-10">
-                    <button
-                      type="button"
-                      onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                      className="mx-auto flex h-14 w-full max-w-[420px] items-center justify-center bg-[#111] text-[14px] uppercase tracking-[1.5px] text-white transition-colors hover:bg-[#2a2a26] md:h-16 md:text-[16px] md:tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                    >
-                      Загрузить еще
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-8 border-t border-[#ebe5de] pt-6 text-center text-[14px] uppercase tracking-[1.2px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mt-10">
-                    Все товары загружены
-                  </div>
-                )
-              ) : totalPages > 1 ? (
-                <div className="mt-10 border-t border-[#ebe5de] pt-7 md:mt-14 md:pt-10">
-                  <div className="mx-auto grid max-w-[420px] grid-cols-[1fr_auto_1fr] items-center gap-3 text-[14px] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mx-0 md:max-w-none md:text-[18px] md:tracking-[2px]">
-                    <button
-                      type="button"
-                      onClick={() => setPage((current) => Math.max(1, current - 1))}
-                      disabled={safePage === 1}
-                      className="flex min-h-[44px] items-center justify-start gap-2 text-[#555] disabled:cursor-not-allowed disabled:opacity-35 md:gap-4"
-                    >
-                      <img src="/catalog/arrow-left.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
-                      <span>назад</span>
-                    </button>
-                    <div className="flex items-center justify-center gap-4 text-[#8a8a85] md:gap-6">
-                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                        <button
-                          key={pageNumber}
-                          type="button"
-                          onClick={() => setPage(pageNumber)}
-                          className={`min-h-[36px] min-w-[32px] ${
-                            pageNumber === safePage ? "rounded-[6px] bg-[#111] px-2 text-white" : ""
-                          }`}
-                        >
-                          {String(pageNumber).padStart(2, "0")}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                      disabled={safePage === totalPages}
-                      className="flex min-h-[44px] items-center justify-end gap-2 text-[#111] disabled:cursor-not-allowed disabled:opacity-35 md:gap-4"
-                    >
-                      <span>далее</span>
-                      <img src="/catalog/arrow-right.svg" alt="" aria-hidden="true" width="20" height="20" className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {isFetchingMore ? (
                 <div className="mt-8 border-t border-[#ebe5de] pt-6 text-center text-[14px] uppercase tracking-[1.2px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mt-10">
-                  Страница 01
+                  Загружаем еще
                 </div>
-              )}
+              ) : null}
+
+              {hasMore && !isFetchingMore ? (
+                <div className="mt-10 border-t border-[#ebe5de] pt-7 md:mt-14 md:pt-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isFetchingMore || isFetchingResults) return;
+                      const nextPage = page + 1;
+                      setPage(nextPage);
+                      void loadCatalogPage(nextPage, "append");
+                    }}
+                    className="mx-auto flex h-14 w-full max-w-[420px] items-center justify-center bg-[#111] text-[14px] uppercase tracking-[1.5px] text-white transition-colors hover:bg-[#2a2a26] md:h-16 md:text-[16px] md:tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                  >
+                    Загрузить еще
+                  </button>
+                </div>
+              ) : null}
+
+              {!hasMore && pageProducts.length > 0 ? (
+                <div className="mt-8 border-t border-[#ebe5de] pt-6 text-center text-[14px] uppercase tracking-[1.2px] text-[#8a8a85] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mt-10">
+                  Все товары загружены
+                </div>
+              ) : null}
             </div>
           </div>
           </div>
@@ -1584,16 +1793,49 @@ export function CatalogPage({ products, initialCategory, variant = "default" }: 
   );
 }
 
-function getCategorySizeClass(categoryName: string, index: number) {
-  if (categoryName.trim().toLowerCase() === "конвекторы") {
-    return "";
+function getCategorySizeClass(categorySlug: string, index: number) {
+  const wideCards = new Set(["kaminy", "sushilki-dlya-ruk"]);
+  const tallCards = new Set([
+    "dizayn-radiatory",
+    "promyshlennye-ventilyatory",
+    "bytovaya-pritochnaya-ventilyatsiya",
+  ]);
+
+  if (wideCards.has(categorySlug)) {
+    return "md:col-span-2";
+  }
+
+  if (tallCards.has(categorySlug)) {
+    return "md:row-span-2";
   }
 
   const pattern = index % 12;
-
-  if (pattern === 0 || pattern === 7) return "md:row-span-2";
-  if (pattern === 5) return "md:row-span-2";
+  if (pattern === 7) return "md:row-span-2";
   return "";
+}
+
+function getCategoryImageClass(categorySlug: string) {
+  const imageClassMap: Record<string, string> = {
+    "dizayn-radiatory": "scale-[1.42]",
+    "mobilnye-konditsionery": "scale-[1.08]",
+    "osushiteli-vozdukha": "scale-[1.14]",
+    "uvlazhniteli-i-ochistiteli-vozdukha": "scale-[1.12]",
+    "vodonagrevateli": "scale-[1.12]",
+    "split-sistemy": "scale-[1.14]",
+    "radiatory-otopleniya": "scale-[1.12]",
+    "teplovye-pushki": "scale-[1.12]",
+    "konvektory": "scale-[1.2]",
+    "kaminy": "scale-[1.22]",
+    "teplye-poly-elektricheskie": "scale-[1.08]",
+    "promyshlennye-ventilyatory": "scale-[1.12]",
+    "gazovye-obogrevateli": "scale-[1.16]",
+    "umnyy-dom": "scale-[1.14]",
+    "teploventilyatory": "scale-[1.12]",
+    "vytyazhnye-bytovye-ventilyatory": "scale-[1.16]",
+    "sushilki-dlya-ruk": "scale-[1.34]",
+  };
+
+  return imageClassMap[categorySlug] ?? "scale-[1.1]";
 }
 
 type DoubleRangeProps = {
@@ -1766,6 +2008,62 @@ function RangeFilter({ title, min, max, step, value, ariaLabelMin, ariaLabelMax,
       </div>
     </section>
   );
+}
+
+function CatalogCardSkeleton() {
+  return (
+    <article className="flex h-full flex-col border border-[#ebe5de] bg-white p-4 md:p-6 2xl:p-8">
+      <div className="catalog-skeleton aspect-square w-full rounded-[2px]" />
+      <div className="mt-4 flex flex-1 flex-col md:mt-8">
+        <div className="catalog-skeleton h-3 w-24 md:h-4 md:w-32" />
+        <div className="mt-3 space-y-2 md:mt-4">
+          <div className="catalog-skeleton h-5 w-full md:h-7" />
+          <div className="catalog-skeleton h-5 w-3/4 md:h-7" />
+        </div>
+        <div className="mt-3 space-y-2 md:mt-4">
+          <div className="catalog-skeleton h-3 w-2/3 md:h-4" />
+          <div className="catalog-skeleton h-3 w-1/2 md:h-4" />
+        </div>
+        <div className="catalog-skeleton mt-auto h-8 w-2/3 pt-5 md:pt-8 md:h-10" />
+        <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
+          <div className="catalog-skeleton h-11 w-full md:h-14 2xl:h-16" />
+          <div className="catalog-skeleton h-11 w-full md:h-14 2xl:h-16" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function shallowRangeRecordEqual(
+  left: Record<string, [number, number]>,
+  right: Record<string, [number, number]>,
+) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  for (const key of leftKeys) {
+    if (!(key in right)) return false;
+    if (left[key][0] !== right[key][0] || left[key][1] !== right[key][1]) return false;
+  }
+
+  return true;
+}
+
+function shallowTextRecordEqual(left: Record<string, string[]>, right: Record<string, string[]>) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  for (const key of leftKeys) {
+    if (!(key in right)) return false;
+    if (left[key].length !== right[key].length) return false;
+    for (let index = 0; index < left[key].length; index += 1) {
+      if (left[key][index] !== right[key][index]) return false;
+    }
+  }
+
+  return true;
 }
 
 function uniqueValues(values: string[]) {

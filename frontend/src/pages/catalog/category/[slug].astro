@@ -1,20 +1,42 @@
 ---
 import { CatalogPage } from "../../../components/CatalogPage";
-import { loadCatalogProducts } from "../../../lib/catalog-api";
+import { loadCatalogCategories, loadCatalogListing } from "../../../lib/catalog-api";
 import "../../../styles/global.css";
-import { slugify } from "../../../lib/slug";
 
 export const prerender = false;
 
-const products = await loadCatalogProducts();
 const slug = Astro.params.slug ?? "";
-const categories = Array.from(new Set(products.map((p) => p.category))).map((name) => ({
-  name,
-  slug: slugify(name),
-}));
-const categoryName = categories.find((item) => item.slug === slug)?.name ?? "";
+const categories = await loadCatalogCategories().catch(() => []);
+const landingCategoryNames: Record<string, string> = {
+  "dizayn-radiatory": "Дизайн-радиаторы",
+  "mobilnye-konditsionery": "Мобильные кондиционеры",
+  "osushiteli-vozdukha": "Осушители воздуха",
+  "uvlazhniteli-i-ochistiteli-vozdukha": "Увлажнители и очистители воздуха",
+  "vodonagrevateli": "Водонагреватели",
+  "bytovaya-pritochnaya-ventilyatsiya": "Бытовая приточная вентиляция",
+  "split-sistemy": "Сплит-системы",
+  "radiatory-otopleniya": "Радиаторы отопления",
+  "teplovye-pushki": "Тепловые пушки",
+  "konvektory": "Конвекторы",
+  "kaminy": "Камины",
+  "teplye-poly-elektricheskie": "Теплые полы электрические",
+  "promyshlennye-ventilyatory": "Промышленные вентиляторы",
+  "gazovye-obogrevateli": "Газовые обогреватели",
+  "umnyy-dom": "Умный дом",
+  "teploventilyatory": "Тепловентиляторы",
+  "vytyazhnye-bytovye-ventilyatory": "Вытяжные бытовые вентиляторы",
+  "sushilki-dlya-ruk": "Сушилки для рук",
+};
 
-if (!categoryName) {
+const categoryNameFromDb = categories.find((item) => item.slug === slug)?.name ?? "";
+const initialCatalog = await loadCatalogListing({ page: 1, limit: 24, category: slug });
+const categoryName =
+  categoryNameFromDb ||
+  landingCategoryNames[slug] ||
+  initialCatalog.meta?.categoryTypeTree.find((item) => item.slug === slug)?.category ||
+  "";
+
+if (!categoryName || initialCatalog.total === 0) {
   return Astro.redirect("/catalog");
 }
 ---
@@ -34,7 +56,15 @@ if (!categoryName) {
     />
   </head>
   <body>
-    <CatalogPage client:load products={products} initialCategory={categoryName} />
+    <CatalogPage
+      client:load
+      initialProducts={initialCatalog.items}
+      initialMeta={initialCatalog.meta}
+      initialTotal={initialCatalog.total}
+      initialTotalAll={initialCatalog.totalAll}
+      initialHasMore={initialCatalog.hasMore}
+      initialLimit={initialCatalog.limit}
+      initialCategory={categoryName}
+    />
   </body>
 </html>
-
