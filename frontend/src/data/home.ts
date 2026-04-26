@@ -34,6 +34,7 @@ export const trustLogoBottomRow = [
   { path: "/image/clear_logo/kabuki.png", alt: "Kabuki" },
   { path: "/image/clear_logo/bowl-room.png", alt: "Bowl Room" },
   { path: "/image/clear_logo/tehnikum.png", alt: "Tehnikum" },
+  { path: "/image/clear_logo/artest.png", alt: "Artest" },
 ] as const;
 
 export const trustLogoDesktopTopRow = [

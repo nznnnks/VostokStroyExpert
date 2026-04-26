@@ -334,6 +334,8 @@ export type ServiceView = {
 export type AccountProfileView = {
   id: string;
   name: string;
+  firstName?: string | null;
+  lastName?: string | null;
   email: string;
   phone: string;
   totalOrders: number;
@@ -829,6 +831,8 @@ export async function loadAccountSnapshot() {
     profile: {
       id: profile.id,
       name: profileName(profile.clientProfile, profile.email),
+      firstName: profile.clientProfile?.firstName ?? null,
+      lastName: profile.clientProfile?.lastName ?? null,
       email: profile.email,
       phone: profile.phone ?? profile.clientProfile?.contactPhone ?? "—",
       totalOrders: mappedOrders.length,
@@ -841,6 +845,28 @@ export async function loadAccountSnapshot() {
     orders: mappedOrders,
     templates: templates.map(mapOrderTemplate),
   };
+}
+
+export async function updateAccountProfile(payload: {
+  email?: string;
+  phone?: string;
+  password?: string;
+  clientProfile?: {
+    firstName?: string;
+    lastName?: string;
+  };
+}) {
+  const authToken = getStoredAccessToken("user");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация пользователя.", 401);
+  }
+
+  return apiRequest<ApiAccountProfile>("/api/account/profile", {
+    method: "PATCH",
+    authToken,
+    body: payload,
+  });
 }
 
 export async function loadAccountOrder(orderId: string) {

@@ -104,6 +104,7 @@ const trustLogos = [
   { path: "/image/clear_logo/kabuki.png", alt: "Kabuki" },
   { path: "/image/clear_logo/bowl-room.png", alt: "Bowl Room" },
   { path: "/image/clear_logo/tehnikum.png", alt: "Tehnikum" },
+  { path: "/image/clear_logo/artest.png", alt: "Artest" },
 ] as const;
 
 const trustLogoTopRow = trustLogos.slice(0, 4);
@@ -560,7 +561,7 @@ export function StayseLandingTailwind() {
           isWide ? "aspect-[16/7.7]" : "aspect-[4/3.2]"
         }`}
       />
-      <div className={`flex h-full flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] ${isWide ? "px-4 py-3" : "px-3 py-3"}`}>
+      <div className={`flex flex-1 flex-col border-t border-[#ddd6cc] bg-[#e1ddd6] ${isWide ? "px-4 py-3" : "px-3 py-3"}`}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
           <h3
             className={`max-w-none pr-2 font-semibold leading-[0.92] tracking-[-0.03em] text-[#0d0d0b] [font-family:'Cormorant_Garamond',serif] ${
@@ -574,7 +575,7 @@ export function StayseLandingTailwind() {
             {formatRelativePublication(article.publishedAt, nowTimestamp)}
           </span>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-auto flex justify-end pt-4">
           <span
             className={`inline-flex items-center justify-center bg-[#1a1a1a] text-[11px] uppercase tracking-[1.2px] text-white [font-family:'JetBrains_Mono',monospace] ${
               isWide ? "h-11 min-w-[132px] px-6" : "h-10 min-w-[112px] px-4"
@@ -743,14 +744,18 @@ export function StayseLandingTailwind() {
       <section id="about" className="relative overflow-hidden bg-[#050505] px-3 pt-12 pb-0 text-white sm:px-5 md:pt-18 md:pb-0">
         <div className="absolute inset-0">
           <div className="absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
-            <img
-              src="/image/about-trust-mobile.png"
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              decoding="async"
+            <video
               className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.03] md:hidden"
-            />
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/image/about-trust-mobile.png"
+              aria-hidden="true"
+            >
+              <source src="/video/about-trust.mp4" type="video/mp4" />
+            </video>
             <img
               src="/image/hero-desktop-bg.jpeg"
               alt=""
@@ -765,7 +770,7 @@ export function StayseLandingTailwind() {
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               poster="/image/hero-desktop-bg.jpeg"
             >
               <source src="/video/about-trust.mp4" type="video/mp4" />
@@ -825,51 +830,32 @@ export function StayseLandingTailwind() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 px-3 sm:hidden">
-              <div className="inline-flex w-fit rounded-[18px] border border-[#e7e2d9] bg-[linear-gradient(180deg,#ffffff_0%,#f6f3ee_100%)] px-5 py-3 text-[22px] font-semibold text-[#12120f] shadow-[0_10px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]">
-                Более 62 брендов
+              <div className="inline-flex max-w-full flex-col rounded-[18px] border border-[#e7e2d9] bg-[linear-gradient(180deg,#ffffff_0%,#f6f3ee_100%)] px-5 py-3 font-semibold text-[#12120f] shadow-[0_10px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)]">
+                <span className="text-[22px] leading-[1.05]">Более 62 брендов</span>
+                <span className="mt-1 text-[16px] font-medium leading-[1.1] text-[#6a635a]">нам доверяют</span>
               </div>
             </div>
 
             <div className="mt-5 bg-white/98 px-0 py-3 xl:py-4 2xl:mt-12">
               <div className="xl:max-w-none">
                 <div className="sm:hidden">
-                  <div className="space-y-2 overflow-hidden">
-                    <div className="flex w-max gap-2">
-                      {trustLogoTopRow.map(({ path, alt }, index) => (
-                        <article
-                          key={`${path}-${index}`}
-                          className="flex h-[94px] w-[calc((100vw-8px)/2)] min-w-0 shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
-                        >
-                          <div className="flex h-[clamp(52px,9vw,74px)] w-full items-center justify-center">
-                            <img
-                              src={path}
-                              alt={alt}
-                              loading="lazy"
-                              decoding="async"
-                              className="h-full w-auto max-w-[clamp(150px,38vw,220px)] object-contain object-center"
-                            />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                    <div className="flex w-max gap-2">
-                      {trustLogoBottomRow.map(({ path, alt }, index) => (
-                        <article
-                          key={`${path}-${index}`}
-                          className="flex h-[94px] w-[calc((100vw-8px)/2)] min-w-0 shrink-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3"
-                        >
-                          <div className="flex h-[clamp(52px,9vw,74px)] w-full items-center justify-center">
-                            <img
-                              src={path}
-                              alt={alt}
-                              loading="lazy"
-                              decoding="async"
-                              className="h-full w-auto max-w-[clamp(150px,38vw,220px)] object-contain object-center"
-                            />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 px-3">
+                    {[...trustLogoTopRow, ...trustLogoBottomRow].map(({ path, alt }, index) => (
+                      <article
+                        key={`${path}-${index}`}
+                        className="flex h-[84px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-3 py-2"
+                      >
+                        <div className="flex h-[52px] w-full items-center justify-center">
+                          <img
+                            src={path}
+                            alt={alt}
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-auto max-w-[clamp(120px,34vw,170px)] object-contain object-center"
+                          />
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 </div>
 
@@ -961,7 +947,7 @@ export function StayseLandingTailwind() {
             <div className="mt-6 mb-8 px-3 sm:hidden">
               <a
                 href="/about"
-                className="group relative flex min-h-[108px] w-full items-center justify-between overflow-hidden rounded-[18px] border border-[#e3dbcf] bg-[linear-gradient(180deg,#fbf8f3_0%,#f0e9e0_100%)] px-6 py-5 text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                className="group relative flex min-h-[108px] w-full items-center justify-between overflow-hidden rounded-[18px] border border-[#e3dbcf] bg-[linear-gradient(180deg,#fbf8f3_0%,#f0e9e0_100%)] px-6 py-5 text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#d7c9b3] hover:shadow-[0_24px_38px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.92)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cdb06a]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
               >
                 <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/75 blur-[28px]" />
                 <div className="relative flex min-w-0 flex-col items-start text-left">
@@ -972,11 +958,6 @@ export function StayseLandingTailwind() {
                     Больше о нас
                   </span>
                 </div>
-                <span className="relative ml-4 inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] border border-[#d9cfbf] bg-white/80 shadow-[0_10px_22px_rgba(0,0,0,0.08)] transition duration-300 group-hover:translate-x-1">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#12120f]" aria-hidden="true">
-                    <path d="M6 12h12M13 7l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
               </a>
             </div>
           </div>
@@ -991,9 +972,7 @@ export function StayseLandingTailwind() {
             {services.map((service, index) => (
               <article
                 key={service.title}
-                className={`group relative flex h-full flex-col border-l border-[#ece8e1] px-0 transition duration-500 ease-out hover:-translate-y-1 hover:border-[#d3b46a] md:pl-5 md:pr-0 ${
-                  index === services.length - 1 ? "xl:border-r xl:pr-5" : ""
-                }`}
+                className="group relative flex h-full flex-col px-0 transition-transform duration-300 ease-out hover:-translate-y-1"
                 onMouseEnter={(event) => {
                   if (window.innerWidth < 768) return;
                   const video = event.currentTarget.querySelector("video");
@@ -1049,17 +1028,19 @@ export function StayseLandingTailwind() {
                     </div>
                   </div>
                 </div>
-                <h3 className="mt-8 hidden max-w-[280px] text-[clamp(22px,1.6vw+16px,38px)] font-semibold uppercase leading-[1.06] transition-colors duration-300 group-hover:text-[#8f6c38] md:block [font-family:'Cormorant_Garamond',serif]">
-                  {service.title}
-                </h3>
-                <p className="mt-6 hidden max-w-[340px] flex-1 text-[clamp(14px,0.6vw+12px,20px)] leading-[1.55] text-[#2f2f2c] md:block [font-family:'Cormorant_Garamond',serif]">{service.text}</p>
-                <div className="relative z-20 mt-5 flex items-center justify-center gap-8 px-4 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-auto md:justify-between md:gap-5 md:px-3 md:pt-8 xl:px-4 2xl:px-5">
-                  <ServiceOrderModal
-                    serviceTitle={service.title}
-                    triggerClassName="inline-flex h-11 min-w-[132px] items-center justify-center bg-[#050505] px-5 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1f1f1f] [font-family:'JetBrains_Mono',monospace] xl:h-12 xl:min-w-[164px] xl:px-7"
-                    trigger={<span className="translate-y-[0.04em] leading-none">заказать</span>}
-                  />
-                  <a href={serviceHrefByTitle[service.title] ?? "/services"} className="inline-flex items-center text-[#2d2d29] transition-colors duration-300 hover:text-[#8f6c38] xl:text-[17px] 2xl:text-[18px]">подробнее</a>
+                <div className="flex flex-1 flex-col md:mx-auto md:w-full md:max-w-[460px] xl:max-w-[480px] 2xl:max-w-[520px]">
+                  <h3 className="mt-8 hidden max-w-[280px] text-[clamp(22px,1.6vw+16px,38px)] font-semibold uppercase leading-[1.06] transition-colors duration-300 group-hover:text-[#8f6c38] md:block [font-family:'Cormorant_Garamond',serif]">
+                    {service.title}
+                  </h3>
+                  <p className="mt-6 hidden max-w-[340px] flex-1 text-[clamp(14px,0.6vw+12px,20px)] leading-[1.55] text-[#2f2f2c] md:block [font-family:'Cormorant_Garamond',serif]">{service.text}</p>
+                  <div className="relative z-20 mt-5 flex items-center justify-center gap-8 px-4 text-[clamp(12px,0.45vw+10px,16px)] uppercase tracking-[1.2px] [font-family:'JetBrains_Mono',monospace] md:mt-auto md:justify-between md:gap-5 md:px-0 md:pt-8 xl:px-0 2xl:px-0">
+                    <ServiceOrderModal
+                      serviceTitle={service.title}
+                      triggerLabel="заказать"
+                      triggerClassName="inline-flex h-12 min-w-[144px] items-center justify-center leading-none bg-[#050505] px-6 text-[clamp(13px,0.5vw+10px,17px)] uppercase tracking-[1.2px] text-white transition duration-300 ease-out hover:bg-[#1f1f1f] [font-family:'JetBrains_Mono',monospace] xl:min-w-[172px] xl:px-8"
+                    />
+                    <a href={serviceHrefByTitle[service.title] ?? "/services"} className="inline-flex h-12 min-w-[144px] items-center justify-center border border-[#b8b2a8] px-6 leading-none text-[clamp(13px,0.5vw+10px,17px)] uppercase tracking-[1.2px] text-[#2d2d29] transition duration-300 ease-out hover:border-[#a9a39a] hover:text-[#8f6c38] [font-family:'JetBrains_Mono',monospace] xl:min-w-[172px] xl:px-8">подробнее</a>
+                  </div>
                 </div>
               </article>
             ))}
@@ -1341,24 +1322,32 @@ export function StayseLandingTailwind() {
             </label>
             <label className="grid gap-2 2xl:col-span-2">
               <span className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">О проекте</span>
-              <div className="relative">
-                <select
-                  className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(16px,0.45vw+14px,22px)] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] xl:h-[5.5rem] 2xl:h-24"
-                  defaultValue=""
-                  name="projectType"
-                  required
-                >
-                  <option value="" disabled>
-                    Жилой / Коммерческий / Другой
-                  </option>
-                  <option value="residence">Жилой</option>
-                  <option value="commercial">Коммерческий</option>
-                  <option value="other">Другой</option>
-                </select>
-                <span className="pointer-events-none absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 border-b-2 border-r-2 border-[#111] rotate-45" />
+              <div
+                role="radiogroup"
+                aria-label="Тип проекта"
+                className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[12px] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] sm:text-[13px] md:text-[14px] xl:min-h-[5.5rem] 2xl:min-h-24"
+              >
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="residence" required className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Жилой
+                  </span>
+                </label>
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="commercial" className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Коммерческий
+                  </span>
+                </label>
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="other" className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Другой
+                  </span>
+                </label>
               </div>
             </label>
-            <button className="inline-flex h-20 items-center justify-center bg-[#1a1a1a] px-10 text-[clamp(14px,0.7vw+12px,20px)] uppercase tracking-[1.6px] text-white xl:h-[5.5rem] xl:px-12 2xl:h-24 2xl:px-14 [font-family:'JetBrains_Mono',monospace]" type="submit">
+            <button className="inline-flex h-20 items-center justify-center bg-[#1a1a1a] px-10 text-[clamp(14px,0.7vw+12px,20px)] uppercase tracking-[1.6px] text-white transition duration-200 ease-out hover:bg-[#262626] active:translate-y-0.5 active:scale-[0.99] active:bg-[#111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cdb06a]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white xl:h-[5.5rem] xl:px-12 2xl:h-24 2xl:px-14 [font-family:'JetBrains_Mono',monospace]" type="submit">
               оставить заявку
             </button>
             <span className="self-center text-[clamp(13px,0.55vw+11px,18px)] uppercase tracking-[1.4px] text-[#8a8a86] [font-family:'JetBrains_Mono',monospace]">

@@ -5,16 +5,19 @@ import {
   IsOptional,
   IsPhoneNumber,
   IsString,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { UserRole, UserStatus } from '@prisma/client';
 
 export class CreateEmbeddedClientProfileDto {
   @IsString()
+  @MaxLength(40)
   firstName!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(40)
   lastName?: string;
 
   @IsOptional()

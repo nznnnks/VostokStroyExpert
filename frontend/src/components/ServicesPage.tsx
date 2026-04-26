@@ -1,7 +1,15 @@
 import SiteHeader from "./SiteHeader";
 import type { ServiceView } from "../lib/backend-api";
+import { useEffect, useState } from "react";
 
 export function ServicesPage({ services }: { services: ServiceView[] }) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   return (
     <main className="flex min-h-screen overflow-x-hidden bg-[#e1ddd6] text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif] lg:h-screen lg:overflow-hidden">
       <div className="flex min-h-0 w-full flex-col">
@@ -21,24 +29,56 @@ export function ServicesPage({ services }: { services: ServiceView[] }) {
             <div className="mt-7 flex min-h-0 flex-col gap-4 lg:flex-1 lg:flex-row lg:gap-5 lg:[max-height:min(760px,calc(100vh-360px))] xl:mt-8 xl:gap-6">
               {services.map((service, index) => (
                 <a
-                  key={service.slug}
-                  href={`/services/${service.slug}`}
-                  className="group relative flex min-h-[300px] overflow-hidden rounded-[22px] bg-[#10100f] text-[#e1ddd6] shadow-[0_18px_44px_rgba(0,0,0,0.16)] transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b99863] md:min-h-[420px] lg:h-full lg:min-h-0 lg:flex-1 lg:hover:flex-[1.55]"
-                >
-                  <img
-                    src="/image/services-card-bg-2026.png"
-                    alt=""
-                    aria-hidden="true"
-                    width="1024"
-                    height="768"
-                    className="absolute inset-0 h-full w-full object-cover opacity-32 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-44"
-                  />
-                  <div className="absolute inset-0 bg-[#050505]/80 transition duration-700 group-hover:bg-[#050505]/74" />
-                  <div className="absolute inset-0 opacity-50 transition duration-700 group-hover:opacity-70">
-                    <div className="absolute bottom-0 left-0 h-64 w-full bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.5)_58%,rgba(0,0,0,0.88)_100%)]" />
-                  </div>
-                  <div className="absolute inset-0 border border-white/10 transition duration-500 group-hover:border-[#b99863]/55" />
-                  <div className="absolute right-5 top-5 h-9 w-9 border-r border-t border-[#e1ddd6]/20 opacity-0 transition duration-500 group-hover:opacity-100" />
+                    key={service.slug}
+                    href={`/services/${service.slug}`}
+                    style={{ transitionDelay: `${index * 110}ms` }}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType && event.pointerType !== "mouse") return;
+                      const video = event.currentTarget.querySelector<HTMLVideoElement>("[data-service-preview-video]");
+                      if (!video) return;
+                      video.currentTime = 0;
+                      const playPromise = video.play();
+                      if (playPromise && typeof playPromise.catch === "function") {
+                        playPromise.catch(() => undefined);
+                      }
+                    }}
+                    onPointerLeave={(event) => {
+                      const video = event.currentTarget.querySelector<HTMLVideoElement>("[data-service-preview-video]");
+                      if (!video) return;
+                      video.pause();
+                      video.currentTime = 0;
+                    }}
+                    className={[
+                      "group relative flex min-h-[300px] overflow-hidden rounded-[22px] bg-[#10100f] text-[#e1ddd6] shadow-[0_18px_44px_rgba(0,0,0,0.16)]",
+                      "transition-[transform,opacity,flex] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+                      "hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#b99863]",
+                      "md:min-h-[420px] lg:h-full lg:min-h-0 lg:flex-1 lg:hover:flex-[1.55]",
+                      "motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-y-0",
+                    ].join(" ")}
+                  >
+                    <img
+                      src="/image/services-card-bg-2026.png"
+                      alt=""
+                      aria-hidden="true"
+                      width="1024"
+                      height="768"
+                      className="absolute inset-0 h-full w-full object-cover opacity-32 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-0 motion-reduce:group-hover:opacity-32"
+                    />
+                    <video
+                      data-service-preview-video
+                      muted
+                      playsInline
+                      loop
+                      preload="none"
+                      poster="/image/services-card-bg-2026.png"
+                      className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-700 group-hover:opacity-44 motion-reduce:hidden"
+                    >
+                      <source src="/video/about-trust.mp4" type="video/mp4" />
+                    </video>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[40%] bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.55)_44%,rgba(0,0,0,0.92)_100%)] opacity-90 transition duration-700 group-hover:opacity-95 sm:top-[42%] lg:top-[48%]" />
+                    <div className="absolute inset-0 border border-white/10 transition duration-500 group-hover:border-[#b99863]/55" />
+                    <div className="absolute right-5 top-5 h-9 w-9 border-r border-t border-[#e1ddd6]/20 opacity-0 transition duration-500 group-hover:opacity-100" />
 
                   <div className="relative z-[1] flex h-full w-full flex-col justify-end p-8 pt-10 md:p-10 lg:p-8 xl:p-10">
                     <div className="mb-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#e1ddd6]/20 text-[13px] tracking-[0.18em] text-[#b99863] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-14 md:w-14 lg:h-12 lg:w-12">

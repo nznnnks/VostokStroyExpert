@@ -22,9 +22,16 @@ export default function HomeConsultationIsland() {
     <>
       <div
         aria-hidden={!consultationModalOpen}
-        className={`fixed inset-0 z-[280] flex items-center justify-center px-4 transition-[opacity,visibility] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${consultationModalOpen ? "visible opacity-100" : "pointer-events-none invisible opacity-0"}`}
+        className={`fixed inset-0 z-[280] flex items-center justify-center px-4 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${consultationModalOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       >
-        <button type="button" aria-label="Закрыть сообщение" onClick={() => setConsultationModalOpen(false)} className="absolute inset-0 bg-[rgba(16,15,13,0.38)] backdrop-blur-[10px]" />
+        <button
+          type="button"
+          aria-label="Закрыть сообщение"
+          onClick={() => setConsultationModalOpen(false)}
+          className={`absolute inset-0 bg-[rgba(16,15,13,0.45)] transition-opacity duration-200 ease-out [will-change:opacity] ${
+            consultationModalOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
         <div role="dialog" aria-modal="true" aria-labelledby="consultation-success-title" className={`relative z-[1] w-full max-w-[560px] overflow-hidden rounded-[32px] border border-[#ddd1bf] bg-[linear-gradient(180deg,#fffdfa_0%,#f2ece4_100%)] px-7 py-8 text-center shadow-[0_36px_90px_rgba(0,0,0,0.2)] transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:px-10 md:py-10 ${consultationModalOpen ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.96] opacity-0"}`}>
           <div className="pointer-events-none absolute inset-x-[16%] top-[-16%] h-44 rounded-full bg-[#d5ab5d]/18 blur-[75px]" />
           <div className="pointer-events-none absolute bottom-[-18%] right-[-8%] h-40 w-40 rounded-full bg-white/70 blur-[90px]" />
@@ -89,17 +96,37 @@ export default function HomeConsultationIsland() {
             </label>
             <label className="grid gap-2 2xl:col-span-2">
               <span className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">О проекте</span>
-              <div className="relative">
-                <select className="h-20 w-full appearance-none border border-[#e5e3df] bg-[#fbfaf8] px-6 pr-20 text-[clamp(16px,0.45vw+14px,22px)] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] xl:h-[5.5rem] 2xl:h-24" defaultValue="" name="projectType" required>
-                  <option value="" disabled>Жилой / Коммерческий / Другой</option>
-                  <option value="residence">Жилой</option>
-                  <option value="commercial">Коммерческий</option>
-                  <option value="other">Другой</option>
-                </select>
-                <span className="pointer-events-none absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 border-b-2 border-r-2 border-[#111] rotate-45" />
+              <div
+                role="radiogroup"
+                aria-label="Тип проекта"
+                className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[12px] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] sm:text-[13px] md:text-[14px] xl:min-h-[5.5rem] 2xl:min-h-24"
+              >
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="residence" required className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Жилой
+                  </span>
+                </label>
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="commercial" className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Коммерческий
+                  </span>
+                </label>
+                <label className="relative h-full">
+                  <input type="radio" name="projectType" value="other" className="sr-only peer" />
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                    Другой
+                  </span>
+                </label>
               </div>
             </label>
-            <button className="inline-flex h-20 items-center justify-center bg-[#1a1a1a] px-10 text-[clamp(14px,0.7vw+12px,20px)] uppercase tracking-[1.6px] text-white xl:h-[5.5rem] xl:px-12 2xl:h-24 2xl:px-14 [font-family:'JetBrains_Mono',monospace]" type="submit">оставить заявку</button>
+            <button
+              className="inline-flex h-20 items-center justify-center bg-[#1a1a1a] px-10 text-[clamp(14px,0.7vw+12px,20px)] uppercase tracking-[1.6px] text-white transition duration-200 ease-out hover:bg-[#262626] active:translate-y-0.5 active:scale-[0.99] active:bg-[#111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cdb06a]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white xl:h-[5.5rem] xl:px-12 2xl:h-24 2xl:px-14 [font-family:'JetBrains_Mono',monospace]"
+              type="submit"
+            >
+              оставить заявку
+            </button>
             <span className="self-center text-[clamp(13px,0.55vw+11px,18px)] uppercase tracking-[1.4px] text-[#8a8a86] [font-family:'JetBrains_Mono',monospace]">отвечаем за 15 минут</span>
           </form>
         </div>

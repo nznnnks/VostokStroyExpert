@@ -2,10 +2,41 @@ import { useEffect, useRef, useState } from "react";
 import { reviews } from "../data/home";
 
 export default function HomeReviewsIsland() {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const reviewsTrackRef = useRef<HTMLDivElement | null>(null);
   const mobileReviewsFirstEnteringRef = useRef<HTMLElement | null>(null);
   const [mobileReviewsVisible, setMobileReviewsVisible] = useState(3);
   const [mobileReviewsEnteringFrom, setMobileReviewsEnteringFrom] = useState<number | null>(null);
+  const [isRevealActive, setIsRevealActive] = useState(false);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (prefersReducedMotion) {
+      setIsRevealActive(true);
+      return;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      setIsRevealActive(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsRevealActive(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.18, rootMargin: "0px 0px -10% 0px" },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (mobileReviewsEnteringFrom === null) return;
@@ -20,7 +51,7 @@ export default function HomeReviewsIsland() {
   }, [mobileReviewsEnteringFrom]);
 
   return (
-    <section className="relative overflow-hidden bg-[#0d0d0b] px-3 py-12 sm:px-4 md:px-6 lg:px-8 md:py-16">
+    <section ref={sectionRef} className="relative overflow-hidden bg-[#0d0d0b] px-3 py-12 sm:px-4 md:px-6 lg:px-8 md:py-16">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8%] top-[14%] h-[280px] w-[280px] rounded-full bg-[#d4a24d]/10 blur-[120px]" />
         <div className="absolute right-[-6%] bottom-[8%] h-[320px] w-[320px] rounded-full bg-white/6 blur-[140px]" />
@@ -32,14 +63,23 @@ export default function HomeReviewsIsland() {
         <div className="mt-8 space-y-5 md:hidden">
           {reviews.slice(0, mobileReviewsVisible).map((review, index) => {
             const isEntering = mobileReviewsEnteringFrom !== null && index >= mobileReviewsEnteringFrom;
+
+            const revealStateClassName = isRevealActive
+              ? "opacity-100 translate-y-0 [filter:blur(0px)]"
+              : "opacity-0 translate-y-4 [filter:blur(2px)]";
+
             return (
               <article
                 key={`mobile-${review.company}`}
                 ref={(node) => {
                   if (isEntering && index === mobileReviewsEnteringFrom) mobileReviewsFirstEnteringRef.current = node;
                 }}
-                className={`relative overflow-hidden rounded-[30px] border border-[#d7cec1] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe9e0_100%)] px-5 py-5 shadow-[0_18px_36px_rgba(0,0,0,0.14)] transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isEntering ? "translate-y-4 opacity-0 animate-[mobileReviewReveal_560ms_cubic-bezier(0.22,1,0.36,1)_forwards]" : "translate-y-0 opacity-100"}`}
-                style={isEntering ? { animationDelay: `${(index - mobileReviewsEnteringFrom) * 90}ms` } : undefined}
+                className={`relative overflow-hidden rounded-[30px] border border-[#d7cec1] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe9e0_100%)] px-5 py-5 shadow-[0_18px_36px_rgba(0,0,0,0.14)] transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${isEntering ? "translate-y-4 opacity-0 animate-[mobileReviewReveal_560ms_cubic-bezier(0.22,1,0.36,1)_forwards]" : revealStateClassName}`}
+                style={
+                  isEntering
+                    ? { animationDelay: `${(index - mobileReviewsEnteringFrom) * 90}ms` }
+                    : { transitionDelay: `${index * 90}ms` }
+                }
               >
                 <div className="pointer-events-none absolute right-[-16px] top-[-22px] text-[84px] leading-none text-[#b9ae9e]/20 [font-family:'Cormorant_Garamond',serif]">”</div>
                 <div className="flex items-center justify-between gap-3">
@@ -71,8 +111,13 @@ export default function HomeReviewsIsland() {
           ) : null}
         </div>
         <div ref={reviewsTrackRef} className="mt-8 hidden snap-x snap-mandatory gap-5 overflow-x-auto pt-2 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] md:ml-[calc(50%-50vw)] md:mr-[calc(50%-50vw)] md:flex [&::-webkit-scrollbar]:hidden md:mt-10 md:gap-6">
-          {reviews.map((review) => (
-            <article key={review.company} data-review-card className="group relative flex min-h-[292px] w-[min(82vw,520px)] shrink-0 snap-start flex-col overflow-hidden rounded-[30px] border border-[#d7cec1] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe9e0_100%)] px-6 py-6 shadow-[0_20px_44px_rgba(0,0,0,0.14)] transition duration-500 ease-out hover:-translate-y-1 hover:border-[#cbb79b] hover:shadow-[0_28px_60px_rgba(0,0,0,0.18)] md:min-h-[312px] md:w-[min(37vw,520px)] md:px-7 md:py-7">
+          {reviews.map((review, index) => (
+            <article
+              key={review.company}
+              data-review-card
+              className={`group relative flex min-h-[292px] w-[min(82vw,520px)] shrink-0 snap-start flex-col overflow-hidden rounded-[30px] border border-[#d7cec1] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe9e0_100%)] px-6 py-6 shadow-[0_20px_44px_rgba(0,0,0,0.14)] transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-[#cbb79b] hover:shadow-[0_28px_60px_rgba(0,0,0,0.18)] md:min-h-[312px] md:w-[min(37vw,520px)] md:px-7 md:py-7 ${isRevealActive ? "opacity-100 translate-y-0 [filter:blur(0px)]" : "opacity-0 translate-y-4 [filter:blur(2px)]"}`}
+              style={{ transitionDelay: `${index * 90}ms` }}
+            >
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-[-10%] top-[-10%] h-32 w-32 rounded-full bg-[#d5a44e]/12 blur-[70px]" />
                 <div className="absolute right-[-8%] bottom-[-16%] h-40 w-40 rounded-full bg-white/55 blur-[90px]" />

@@ -9,14 +9,7 @@ import {
   type AccountProfileView,
   type OrderTemplateView,
 } from "../lib/backend-api";
-import SiteHeader from "./SiteHeader";
-
-const navItems = [
-  ["/account/client-data.png", "Данные клиента", "/account", false],
-  ["/account/orders.svg", "Заказы", "/account/orders", false],
-  ["/account/templates.png", "Шаблоны заказа", "/account/templates", true],
-  ["/account/support.svg", "Поддержка", "/account/support", false],
-];
+import { AccountLayout } from "./AccountLayout";
 
 function StateMessage({ title, description }: { title: string; description: string }) {
   return (
@@ -145,33 +138,13 @@ export function AccountTemplatesPage() {
   }
 
   return (
-    <main className="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
-      <SiteHeader />
-      <section className="grid xl:grid-cols-[360px_1fr]">
-        <aside className="order-2 border-t border-[#ece8e1] bg-[#fcfbf8] px-4 py-8 md:px-8 xl:order-1 xl:border-r xl:border-t-0 xl:py-16">
-          <div className="border border-[#ece8e1] bg-white p-8">
-            <h2 className="text-[26px] [font-family:'Cormorant_Garamond',serif]">Личный кабинет</h2>
-            <p className="mt-4 text-[14px] uppercase tracking-[4px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">ВостокСтройЭксперт business</p>
-          </div>
-          <nav className="mt-10 space-y-2">
-            {navItems.map(([icon, label, href, active]) => (
-              <a key={label as string} href={href as string} className={`flex min-h-[74px] items-center gap-4 px-6 text-[18px] ${active ? "bg-[#f5f3ef]" : "bg-transparent"}`}>
-                <img src={icon as string} alt="" aria-hidden="true" width="24" height="24" className="h-6 w-6 object-contain" />
-                <span className="[font-family:'Cormorant_Garamond',serif] text-[18px]">{label}</span>
-              </a>
-            ))}
-          </nav>
-        </aside>
-        <div className="order-1 px-4 py-8 md:px-10 md:py-12 xl:order-2 xl:px-16 xl:py-20">
-          <div className="mx-auto max-w-[1200px] 2xl:max-w-[1480px]">
-            <h1 className="text-[clamp(2rem,7vw,5rem)] leading-none [font-family:'Cormorant_Garamond',serif]">Шаблоны заказа</h1>
+    <AccountLayout title="Шаблоны заказа">
+      {loading ? <StateMessage title="Загрузка" description="Загружаю сохраненные шаблоны заказа." /> : null}
+      {!loading && authRequired ? <StateMessage title="Нужен вход" description="Для просмотра шаблонов войдите под пользовательской учетной записью." /> : null}
+      {!loading && error && !authRequired ? <StateMessage title="Ошибка загрузки" description={error.message || "Не удалось загрузить шаблоны."} /> : null}
 
-            {loading ? <StateMessage title="Загрузка" description="Загружаю сохраненные шаблоны заказа." /> : null}
-            {!loading && authRequired ? <StateMessage title="Нужен вход" description="Для просмотра шаблонов войдите под пользовательской учетной записью." /> : null}
-            {!loading && error && !authRequired ? <StateMessage title="Ошибка загрузки" description={error.message || "Не удалось загрузить шаблоны."} /> : null}
-
-            {!loading && !error ? (
-              <div className="mt-8 grid gap-6 md:mt-10 md:gap-8">
+      {!loading && !error ? (
+        <div className="mt-8 grid gap-6 md:mt-10 md:gap-8">
                 <div className="border border-[#ece8e1] bg-white p-6 md:p-10">
                   <div className="grid gap-6 md:grid-cols-2">
                     <label className="text-[14px] uppercase tracking-[3px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
@@ -298,12 +271,9 @@ export function AccountTemplatesPage() {
                   ))}
                   {templates.length === 0 ? <div className="text-[18px] text-[#6f6f69]">Сохраненных шаблонов пока нет.</div> : null}
                 </div>
-              </div>
-            ) : null}
-          </div>
         </div>
-      </section>
-    </main>
+      ) : null}
+    </AccountLayout>
   );
 }
 

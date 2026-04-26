@@ -396,7 +396,7 @@ body {
   min-height: clamp(46px, 12vw, 52px);
   padding: 0 clamp(20px, 6vw, 28px);
   color: #ffffff;
-  font-size: clamp(16px, 1vw + 10px, 24px);
+  font-size: clamp(16px, 1.1vw + 4px, 24px);
   line-height: 1;
   letter-spacing: clamp(0.08em, 0.14vw, 0.2em);
   text-align: center;
@@ -1391,5 +1391,81 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.home-services-reveal {
+  opacity: 0;
+  filter: blur(2px);
+  transition-property: opacity, filter;
+  transition-duration: 520ms, 520ms;
+  transition-timing-function: ease, ease;
+  will-change: opacity, filter;
+}
+
+.home-services-reveal.is-visible {
+  opacity: 1;
+  filter: blur(0);
+}
+
+.home-steps-reveal {
+  opacity: 0;
+  filter: blur(2px);
+  transform: translate3d(0, 14px, 0);
+  transition-property: opacity, filter, transform;
+  transition-duration: 520ms, 520ms, 720ms;
+  transition-timing-function: ease, ease, cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, filter, transform;
+}
+
+.home-steps-reveal.from-left {
+  transform: translate3d(-26px, 14px, 0);
+}
+
+.home-steps-reveal.from-right {
+  transform: translate3d(26px, 14px, 0);
+}
+
+.home-steps-reveal.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+}
+
+.home-blog-reveal {
+  opacity: 0;
+  filter: blur(2px);
+  transform: translate3d(0, 14px, 0) scale(0.985);
+  transition-property: opacity, filter, transform;
+  transition-duration: 520ms, 520ms, 720ms;
+  transition-timing-function: ease, ease, cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, filter, transform;
+}
+
+.home-blog-reveal.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-services-reveal {
+    opacity: 1;
+    filter: none;
+    transition: none;
+  }
+
+  .home-steps-reveal {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+
+  .home-blog-reveal {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
   }
 }

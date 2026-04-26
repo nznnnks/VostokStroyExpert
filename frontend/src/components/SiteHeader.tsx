@@ -422,14 +422,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
             className="block min-w-0 pr-1 transition duration-300 ease-out hover:opacity-75"
             aria-label="ВостокСтройЭксперт"
           >
-            <img
-              src="/logo.png"
-              alt="ВостокСтройЭксперт"
-              loading="eager"
-              decoding="async"
-              className="h-10 w-auto object-contain sm:h-18 md:h-19"
-            />
-          </a>
+              <img
+                src="/logo.png"
+                alt="ВостокСтройЭксперт"
+                loading="eager"
+                decoding="async"
+                className="h-14 w-auto object-contain sm:h-22 md:h-[86px]"
+              />
+            </a>
           <nav
             className={`hidden w-full items-center justify-center gap-[clamp(18px,1.8vw,48px)] text-[clamp(14px,0.6vw+12px,21px)] uppercase tracking-[1.4px] lg:flex lg:justify-self-center [font-family:Jaldi,'JetBrains_Mono',monospace] ${
               light ? "text-[#6d6d67]" : "text-white/80"
@@ -511,7 +511,9 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 target="_blank"
                 rel="noreferrer"
                 aria-label="WhatsApp"
-                className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
+                className={`inline-flex h-9 w-9 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-9 sm:w-9 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -519,6 +521,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                   height="15"
                   aria-hidden="true"
                   fill="currentColor"
+                  className="block translate-y-[0.5px]"
                 >
                   <path d="M20.5 3.5A10.2 10.2 0 0 0 4 15.7L2.8 21.2l5.7-1.5a10.2 10.2 0 0 0 4.8 1.2h.1A10.2 10.2 0 0 0 20.5 3.5Zm-7.1 15.6h-.1a8.5 8.5 0 0 1-4.3-1.2l-.3-.2-3.4.9.9-3.3-.2-.3a8.5 8.5 0 1 1 7.4 4.1Zm4.7-6.3c-.3-.1-1.8-.9-2-.9-.3-.1-.4-.1-.6.1l-.9 1c-.2.2-.3.2-.6.1a6.9 6.9 0 0 1-2-1.2 7.8 7.8 0 0 1-1.5-1.9c-.2-.3 0-.4.1-.6l.4-.5.3-.4a.6.6 0 0 0 0-.6l-.9-2.2c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-1 1-.9 2.4 0 1.4 1 2.7 1.2 2.9.1.2 2 3.2 5 4.3 2.9 1.1 2.9.7 3.4.7.5 0 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3Z" />
                 </svg>
@@ -528,7 +531,9 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Telegram"
-                className="inline-flex h-9 w-9 items-center justify-center bg-[#050505] text-white transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[#1c1c1c] sm:h-9 sm:w-9"
+                className={`inline-flex h-9 w-9 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-9 sm:w-9 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -926,7 +931,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               <a
                 href="/#contact"
                 onClick={() => closeMobileMenu()}
-                className={`inline-flex h-12 min-w-[220px] items-center justify-center px-8 text-[14px] uppercase tracking-[1.2px] transition duration-300 ease-out hover:-translate-y-0.5 [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                className={`inline-flex h-12 min-w-[220px] items-center justify-center px-8 text-[14px] uppercase tracking-[1.2px] transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0.5 active:scale-[0.99] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
                   light
                     ? "bg-[#050505] text-white hover:bg-[#1c1c1c]"
                     : "border border-white/20 bg-white/10 text-white hover:bg-white/15"
