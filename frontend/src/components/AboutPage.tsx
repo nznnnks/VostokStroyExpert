@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
 import type { NewsPostView } from "../lib/backend-api";
@@ -112,6 +113,49 @@ const aboutBlog = [
   },
 ] as const;
 
+const companyDetails = [
+  {
+    label: "Наименование компании",
+    value: "Индивидуальный предприниматель ДУЛЕВ ДЕНИС ПЕТРОВИЧ",
+    copyValue: "Индивидуальный предприниматель ДУЛЕВ ДЕНИС ПЕТРОВИЧ",
+    span: "xl:col-span-2",
+  },
+  {
+    label: "ИНН",
+    value: "710312768481",
+    copyValue: "710312768481",
+  },
+  {
+    label: "БИК",
+    value: "044525411",
+    copyValue: "044525411",
+  },
+  {
+    label: "Корреспондентский счёт",
+    value: "30101810145250000411",
+    copyValue: "30101810145250000411",
+    labelClassName: "xl:text-[14px] 2xl:text-[17px]",
+    valueClassName: "xl:text-[17px] 2xl:text-[19px]",
+  },
+  {
+    label: "Расчётный счёт",
+    value: "40802810600810225999",
+    copyValue: "40802810600810225999",
+    labelClassName: "xl:text-[14px] 2xl:text-[17px]",
+    valueClassName: "xl:text-[17px] 2xl:text-[19px]",
+  },
+  {
+    label: "Банк",
+    value: 'ФИЛИАЛ "ЦЕНТРАЛЬНЫЙ" БАНКА ВТБ (ПАО)',
+    copyValue: 'ФИЛИАЛ "ЦЕНТРАЛЬНЫЙ" БАНКА ВТБ (ПАО)',
+  },
+  {
+    label: "Юридический адрес",
+    value: "г.Москва улица Смирновская, дом 4А, квартира 43",
+    copyValue: "г.Москва улица Смирновская, дом 4А, квартира 43",
+  },
+] as const;
+
 const clampTextStyle = (lines: number) =>
   ({
     display: "-webkit-box",
@@ -133,11 +177,28 @@ const formatRelativePublication = (value: string) => {
 };
 
 export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const aboutBlogTopRow = aboutBlog.slice(0, 2);
   const aboutBlogBottomRow = aboutBlog.slice(2, 4);
   const mobileAboutBlogLead = aboutBlog[0];
   const mobileAboutBlogMiddle = aboutBlog.slice(1, 3);
   const mobileAboutBlogTail = aboutBlog[3];
+
+  useEffect(() => {
+    if (!copiedLabel) return;
+    const timeoutId = window.setTimeout(() => setCopiedLabel(null), 1400);
+    return () => window.clearTimeout(timeoutId);
+  }, [copiedLabel]);
+
+  const handleDetailCopy = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLabel(label);
+    } catch {
+      setCopiedLabel(null);
+    }
+  };
+
   const renderAboutBlogCard = (
     article: (typeof aboutBlog)[number],
     isWide: boolean,
@@ -387,6 +448,48 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
                     "min-h-[180px] md:min-h-[188px]",
                   ),
                 )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white px-3 pb-8 sm:px-5 md:px-10 md:pb-12 xl:px-12 xl:pb-14 2xl:px-20">
+          <div className="mx-auto max-w-[1860px]">
+            <div className="overflow-hidden rounded-[22px] border border-[#e8e1d8] bg-[linear-gradient(180deg,#f8f5ef_0%,#f2ede6_100%)] shadow-[0_18px_40px_rgba(0,0,0,0.04)] 2xl:rounded-[28px]">
+              <div className="flex flex-col gap-4 border-b border-[#e5ddd2] px-5 py-5 md:px-7 md:py-6 xl:px-10 xl:py-8 2xl:px-12">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-[#9c8d78] [font-family:'JetBrains_Mono',monospace]">
+                    Реквизиты компании
+                  </p>
+                  <h2 className="mt-2 text-[clamp(24px,2.2vw,46px)] leading-[0.95] text-[#161512] [font-family:'Cormorant_Garamond',serif]">
+                    Реквизиты счёта
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid gap-3 px-5 py-5 md:grid-cols-2 md:gap-4 md:px-7 md:py-6 xl:grid-cols-4 xl:gap-5 xl:px-10 xl:py-8 2xl:px-12 2xl:py-10">
+                {companyDetails.map((item) => {
+                  const isCopied = copiedLabel === item.label;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => void handleDetailCopy(item.label, item.copyValue)}
+                      className={`group relative overflow-hidden rounded-[16px] border border-white/70 bg-white/78 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] transition duration-300 ease-out hover:-translate-y-1 hover:border-[#d7c6aa] hover:bg-white hover:shadow-[0_18px_38px_rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[#c9b28b]/55 md:min-h-[132px] md:px-5 md:py-5 xl:min-h-[148px] 2xl:min-h-[164px] 2xl:px-6 2xl:py-6 ${item.span ?? ""}`}
+                    >
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.92),rgba(255,255,255,0))] opacity-0 transition duration-300 group-hover:opacity-100" />
+                      <p className={`text-[12px] uppercase tracking-[0.18em] text-[#9c8d78] md:text-[13px] xl:text-[15px] 2xl:text-[19px] [font-family:'JetBrains_Mono',monospace] ${item.labelClassName ?? ""}`}>
+                        {item.label}
+                      </p>
+                      <p className={`mt-4 max-w-full text-[17px] leading-[1.42] text-[#181714] transition duration-300 group-hover:text-[#000] md:text-[18px] xl:text-[19px] 2xl:text-[21px] ${item.valueClassName ?? ""}`}>
+                        {item.value}
+                      </p>
+                      <span className={`mt-4 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] transition duration-300 md:text-[11px] 2xl:mt-5 [font-family:'JetBrains_Mono',monospace] ${isCopied ? "bg-[#111] text-white opacity-100" : "bg-[#f3ede5] text-[#9c8d78] opacity-0 group-hover:opacity-100"}`}>
+                        {isCopied ? "Скопировано" : " "}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

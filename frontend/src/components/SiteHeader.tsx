@@ -273,26 +273,23 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               <div className="mx-auto flex max-w-[1480px] min-h-[52px] items-center justify-between gap-4 px-4 py-3 text-[clamp(13px,0.35vw+11.5px,15px)] font-medium uppercase tracking-[0.7px] text-white/84 md:min-h-[40px] md:px-10 md:py-2.5 md:tracking-[1px] xl:px-12 2xl:max-w-[1860px] 2xl:px-16 [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 <div className="min-w-0 flex-1 md:flex-none">
                   <a
-                    href="mailto:vostok.stroy.expert@mail.ru"
+                    href="mailto:climatrade@mail.ru"
                     className="block truncate underline decoration-white/40 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/72 md:underline-offset-[5px]"
                   >
-                    vostok.stroy.expert@mail.ru
+                    climatrade@mail.ru
                   </a>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-2">
                   <a
-                    href="tel:+79252700229"
-                    className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:underline-offset-[5px]"
+                    href="tel:+79895789929"
+                    className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:text-[17px] md:underline-offset-[5px] xl:text-[18px]"
                   >
-                    +7(925)270-02-29
+                    +7 989 578 9929
                   </a>
                   <span className="hidden text-white/70 md:inline">/</span>
-                  <a
-                    href="tel:+79266787379"
-                    className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:underline-offset-[5px]"
-                  >
-                    +7(926)678-73-79
-                  </a>
+                  <span className="text-white/62 md:text-[17px] xl:text-[18px]">
+                    номер уточняется
+                  </span>
                 </div>
               </div>
             </div>
@@ -403,6 +400,38 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 </span>
               ) : null}
             </a>
+            <div className="hidden items-center gap-1 md:flex xl:gap-2 2xl:gap-3">
+              <a
+                href="https://t.me/vostok_support"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Telegram"
+                className={`inline-flex h-11 w-11 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                  fill="currentColor"
+                >
+                  <path d="M21.9 4.6c.2-.8-.7-1.5-1.5-1.1L2.7 10.6c-.9.4-.8 1.7.1 2l4.6 1.5 1.8 5.6c.3.9 1.5 1 2 .2l2.6-4.1 4.9 3.6c.8.6 1.9.1 2.1-.9l2.1-14.9zM8.6 13.4l9.8-6c.2-.1.5.1.3.3l-8 7.3-.3 3.9-1.7-5.3z" />
+                </svg>
+              </a>
+              <a
+                href="#"
+                aria-label="MAX"
+                className="inline-flex h-11 w-11 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125"
+              >
+                <img
+                  src="/max-logo.svg"
+                  alt="MAX"
+                  className="h-7 w-7 rounded-[7px] object-contain"
+                />
+              </a>
+            </div>
             <div className="flex items-center gap-1 sm:hidden">
               {isCatalogHeader ? (
                 <a
@@ -435,23 +464,17 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               ) : (
                 <>
                   <a
-                    href="https://wa.me/79252700229"
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="WhatsApp"
+                    href="#"
+                    aria-label="MAX"
                     className={`inline-flex h-9 w-9 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-9 sm:w-9 ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="15"
-                      height="15"
-                      aria-hidden="true"
-                      fill="currentColor"
-                    >
-                      <path d="M20.5 3.5A10.2 10.2 0 0 0 4 15.7L2.8 21.2l5.7-1.5a10.2 10.2 0 0 0 4.8 1.2h.1A10.2 10.2 0 0 0 20.5 3.5Zm-7.1 15.6h-.1a8.5 8.5 0 0 1-4.3-1.2l-.3-.2-3.4.9.9-3.3-.2-.3a8.5 8.5 0 1 1 7.4 4.1Zm4.7-6.3c-.3-.1-1.8-.9-2-.9-.3-.1-.4-.1-.6.1l-.9 1c-.2.2-.3.2-.6.1a6.9 6.9 0 0 1-2-1.2 7.8 7.8 0 0 1-1.5-1.9c-.2-.3 0-.4.1-.6l.4-.5.3-.4a.6.6 0 0 0 0-.6l-.9-2.2c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-1 1-.9 2.4 0 1.4 1 2.7 1.2 2.9.1.2 2 3.2 5 4.3 2.9 1.1 2.9.7 3.4.7.5 0 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3Z" />
-                    </svg>
+                    <img
+                      src="/max-logo.svg"
+                      alt="MAX"
+                      className="h-[15px] w-[15px] rounded-[4px] object-contain"
+                    />
                   </a>
                   <a
                     href="https://t.me/vostok_support"
