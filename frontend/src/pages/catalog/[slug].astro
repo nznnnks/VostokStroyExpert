@@ -1,6 +1,7 @@
 ---
 import { ProductPage } from "../../components/ProductPage";
 import { loadCatalogProductBySlug } from "../../lib/backend-api";
+import GlobalPreloader from "../../components/GlobalPreloader.astro";
 import "../../styles/global.css";
 
 export const prerender = false;
@@ -37,6 +38,7 @@ try {
     />
   </head>
   <body>
+    <GlobalPreloader />
     <ProductPage client:load product={product} relatedProducts={relatedProducts} allProducts={allProducts} />
   </body>
 </html>

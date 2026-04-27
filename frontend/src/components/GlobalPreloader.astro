@@ -1,0 +1,142 @@
+---
+// Lightweight, synchronous preloader overlay.
+// Goals:
+// - Render immediately (SSR HTML) so it can be shown before any React islands hydrate.
+// - Hide as soon as the page is parsed (DOMContentLoaded), with a small fade.
+---
+
+<style is:inline>
+  .global-preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #e1ddd6;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 340ms ease-out, visibility 0s linear 340ms;
+  }
+  .global-preloader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .global-preloader__bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 50% 38%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(225, 221, 214, 0.82) 34%,
+      rgba(225, 221, 214, 1) 100%
+    );
+  }
+  .global-preloader__frame::before,
+  .global-preloader__frame::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+  }
+  .global-preloader__frame::before {
+    top: 0;
+    background: rgba(0, 0, 0, 0.1);
+  }
+  .global-preloader__frame::after {
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.08);
+  }
+  .global-preloader__content {
+    position: relative;
+    width: 100%;
+    max-width: 920px;
+    padding: 0 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+  }
+  .global-preloader__logo {
+    width: min(64vw, 320px);
+    height: auto;
+    object-fit: contain;
+    opacity: 0.92;
+  }
+  .global-preloader__bar {
+    width: min(520px, 76vw);
+    height: 2px;
+    background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: relative;
+    border-radius: 999px;
+  }
+  .global-preloader__bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: rgba(0, 0, 0, 0.22);
+    transform: translateX(-120%);
+    animation: globalPreloaderSweep 1.1s ease-in-out infinite;
+  }
+  @keyframes globalPreloaderSweep {
+    0% {
+      transform: translateX(-120%);
+    }
+    55% {
+      transform: translateX(260%);
+    }
+    100% {
+      transform: translateX(260%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .global-preloader__bar::after {
+      animation: none;
+    }
+    .global-preloader {
+      transition: none;
+    }
+  }
+</style>
+
+<div id="global-preloader" class="global-preloader" aria-hidden="false">
+  <div class="global-preloader__bg" aria-hidden="true"></div>
+  <div class="global-preloader__frame" aria-hidden="true"></div>
+  <div class="global-preloader__content" role="status" aria-live="polite" aria-label="Loading">
+    <img src="/logo.svg" alt="Climatrade" width="320" height="86" class="global-preloader__logo" />
+    <div class="global-preloader__bar" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const overlay = document.getElementById("global-preloader");
+    if (!overlay) return;
+
+    const hide = () => {
+      overlay.classList.add("is-hidden");
+      overlay.setAttribute("aria-hidden", "true");
+    };
+
+    const hideSoon = () => {
+      // Let the overlay paint at least once, then fade out.
+      requestAnimationFrame(() => requestAnimationFrame(hide));
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", hideSoon, { once: true });
+    } else {
+      hideSoon();
+    }
+
+    // If the page is restored from BFCache, keep the overlay hidden.
+    window.addEventListener("pageshow", () => hide(), { once: false });
+  })();
+</script>

@@ -6,13 +6,10 @@ import ServiceOrderModal from "./ServiceOrderModal";
 const LazyHeroDesktopModel = lazy(() => import("./HeroDesktopModel"));
 const PRELOADER_TEXT = "подготавливаем каталог и инженерные решения";
 
-function HomePagePreloader({ visible }: { visible: boolean }) {
+function HomePagePreloader() {
   return (
     <div
-      className={`fixed inset-0 z-[260] flex items-center justify-center overflow-hidden bg-[#e1ddd6] transition-[opacity,visibility] duration-700 ease-out ${
-        visible ? "visible opacity-100" : "pointer-events-none invisible opacity-0"
-      }`}
-      aria-hidden={!visible}
+      className="fixed inset-0 z-[260] flex items-center justify-center overflow-hidden bg-[#e1ddd6] opacity-100 visible animate-[homePreloaderHide_0.7s_ease-out_1.8s_forwards] motion-reduce:opacity-0 motion-reduce:invisible"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.55)_0%,rgba(225,221,214,0.82)_34%,rgba(225,221,214,1)_100%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-black/10" />
@@ -262,11 +259,9 @@ export function StayseLandingTailwind() {
   const [mobileReviewsVisible, setMobileReviewsVisible] = useState(3);
   const [mobileReviewsEnteringFrom, setMobileReviewsEnteringFrom] = useState<number | null>(null);
   const [showHeroModel, setShowHeroModel] = useState(false);
-  const [heroModelReady, setHeroModelReady] = useState(false);
-  const [preloaderVisible, setPreloaderVisible] = useState(true);
   const [consultationModalOpen, setConsultationModalOpen] = useState(false);
   const [nowTimestamp, setNowTimestamp] = useState<number | null>(null);
-  const preloaderDismissedRef = useRef(false);
+  // Preloader hides via CSS animation; keep JS free of timing so it doesn't depend on hydration.
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -320,14 +315,7 @@ export function StayseLandingTailwind() {
     setNowTimestamp(Date.now());
   }, []);
 
-  useEffect(() => {
-    if (!preloaderVisible) return;
-
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [preloaderVisible]);
+  // Preloader hides via CSS animation; keep JS free of timing so it doesn't depend on hydration.
 
   useEffect(() => {
     if (!consultationModalOpen) return;
@@ -368,15 +356,6 @@ export function StayseLandingTailwind() {
   }, [mobileReviewsEnteringFrom]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      preloaderDismissedRef.current = true;
-      setPreloaderVisible(false);
-    }, 1800);
-
-    return () => window.clearTimeout(timeoutId);
-  }, []);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const mediaQueryList = window.matchMedia("(min-width: 1280px)");
@@ -388,7 +367,6 @@ export function StayseLandingTailwind() {
     const scheduleModelMount = () => {
       if (!mediaQueryList.matches || !heroSection) {
         setShowHeroModel(false);
-        setHeroModelReady(true);
         return;
       }
 
@@ -458,18 +436,6 @@ export function StayseLandingTailwind() {
       cancelScheduledMount();
     };
   }, []);
-
-  useEffect(() => {
-    if (!heroModelReady) return;
-    if (preloaderDismissedRef.current) return;
-
-    const timeoutId = window.setTimeout(() => {
-      preloaderDismissedRef.current = true;
-      setPreloaderVisible(false);
-    }, 180);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [heroModelReady]);
 
   const scrollReviews = (direction: "prev" | "next") => {
     const track = reviewsTrackRef.current;
@@ -640,7 +606,7 @@ export function StayseLandingTailwind() {
           </button>
         </div>
       </div>
-      <HomePagePreloader visible={preloaderVisible} />
+      <HomePagePreloader />
       <div className="flex-1">
         <SiteHeader />
 
@@ -673,11 +639,11 @@ export function StayseLandingTailwind() {
             <div className="hero__stage">
               {showHeroModel ? (
                 <div className="hero__media" aria-hidden="true">
-                  <Suspense fallback={null}>
-                    <LazyHeroDesktopModel onReady={() => setHeroModelReady(true)} />
-                  </Suspense>
-                </div>
-              ) : null}
+                <Suspense fallback={null}>
+                  <LazyHeroDesktopModel />
+                </Suspense>
+              </div>
+            ) : null}
 
               <div className="hero__content">
                 <h1 className="hero__title">
@@ -1325,23 +1291,23 @@ export function StayseLandingTailwind() {
               <div
                 role="radiogroup"
                 aria-label="Тип проекта"
-                className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[12px] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] sm:text-[13px] md:text-[14px] xl:min-h-[5.5rem] 2xl:min-h-24"
+                className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[clamp(16px,1.1vw+10px,22px)] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] xl:min-h-[5.5rem] 2xl:min-h-24"
               >
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="residence" required className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Жилой
                   </span>
                 </label>
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="commercial" className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Коммерческий
                   </span>
                 </label>
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="other" className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Другой
                   </span>
                 </label>

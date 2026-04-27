@@ -4,6 +4,7 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import ServiceOrderModal from "../../components/ServiceOrderModal";
 import { loadServiceBySlug } from "../../lib/backend-api";
+import GlobalPreloader from "../../components/GlobalPreloader.astro";
 
 export const prerender = false;
 
@@ -59,6 +60,7 @@ const serviceProcessSteps = service.bullets.map((bullet, index) => ({
     />
   </head>
   <body>
+    <GlobalPreloader />
     <main class="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <SiteHeader client:load />
       <section class="px-4 py-8 md:px-10 md:py-10">

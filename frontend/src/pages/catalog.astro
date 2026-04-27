@@ -1,6 +1,7 @@
 ---
 import { CatalogPage } from "../components/CatalogPage";
 import { loadCatalogListing } from "../lib/catalog-api";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 
 export const prerender = false;
@@ -23,6 +24,7 @@ const initialCatalog = await loadCatalogListing({ page: 1, limit: 12 });
     />
   </head>
   <body>
+    <GlobalPreloader />
     <CatalogPage
       client:load
       initialProducts={initialCatalog.items}

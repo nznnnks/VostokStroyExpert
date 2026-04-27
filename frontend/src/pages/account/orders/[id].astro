@@ -1,5 +1,6 @@
 ---
 import { AccountOrderDetailPage } from "../../../components/AccountOrderDetailPage";
+import GlobalPreloader from "../../../components/GlobalPreloader.astro";
 import "../../../styles/global.css";
 
 export const prerender = false;
@@ -19,6 +20,7 @@ const id = Astro.params.id ?? "";
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@400;500&family=Jaldi:wght@400;700&family=JetBrains+Mono:wght@400&family=Manrope:wght@200;400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <GlobalPreloader />
     <AccountOrderDetailPage client:load orderId={id} />
   </body>
 </html>

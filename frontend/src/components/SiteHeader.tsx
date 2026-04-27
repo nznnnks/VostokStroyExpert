@@ -11,37 +11,10 @@ type SiteHeaderProps = {
   lockScrolledState?: boolean;
 };
 
-const PAGE_TRANSITION_STORAGE_KEY = "site-transition-pending";
-const PAGE_TRANSITION_HOLD_MS = 880;
 const PAGE_TRANSITION_TEXT = "открываем раздел climatrade";
 
 function isCatalogPath(pathname: string) {
   return pathname === "/catalog" || pathname.startsWith("/catalog/");
-}
-
-function PageTransitionOverlay({ visible }: { visible: boolean }) {
-  return (
-    <div
-      aria-hidden={!visible}
-      className={`pointer-events-none fixed inset-0 z-[220] flex items-center justify-center bg-[#e1ddd6] px-6 transition-[opacity,visibility] duration-650 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        visible ? "visible opacity-100" : "invisible opacity-0"
-      }`}
-    >
-      <div className="relative flex flex-col items-center gap-8 text-center">
-        <div className="absolute left-1/2 top-1/2 h-[38vh] w-[38vh] max-w-[520px] max-h-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.2)_42%,rgba(225,221,214,0)_72%)]" />
-        <img
-          src="/logo.svg"
-          alt="Climatrade"
-          loading="eager"
-          decoding="async"
-          className="relative h-auto w-[min(64vw,420px)] object-contain"
-        />
-        <p className="relative text-[clamp(13px,0.42vw+11px,18px)] uppercase tracking-[clamp(0.34em,0.7vw,0.7em)] text-[#8e877d] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-          {PAGE_TRANSITION_TEXT}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export function SiteHeader({ light = true, fullBleed = false, lockScrolledState = false }: SiteHeaderProps) {
@@ -49,7 +22,6 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const [isMobileMenuActive, setIsMobileMenuActive] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isTransitionVisible, setIsTransitionVisible] = useState(false);
   const [pathname, setPathname] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [catalogProducts, setCatalogProducts] = useState<Product[] | null>(
@@ -60,18 +32,6 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const searchRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollLockUntilRef = useRef(0);
-  const transitionTimeoutRef = useRef<number | null>(null);
-
-  const clearTransitionTimeout = () => {
-    if (transitionTimeoutRef.current === null) return;
-    window.clearTimeout(transitionTimeoutRef.current);
-    transitionTimeoutRef.current = null;
-  };
-
-  const startPageTransition = () => {
-    if (typeof window === "undefined") return;
-    window.sessionStorage.setItem(PAGE_TRANSITION_STORAGE_KEY, "1");
-  };
 
   const openMobileMenu = () => {
     setIsOpen(true);
@@ -242,79 +202,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     };
   }, [isSearchOpen]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const shouldResumeTransition =
-      window.sessionStorage.getItem(PAGE_TRANSITION_STORAGE_KEY) === "1";
-
-    if (!shouldResumeTransition) return;
-
-    setIsTransitionVisible(true);
-    window.sessionStorage.removeItem(PAGE_TRANSITION_STORAGE_KEY);
-    clearTransitionTimeout();
-    transitionTimeoutRef.current = window.setTimeout(() => {
-      setIsTransitionVisible(false);
-      transitionTimeoutRef.current = null;
-    }, PAGE_TRANSITION_HOLD_MS);
-
-    return () => clearTransitionTimeout();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const onDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented) return;
-      if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-      const anchor = (event.target as Element | null)?.closest("a");
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.target === "_blank") return;
-      if (anchor.hasAttribute("download")) return;
-
-      const href = anchor.getAttribute("href");
-      if (!href) return;
-      if (
-        href.startsWith("#") ||
-        href.startsWith("mailto:") ||
-        href.startsWith("tel:") ||
-        href.startsWith("javascript:")
-      ) {
-        return;
-      }
-
-      const url = new URL(anchor.href, window.location.href);
-      if (url.origin !== window.location.origin) return;
-      if (url.pathname === window.location.pathname && url.hash) return;
-      if (
-        url.pathname === window.location.pathname &&
-        url.search === window.location.search &&
-        !url.hash
-      ) {
-        return;
-      }
-
-      const currentIsCatalog = isCatalogPath(window.location.pathname);
-      const nextIsCatalog = isCatalogPath(url.pathname);
-      if (currentIsCatalog && nextIsCatalog) {
-        return;
-      }
-
-      startPageTransition();
-    };
-
-    document.addEventListener("click", onDocumentClick, true);
-    return () => document.removeEventListener("click", onDocumentClick, true);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window === "undefined") return;
-      clearTransitionTimeout();
-    };
-  }, []);
+  // Page transition overlay was removed in favor of the synchronous GlobalPreloader.
 
   const trimmedQuery = searchQuery.trim().toLowerCase();
   const isCatalogHeader = isCatalogPath(pathname);
@@ -345,8 +233,6 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
         setIsOpen(false);
         setIsSearchOpen(false);
         window.scrollTo({ top: 0, behavior: "smooth" });
-        setIsTransitionVisible(false);
-        window.sessionStorage.removeItem(PAGE_TRANSITION_STORAGE_KEY);
       }
     }
   };
@@ -367,7 +253,6 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
 
   return (
     <>
-      <PageTransitionOverlay visible={isTransitionVisible} />
       <header
         ref={searchRef}
         className="sticky top-0 z-[140] isolate [overflow-anchor:none]"

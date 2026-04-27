@@ -99,23 +99,23 @@ export default function HomeConsultationIsland() {
               <div
                 role="radiogroup"
                 aria-label="Тип проекта"
-                className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[12px] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] sm:text-[13px] md:text-[14px] xl:min-h-[5.5rem] 2xl:min-h-24"
-              >
+              className="grid min-h-[4.75rem] grid-cols-3 gap-1 border border-[#e5e3df] bg-[#fbfaf8] p-1 text-[clamp(16px,1.1vw+10px,22px)] text-[#181816] [font-family:'Liberation_Sans',Manrope,sans-serif] xl:min-h-[5.5rem] 2xl:min-h-24"
+            >
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="residence" required className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Жилой
                   </span>
                 </label>
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="commercial" className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Коммерческий
                   </span>
                 </label>
                 <label className="relative h-full">
                   <input type="radio" name="projectType" value="other" className="sr-only peer" />
-                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:bg-white/70 sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
+                  <span className="flex h-full items-center justify-center border border-transparent bg-transparent px-1 text-center font-medium leading-[1.1] transition duration-200 ease-out [text-wrap:balance] whitespace-normal peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white peer-checked:shadow-[0_14px_30px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-[#cdb06a]/60 hover:bg-white/80 hover:shadow-sm peer-checked:hover:border-[#111] peer-checked:hover:bg-[#111] peer-checked:hover:text-white peer-checked:hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)] sm:px-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#cdb06a]/70">
                     Другой
                   </span>
                 </label>

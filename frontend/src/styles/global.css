@@ -1416,6 +1416,13 @@ body {
   }
 }
 
+@keyframes homePreloaderHide {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 @keyframes mobileReviewReveal {
   from {
     opacity: 0;

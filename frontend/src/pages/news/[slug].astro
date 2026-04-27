@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { loadNewsPostBySlug, loadNewsPosts } from "../../lib/backend-api";
+import GlobalPreloader from "../../components/GlobalPreloader.astro";
 
 export const prerender = false;
 
@@ -48,6 +49,7 @@ const formatRelativePublication = (value?: string | null) => {
     />
   </head>
   <body>
+    <GlobalPreloader />
     <main class="bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
       <SiteHeader client:load />
       <section class="px-4 py-8 md:px-10 md:py-14">

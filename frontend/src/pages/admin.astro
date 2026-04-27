@@ -1,5 +1,6 @@
 ---
 import { AdminPage } from "../components/AdminPage";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 
 export const prerender = false;
@@ -20,6 +21,7 @@ export const prerender = false;
     />
   </head>
   <body>
+    <GlobalPreloader />
     <AdminPage client:load />
   </body>
 </html>

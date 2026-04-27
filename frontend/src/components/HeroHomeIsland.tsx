@@ -4,41 +4,11 @@ import { heroStats } from "../data/home";
 const LazyHeroDesktopModel = lazy(() => import("./HeroDesktopModel"));
 const PRELOADER_TEXT = "подготавливаем каталог и инженерные решения";
 
-function HomePagePreloader({ visible }: { visible: boolean }) {
-  return (
-    <div
-      className={`fixed inset-0 z-[260] flex items-center justify-center overflow-hidden bg-[#e1ddd6] transition-[opacity,visibility] duration-700 ease-out ${visible ? "visible opacity-100" : "pointer-events-none invisible opacity-0"}`}
-      aria-hidden={!visible}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.55)_0%,rgba(225,221,214,0.82)_34%,rgba(225,221,214,1)_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-px bg-black/10" />
-      <div className="absolute inset-x-0 bottom-0 h-px bg-black/8" />
-      <div className="relative flex w-full max-w-[920px] flex-col items-center justify-center gap-8 px-6 text-center md:gap-10">
-        <img src="/logo.svg" alt="Climatrade" width="320" height="86" className="h-auto w-[min(64vw,320px)] object-contain opacity-90" />
-        <div className="flex flex-wrap items-center justify-center gap-y-2 text-[11px] uppercase tracking-[0.28em] text-[#6f685d] md:text-[13px] [font-family:'JetBrains_Mono',monospace]">
-          {PRELOADER_TEXT.split("").map((char, index) => (
-            <span
-              key={`${char}-${index}`}
-              className="inline-block animate-[preloaderLetterIn_1.8s_ease-in-out_infinite]"
-              style={{ animationDelay: `${index * 55}ms` }}
-            >
-              {char === " " ? "\u00A0" : char}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function HeroHomeIsland() {
   const heroSectionRef = useRef<HTMLElement | null>(null);
-  const preloaderDismissedRef = useRef(false);
   const [animatedStats, setAnimatedStats] = useState<[number, number]>([0, 1]);
   const [heroStatsVisible, setHeroStatsVisible] = useState(false);
   const [showHeroModel, setShowHeroModel] = useState(false);
-  const [heroModelReady, setHeroModelReady] = useState(false);
-  const [preloaderVisible, setPreloaderVisible] = useState(true);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -83,22 +53,7 @@ export default function HeroHomeIsland() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!preloaderVisible) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [preloaderVisible]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      preloaderDismissedRef.current = true;
-      setPreloaderVisible(false);
-    }, 1800);
-
-    return () => window.clearTimeout(timeoutId);
-  }, []);
+  // Preloader hides via CSS animation; keep JS free of timing so it doesn't depend on hydration.
 
   useEffect(() => {
     const mediaQueryList = window.matchMedia("(min-width: 1280px)");
@@ -110,7 +65,6 @@ export default function HeroHomeIsland() {
     const scheduleModelMount = () => {
       if (!mediaQueryList.matches || !heroSection) {
         setShowHeroModel(false);
-        setHeroModelReady(true);
         return;
       }
 
@@ -161,18 +115,8 @@ export default function HeroHomeIsland() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!heroModelReady || preloaderDismissedRef.current) return;
-    const timeoutId = window.setTimeout(() => {
-      preloaderDismissedRef.current = true;
-      setPreloaderVisible(false);
-    }, 180);
-    return () => window.clearTimeout(timeoutId);
-  }, [heroModelReady]);
-
   return (
     <>
-      <HomePagePreloader visible={preloaderVisible} />
       <section id="hero" ref={heroSectionRef} className="hero">
         <div className="hero__background" aria-hidden="true">
           <img src="/image/hero-menu.png" alt="" aria-hidden="true" loading="eager" decoding="async" fetchPriority="high" width="1280" height="6179" className="hero__bg hero__bg--mobile" />
@@ -183,7 +127,7 @@ export default function HeroHomeIsland() {
             {showHeroModel ? (
               <div className="hero__media" aria-hidden="true">
                 <Suspense fallback={null}>
-                  <LazyHeroDesktopModel onReady={() => setHeroModelReady(true)} />
+                  <LazyHeroDesktopModel />
                 </Suspense>
               </div>
             ) : null}

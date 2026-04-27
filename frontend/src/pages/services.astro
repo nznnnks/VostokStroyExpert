@@ -1,6 +1,7 @@
 ---
 import { ServicesPage } from "../components/ServicesPage";
 import { loadServices } from "../lib/backend-api";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 
 export const prerender = false;
@@ -23,6 +24,7 @@ const services = await loadServices();
     />
   </head>
   <body>
+    <GlobalPreloader />
     <ServicesPage client:load services={services} />
   </body>
 </html>

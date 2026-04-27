@@ -6,6 +6,7 @@ import ServiceOrderModal from "../components/ServiceOrderModal";
 import HeroHomeIsland from "../components/HeroHomeIsland";
 import HomeReviewsIsland from "../components/HomeReviewsIsland";
 import HomeConsultationIsland from "../components/HomeConsultationIsland";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import {
   blog,
   serviceHrefByTitle,
@@ -40,6 +41,7 @@ const mobileBlogTail = blog[3];
     />
   </head>
   <body>
+    <GlobalPreloader />
     <main class="flex min-h-screen flex-col bg-white text-[#0f0f0e] [font-family:Manrope,'Liberation_Sans',sans-serif]">
       <div class="flex-1">
         <SiteHeader client:load />

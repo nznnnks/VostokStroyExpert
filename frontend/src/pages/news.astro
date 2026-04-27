@@ -1,6 +1,7 @@
 ---
 import { NewsPage } from "../components/NewsPage";
 import { loadNewsPosts } from "../lib/backend-api";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 
 export const prerender = false;
@@ -23,6 +24,7 @@ const posts = await loadNewsPosts();
     />
   </head>
   <body>
+    <GlobalPreloader />
     <NewsPage client:load posts={posts} />
   </body>
 </html>

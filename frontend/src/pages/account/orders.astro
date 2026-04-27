@@ -1,5 +1,6 @@
 ---
 import { AccountOrdersPage } from "../../components/AccountOrdersPage";
+import GlobalPreloader from "../../components/GlobalPreloader.astro";
 import "../../styles/global.css";
 ---
 
@@ -15,6 +16,7 @@ import "../../styles/global.css";
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@400;500&family=Jaldi:wght@400;700&family=JetBrains+Mono:wght@400&family=Manrope:wght@200;400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <GlobalPreloader />
     <AccountOrdersPage client:load />
   </body>
 </html>

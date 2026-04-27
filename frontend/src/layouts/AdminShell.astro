@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 
 const {
   title = "Панель администратора",
@@ -23,6 +24,7 @@ const {
     />
   </head>
   <body>
+    <GlobalPreloader />
     <slot />
   </body>
 </html>

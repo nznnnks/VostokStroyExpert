@@ -1,5 +1,6 @@
 ---
 import { CartPage } from "../components/CartPage";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 ---
 
@@ -18,6 +19,7 @@ import "../styles/global.css";
     />
   </head>
   <body>
+    <GlobalPreloader />
     <CartPage client:load />
   </body>
 </html>

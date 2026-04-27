@@ -1,6 +1,7 @@
 ---
 import { CatalogPage } from "../../../components/CatalogPage";
 import { loadCatalogCategories, loadCatalogListing } from "../../../lib/catalog-api";
+import GlobalPreloader from "../../../components/GlobalPreloader.astro";
 import "../../../styles/global.css";
 
 export const prerender = false;
@@ -56,6 +57,7 @@ if (!categoryName || initialCatalog.total === 0) {
     />
   </head>
   <body>
+    <GlobalPreloader />
     <CatalogPage
       client:load
       initialProducts={initialCatalog.items}
