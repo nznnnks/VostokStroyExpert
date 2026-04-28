@@ -8,6 +8,7 @@ import { DiscountType, ItemKind, Prisma } from '@prisma/client';
 
 import { AuthPrincipal } from '../auth/interfaces/auth-principal.interface';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -30,7 +31,10 @@ const orderInclude = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   async findAll(query: PaginationQueryDto, auth: AuthPrincipal) {
     const filters: Prisma.OrderWhereInput[] = [];
@@ -200,11 +204,19 @@ export class OrdersService {
       include: orderInclude,
     });
 
+    await this.sendOrderCreatedEmail(order);
     return this.toOrderResponse(order);
   }
 
   async update(id: string, dto: UpdateOrderDto) {
-    await this.ensureOrderExists(id);
+    const existing = await this.prisma.order.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Order ${id} not found.`);
+    }
 
     const order = await this.prisma.order.update({
       where: { id },
@@ -220,6 +232,10 @@ export class OrdersService {
       },
       include: orderInclude,
     });
+
+    if (dto.status && dto.status !== existing.status) {
+      await this.sendOrderStatusChangedEmail(order, existing.status);
+    }
 
     return this.toOrderResponse(order);
   }
@@ -314,5 +330,107 @@ export class OrdersService {
         total: order.total.toNumber(),
       },
     };
+  }
+
+  private get notifyEmail() {
+    return process.env.ORDERS_NOTIFY_EMAIL ?? null;
+  }
+
+  private async sendOrderCreatedEmail(order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>) {
+    const customerEmail = order.user?.email;
+    if (!customerEmail) {
+      return;
+    }
+
+    const subject = `Заказ ${order.orderNumber} оформлен`;
+    const body = this.formatOrderEmail(order, {
+      header: `Спасибо! Мы получили ваш заказ ${order.orderNumber}.`,
+      statusLine: `Текущий статус: ${order.status}`,
+    });
+
+    try {
+      await this.mailService.sendMail({
+        to: this.notifyEmail ? `${customerEmail}, ${this.notifyEmail}` : customerEmail,
+        subject,
+        text: body,
+      });
+    } catch {
+      // Do not block order placement if mail is misconfigured/unavailable.
+    }
+  }
+
+  private async sendOrderStatusChangedEmail(
+    order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>,
+    previousStatus: string,
+  ) {
+    const customerEmail = order.user?.email;
+    if (!customerEmail) {
+      return;
+    }
+
+    const subject = `Статус заказа ${order.orderNumber}: ${previousStatus} → ${order.status}`;
+    const body = this.formatOrderEmail(order, {
+      header: `Статус вашего заказа ${order.orderNumber} изменился.`,
+      statusLine: `Статус: ${previousStatus} → ${order.status}`,
+    });
+
+    try {
+      await this.mailService.sendMail({
+        to: this.notifyEmail ? `${customerEmail}, ${this.notifyEmail}` : customerEmail,
+        subject,
+        text: body,
+      });
+    } catch {
+      // Do not block status updates if mail is misconfigured/unavailable.
+    }
+  }
+
+  private formatOrderEmail(
+    order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>,
+    meta: { header: string; statusLine: string },
+  ) {
+    const lines: string[] = [];
+
+    lines.push(meta.header);
+    lines.push(meta.statusLine);
+    lines.push('');
+    lines.push(`Номер: ${order.orderNumber}`);
+    lines.push(`Дата: ${order.placedAt ? new Date(order.placedAt).toLocaleString('ru-RU') : '-'}`);
+    lines.push('');
+
+    lines.push('Контакты:');
+    lines.push(`- Имя: ${order.contactName ?? order.user?.clientProfile?.firstName ?? order.user?.firstName ?? '-'}`);
+    lines.push(`- Телефон: ${order.contactPhone ?? order.user?.phone ?? order.user?.clientProfile?.contactPhone ?? '-'}`);
+    lines.push(`- Email: ${order.user?.email ?? '-'}`);
+    lines.push('');
+
+    if (order.deliveryMethod || order.deliveryAddress) {
+      lines.push('Доставка:');
+      if (order.deliveryMethod) lines.push(`- Способ: ${order.deliveryMethod}`);
+      if (order.deliveryAddress) lines.push(`- Адрес: ${order.deliveryAddress}`);
+      lines.push('');
+    }
+
+    if (order.comment) {
+      lines.push('Комментарий:');
+      lines.push(order.comment);
+      lines.push('');
+    }
+
+    lines.push('Состав заказа:');
+    for (const item of order.items) {
+      const unit = item.unitPrice.toNumber();
+      const total = item.totalPrice.toNumber();
+      lines.push(`- ${item.title} × ${item.quantity} = ${total.toFixed(2)} RUB (${unit.toFixed(2)} за шт.)`);
+    }
+
+    lines.push('');
+    lines.push('Итого:');
+    lines.push(`- Подытог: ${order.subtotal.toNumber().toFixed(2)} RUB`);
+    lines.push(`- Скидка: ${order.discountTotal.toNumber().toFixed(2)} RUB`);
+    lines.push(`- НДС (20%): ${order.vatTotal.toNumber().toFixed(2)} RUB`);
+    lines.push(`- К оплате: ${order.total.toNumber().toFixed(2)} RUB`);
+
+    return lines.join('\n');
   }
 }

@@ -28,7 +28,16 @@ export function getApiBaseUrl() {
   // During local development frontend and backend usually run on different ports.
   // Defaulting to the frontend origin in DEV causes `/api/*` 404 from Astro.
   if (import.meta.env.DEV) {
-    return "http://localhost:3000";
+    // When testing on a real device (e.g. iOS Safari) the frontend is often opened
+    // via LAN IP/hostname. In that case `localhost:3000` points to the device,
+    // so API calls fail (search, catalog, auth, etc).
+    if (typeof window !== "undefined" && window.location?.hostname) {
+      const hostname = window.location.hostname;
+      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+        return `${window.location.protocol}//${hostname}:3001`;
+      }
+    }
+    return "http://localhost:3001";
   }
 
   // In production the frontend is usually served behind a reverse proxy that routes `/api/*` to the backend.
@@ -37,7 +46,7 @@ export function getApiBaseUrl() {
     return window.location.origin.replace(/\/+$/, "");
   }
 
-  return "http://localhost:3000";
+  return "http://localhost:3001";
 }
 
 export function buildApiUrl(path: string, query?: Record<string, QueryValue>) {

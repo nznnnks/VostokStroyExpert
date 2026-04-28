@@ -15,11 +15,18 @@ export function LoginPage() {
     setError(null);
 
     try {
-      const session = await loginUser(email, password);
+      const response = await loginUser(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
       const safeNext = next && next.startsWith("/") ? next : null;
 
-      window.location.href = session.type === "admin" ? "/admin" : safeNext || "/account";
+      if ("accessToken" in response) {
+        window.location.href = response.type === "admin" ? "/admin" : safeNext || "/account";
+        return;
+      }
+
+      const flow = "requiresEmailVerification" in response ? "verify" : "login";
+      const nextTarget = safeNext || "/account";
+      window.location.href = `/code?flow=${encodeURIComponent(flow)}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextTarget)}`;
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось выполнить вход.");
     } finally {

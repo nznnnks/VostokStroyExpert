@@ -17,7 +17,7 @@ export function RegisterPage() {
 
     try {
       await registerUser(fullName, email, password);
-      window.location.href = "/account";
+      window.location.href = `/code?flow=${encodeURIComponent("verify")}&email=${encodeURIComponent(email)}&next=${encodeURIComponent("/account")}`;
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось зарегистрироваться.");
     } finally {

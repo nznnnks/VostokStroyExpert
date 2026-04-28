@@ -11,6 +11,7 @@ import { JsonSerializerInterceptor } from './common/interceptors/json-serializer
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const uploadsPath = join(process.cwd(), 'uploads');
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 
   if (!existsSync(uploadsPath)) {
     mkdirSync(uploadsPath, { recursive: true });
@@ -34,7 +35,7 @@ async function bootstrap() {
   app.useGlobalFilters(new PrismaClientExceptionFilter());
   app.useGlobalInterceptors(new JsonSerializerInterceptor());
 
-  await app.listen(3000);
+  await app.listen(port);
 }
 
 bootstrap();

@@ -51,6 +51,16 @@ type LoginResponse = {
   };
 };
 
+type RegisterResponse = {
+  requiresEmailVerification: boolean;
+  email: string;
+};
+
+type LoginInitResponse =
+  | LoginResponse
+  | { requiresLoginCode: true; email: string }
+  | { requiresEmailVerification: true; email: string };
+
 const AUTH_STORAGE_KEY = "vostokstroyexpert-auth";
 export const AUTH_TOKEN_COOKIE_KEY = "vostokstroyexpert-access-token";
 export const AUTH_TYPE_COOKIE_KEY = "vostokstroyexpert-auth-type";
@@ -179,39 +189,52 @@ export async function validateStoredAuthSession() {
 }
 
 export async function loginUser(email: string, password: string) {
-  const response = await apiRequest<LoginResponse>("/api/auth/user/login", {
+  const response = await apiRequest<LoginInitResponse>("/api/auth/user/login", {
     method: "POST",
     body: { email, password },
   });
 
-  const sharedPerson = response.user
-    ? {
-        id: response.user.id,
-        email: response.user.email,
-        role: response.user.role,
-        firstName: response.user.firstName ?? response.user.clientProfile?.firstName ?? null,
-        lastName: response.user.lastName ?? response.user.clientProfile?.lastName ?? null,
-      }
-    : null;
-
-  const session: StoredAuthSession = isAdminRole(response.user?.role)
-    ? {
+  if ("accessToken" in response) {
+    if (response.admin) {
+      const session: StoredAuthSession = {
         type: "admin",
         accessToken: response.accessToken,
         tokenType: response.tokenType,
         expiresIn: response.expiresIn,
-        admin: sharedPerson,
-      }
-    : {
-        type: "user",
-        accessToken: response.accessToken,
-        tokenType: response.tokenType,
-        expiresIn: response.expiresIn,
-        user: sharedPerson,
+        admin: {
+          id: response.admin.id,
+          email: response.admin.email,
+          role: response.admin.role,
+          firstName: response.admin.firstName ?? null,
+          lastName: response.admin.lastName ?? null,
+        },
       };
 
-  setStoredAuthSession(session);
-  return session;
+      setStoredAuthSession(session);
+      return session;
+    }
+
+    const session: StoredAuthSession = {
+      type: "user",
+      accessToken: response.accessToken,
+      tokenType: response.tokenType,
+      expiresIn: response.expiresIn,
+      user: response.user
+        ? {
+            id: response.user.id,
+            email: response.user.email,
+            role: response.user.role,
+            firstName: response.user.firstName ?? response.user.clientProfile?.firstName ?? null,
+            lastName: response.user.lastName ?? response.user.clientProfile?.lastName ?? null,
+          }
+        : null,
+    };
+
+    setStoredAuthSession(session);
+    return session;
+  }
+
+  return response;
 }
 
 export async function loginAdmin(email: string, password: string) {
@@ -241,9 +264,16 @@ export async function loginAdmin(email: string, password: string) {
 }
 
 export async function registerUser(fullName: string, email: string, password: string, phone?: string) {
-  const response = await apiRequest<LoginResponse>("/api/auth/user/register", {
+  return apiRequest<RegisterResponse>("/api/auth/user/register", {
     method: "POST",
     body: { fullName, email, password, phone },
+  });
+}
+
+export async function verifyUserEmail(email: string, code: string) {
+  const response = await apiRequest<LoginResponse>("/api/auth/user/verify-email", {
+    method: "POST",
+    body: { email, code },
   });
 
   const session: StoredAuthSession = {
@@ -264,4 +294,44 @@ export async function registerUser(fullName: string, email: string, password: st
 
   setStoredAuthSession(session);
   return session;
+}
+
+export async function resendUserEmailVerification(email: string) {
+  return apiRequest<{ ok: true }>("/api/auth/user/resend-verification", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function verifyUserLoginCode(email: string, code: string) {
+  const response = await apiRequest<LoginResponse>("/api/auth/user/verify-login-code", {
+    method: "POST",
+    body: { email, code },
+  });
+
+  const session: StoredAuthSession = {
+    type: "user",
+    accessToken: response.accessToken,
+    tokenType: response.tokenType,
+    expiresIn: response.expiresIn,
+    user: response.user
+      ? {
+          id: response.user.id,
+          email: response.user.email,
+          role: response.user.role,
+          firstName: response.user.firstName ?? response.user.clientProfile?.firstName ?? null,
+          lastName: response.user.lastName ?? response.user.clientProfile?.lastName ?? null,
+        }
+      : null,
+  };
+
+  setStoredAuthSession(session);
+  return session;
+}
+
+export async function resendUserLoginCode(email: string) {
+  return apiRequest<{ ok: true }>("/api/auth/user/resend-login-code", {
+    method: "POST",
+    body: { email },
+  });
 }

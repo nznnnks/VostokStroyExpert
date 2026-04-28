@@ -1,12 +1,20 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
+import { createHash, randomInt } from 'crypto';
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { isAdminUserRole } from './constants/auth.constants';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import {
   AuthPrincipal,
   AuthTokenPayload,
@@ -20,6 +28,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
+    private readonly mailService: MailService,
   ) {}
 
   async loginUser(dto: LoginUserDto) {
@@ -41,18 +50,35 @@ export class AuthService {
       throw new UnauthorizedException('Invalid user credentials.');
     }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
+    if (isAdminUserRole(user.role)) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
 
-    const principal = this.toAuthPrincipal(user);
+      const principal: AuthenticatedAdmin = this.toAuthPrincipal(user) as AuthenticatedAdmin;
+
+      return {
+        accessToken: this.signAccessToken(principal),
+        tokenType: 'Bearer',
+        expiresIn: this.getJwtExpiresIn(),
+        admin: this.toSafeAdmin(user),
+      };
+    }
+
+    if (!user.emailVerifiedAt) {
+      await this.ensureUserEmailVerification(user.id);
+      return {
+        requiresEmailVerification: true,
+        email: user.email,
+      };
+    }
+
+    await this.ensureUserLoginCode(user.id);
 
     return {
-      accessToken: this.signAccessToken(principal),
-      tokenType: 'Bearer',
-      expiresIn: this.getJwtExpiresIn(),
-      user: this.toSafeUser(user),
+      requiresLoginCode: true,
+      email: user.email,
     };
   }
 
@@ -108,6 +134,28 @@ export class AuthService {
     });
 
     if (existingUser) {
+      if (existingUser.status !== UserStatus.ACTIVE) {
+        throw new BadRequestException('User with this email already exists.');
+      }
+
+      if (!existingUser.emailVerifiedAt) {
+        const isValidPassword = await this.passwordService.verifyPassword(
+          dto.password,
+          existingUser.passwordHash,
+        );
+
+        if (!isValidPassword) {
+          throw new BadRequestException('User with this email already exists.');
+        }
+
+        await this.ensureUserEmailVerification(existingUser.id);
+
+        return {
+          requiresEmailVerification: true,
+          email: existingUser.email,
+        };
+      }
+
       throw new BadRequestException('User with this email already exists.');
     }
 
@@ -136,14 +184,165 @@ export class AuthService {
       include: { clientProfile: true },
     });
 
-    const principal: AuthenticatedUser = this.toAuthPrincipal(user) as AuthenticatedUser;
+    await this.issueUserEmailVerification(user.id);
+
+    return {
+      requiresEmailVerification: true,
+      email: user.email,
+    };
+  }
+
+  async verifyUserEmail(dto: VerifyEmailDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      include: { clientProfile: true },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid verification request.');
+    }
+
+    if (user.emailVerifiedAt) {
+      const principal: AuthenticatedUser = this.toAuthPrincipal(user) as AuthenticatedUser;
+      return {
+        accessToken: this.signAccessToken(principal),
+        tokenType: 'Bearer',
+        expiresIn: this.getJwtExpiresIn(),
+        user: this.toSafeUser(user),
+      };
+    }
+
+    if (!user.emailVerificationCodeHash || !user.emailVerificationExpiresAt) {
+      throw new UnauthorizedException('Verification code is not requested.');
+    }
+
+    if (user.emailVerificationExpiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException('Verification code has expired.');
+    }
+
+    const expected = user.emailVerificationCodeHash;
+    const actual = this.hashVerificationCode(dto.email, dto.code);
+
+    if (actual !== expected) {
+      throw new UnauthorizedException('Invalid verification code.');
+    }
+
+    const verifiedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerificationCodeHash: null,
+        emailVerificationExpiresAt: null,
+      },
+      include: { clientProfile: true },
+    });
+
+    const principal: AuthenticatedUser = this.toAuthPrincipal(verifiedUser) as AuthenticatedUser;
 
     return {
       accessToken: this.signAccessToken(principal),
       tokenType: 'Bearer',
       expiresIn: this.getJwtExpiresIn(),
-      user: this.toSafeUser(user),
+      user: this.toSafeUser(verifiedUser),
     };
+  }
+
+  async resendUserEmailVerification(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      // Do not leak whether the email exists.
+      return { ok: true };
+    }
+
+    if (user.emailVerifiedAt) {
+      return { ok: true };
+    }
+
+    if (user.emailVerificationSentAt) {
+      const elapsed = Date.now() - user.emailVerificationSentAt.getTime();
+      if (elapsed < 60_000) {
+        throw new BadRequestException('Verification code was sent recently. Please wait a bit.');
+      }
+    }
+
+    await this.issueUserEmailVerification(user.id);
+    return { ok: true };
+  }
+
+  async verifyUserLoginCode(dto: VerifyEmailDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      include: { clientProfile: true },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid verification request.');
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException('Email is not confirmed.');
+    }
+
+    if (!user.loginCodeHash || !user.loginCodeExpiresAt) {
+      throw new UnauthorizedException('Login code is not requested.');
+    }
+
+    if (user.loginCodeExpiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException('Login code has expired.');
+    }
+
+    const expected = user.loginCodeHash;
+    const actual = this.hashLoginCode(dto.email, dto.code);
+
+    if (actual !== expected) {
+      throw new UnauthorizedException('Invalid login code.');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        loginCodeHash: null,
+        loginCodeExpiresAt: null,
+        lastLoginAt: new Date(),
+      },
+      include: { clientProfile: true },
+    });
+
+    const principal: AuthenticatedUser = this.toAuthPrincipal(updatedUser) as AuthenticatedUser;
+
+    return {
+      accessToken: this.signAccessToken(principal),
+      tokenType: 'Bearer',
+      expiresIn: this.getJwtExpiresIn(),
+      user: this.toSafeUser(updatedUser),
+    };
+  }
+
+  async resendUserLoginCode(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return { ok: true };
+    }
+
+    if (!user.emailVerifiedAt) {
+      return { ok: true };
+    }
+
+    if (user.loginCodeSentAt) {
+      const elapsed = Date.now() - user.loginCodeSentAt.getTime();
+      if (elapsed < 60_000) {
+        throw new BadRequestException('Login code was sent recently. Please wait a bit.');
+      }
+    }
+
+    await this.issueUserLoginCode(user.id);
+    return { ok: true };
   }
 
   verifyAccessToken(token: string): AuthPrincipal {
@@ -201,6 +400,158 @@ export class AuthService {
 
   private getJwtExpiresIn() {
     return process.env.JWT_EXPIRES_IN ?? '12h';
+  }
+
+  private get verificationSecret() {
+    return process.env.EMAIL_VERIFICATION_SECRET ?? this.getJwtSecret();
+  }
+
+  private hashVerificationCode(email: string, code: string) {
+    return createHash('sha256')
+      .update(`${email.toLowerCase()}|${code}|${this.verificationSecret}`)
+      .digest('hex');
+  }
+
+  private get loginCodeSecret() {
+    return process.env.LOGIN_CODE_SECRET ?? this.getJwtSecret();
+  }
+
+  private hashLoginCode(email: string, code: string) {
+    return createHash('sha256')
+      .update(`${email.toLowerCase()}|${code}|${this.loginCodeSecret}`)
+      .digest('hex');
+  }
+
+  private async ensureUserEmailVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        emailVerifiedAt: true,
+        emailVerificationCodeHash: true,
+        emailVerificationExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    if (user.emailVerifiedAt) {
+      return;
+    }
+
+    if (user.emailVerificationCodeHash && user.emailVerificationExpiresAt) {
+      if (user.emailVerificationExpiresAt.getTime() > Date.now()) {
+        return;
+      }
+    }
+
+    await this.issueUserEmailVerification(userId);
+  }
+
+  private async ensureUserLoginCode(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        emailVerifiedAt: true,
+        loginCodeHash: true,
+        loginCodeExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    if (!user.emailVerifiedAt) {
+      return;
+    }
+
+    if (user.loginCodeHash && user.loginCodeExpiresAt) {
+      if (user.loginCodeExpiresAt.getTime() > Date.now()) {
+        return;
+      }
+    }
+
+    await this.issueUserLoginCode(userId);
+  }
+
+  private async issueUserEmailVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    if (user.emailVerifiedAt) {
+      return;
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + 10 * 60_000);
+    const sentAt = new Date();
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerificationCodeHash: this.hashVerificationCode(user.email, code),
+        emailVerificationExpiresAt: expiresAt,
+        emailVerificationSentAt: sentAt,
+      },
+    });
+
+    try {
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: 'Код подтверждения',
+        text: `Ваш код подтверждения: ${code}\n\nКод действует 10 минут.`,
+      });
+    } catch {
+      throw new ServiceUnavailableException('Failed to send verification email.');
+    }
+  }
+
+  private async issueUserLoginCode(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    if (!user.emailVerifiedAt) {
+      return;
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + 10 * 60_000);
+    const sentAt = new Date();
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        loginCodeHash: this.hashLoginCode(user.email, code),
+        loginCodeExpiresAt: expiresAt,
+        loginCodeSentAt: sentAt,
+      },
+    });
+
+    try {
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: 'Код для входа',
+        text: `Ваш код для входа: ${code}\n\nКод действует 10 минут.`,
+      });
+    } catch {
+      throw new ServiceUnavailableException('Failed to send login code email.');
+    }
   }
 
   private toAuthPrincipal(user: {

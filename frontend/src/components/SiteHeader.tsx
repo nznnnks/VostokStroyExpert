@@ -282,14 +282,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 <div className="shrink-0 flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-2">
                   <a
                     href="tel:+79895789929"
-                    className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:text-[17px] md:underline-offset-[5px] xl:text-[18px]"
+                    className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:text-[19px] md:underline-offset-[5px] xl:text-[20px]"
                   >
-                    +7 989 578 9929
+                    +7 989 578 99 29
                   </a>
                   <span className="hidden text-white/70 md:inline">/</span>
-                  <span className="text-white/62 md:text-[17px] xl:text-[18px]">
-                    номер уточняется
-                  </span>
+                  <a href="tel:+79266187379" className="text-white underline decoration-white/46 underline-offset-[4px] transition-colors duration-300 hover:text-white hover:decoration-white/78 md:text-[19px] md:underline-offset-[5px] xl:text-[20px]">
+                    +7 926 618 73 79
+                  </a>
                 </div>
               </div>
             </div>
@@ -400,20 +400,20 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 </span>
               ) : null}
             </a>
-            <div className="hidden items-center gap-1 md:flex xl:gap-2 2xl:gap-3">
+            <div className="hidden items-center gap-0.5 md:flex xl:gap-1.5 2xl:gap-2">
               <a
                 href="https://t.me/vostok_support"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Telegram"
-                className={`inline-flex h-11 w-11 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
+                className={`inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
                   light ? "text-[#111]" : "text-white"
                 }`}
               >
                 <svg
                   viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
+                  width="22"
+                  height="22"
                   aria-hidden="true"
                   fill="currentColor"
                 >
@@ -423,16 +423,16 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               <a
                 href="#"
                 aria-label="MAX"
-                className="inline-flex h-11 w-11 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125"
+                className="inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125"
               >
                 <img
                   src="/max-logo.svg"
                   alt="MAX"
-                  className="h-7 w-7 rounded-[7px] object-contain"
+                  className="h-8 w-8 rounded-[8px] object-contain"
                 />
               </a>
             </div>
-            <div className="flex items-center gap-1 sm:hidden">
+            <div className="flex items-center gap-0.5 sm:hidden">
               {isCatalogHeader ? (
                 <a
                   href="/cart"
@@ -466,14 +466,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                   <a
                     href="#"
                     aria-label="MAX"
-                    className={`inline-flex h-9 w-9 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-9 sm:w-9 ${
+                    className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-10 sm:w-10 ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   >
                     <img
                       src="/max-logo.svg"
                       alt="MAX"
-                      className="h-[15px] w-[15px] rounded-[4px] object-contain"
+                      className="h-[17px] w-[17px] rounded-[4px] object-contain"
                     />
                   </a>
                   <a
@@ -481,14 +481,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Telegram"
-                    className={`inline-flex h-9 w-9 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-9 sm:w-9 ${
+                    className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-10 sm:w-10 ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   >
                     <svg
                       viewBox="0 0 24 24"
-                      width="15"
-                      height="15"
+                      width="17"
+                      height="17"
                       aria-hidden="true"
                       fill="currentColor"
                     >
@@ -578,7 +578,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Поиск по каталогу"
-                    className={`w-full bg-transparent text-[15px] outline-none placeholder:text-[#b7b2aa] ${
+                    className={`w-full bg-transparent text-[16px] outline-none placeholder:text-[#b7b2aa] md:text-[15px] ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   />
@@ -639,7 +639,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                           {item.brandLabel}
                         </p>
                         <p
-                          className={`truncate text-[15px] leading-tight ${light ? "text-[#111]" : "text-white"}`}
+                          className={`line-clamp-2 break-words text-[15px] leading-tight ${light ? "text-[#111]" : "text-white"}`}
                         >
                           {item.title}
                         </p>
@@ -794,7 +794,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Поиск по каталогу"
-                    className={`w-full bg-transparent text-[15px] outline-none placeholder:text-[#b7b2aa] ${
+                    className={`w-full bg-transparent text-[16px] outline-none placeholder:text-[#b7b2aa] md:text-[15px] ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   />
@@ -839,14 +839,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                             className={`text-[12px] uppercase tracking-[1.5px] ${light ? "text-[#8a857c]" : "text-white/60"} [font-family:Jaldi,'JetBrains_Mono',monospace]`}
                           >
                             {item.brandLabel}
-                          </p>
-                          <p
-                            className={`truncate text-[15px] leading-tight ${light ? "text-[#111]" : "text-white"}`}
-                          >
-                            {item.title}
-                          </p>
-                          <p
-                            className={`text-[14px] ${light ? "text-[#6f6c66]" : "text-white/70"}`}
+                      </p>
+                      <p
+                        className={`line-clamp-2 break-words text-[15px] leading-tight ${light ? "text-[#111]" : "text-white"}`}
+                      >
+                        {item.title}
+                      </p>
+                      <p
+                        className={`text-[14px] ${light ? "text-[#6f6c66]" : "text-white/70"}`}
                           >
                             {formatPrice(item.price)}
                           </p>
@@ -908,16 +908,16 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                   телефоны
                 </p>
                 <a
-                  href="tel:+79252700229"
+                  href="tel:+79895789929"
                   className={`text-[18px] leading-none transition duration-300 ease-out ${light ? "hover:text-[#111]" : "hover:text-white"}`}
                 >
-                  +7 (925) 270-02-29
+                  +7 989 578 99 29
                 </a>
                 <a
-                  href="tel:+79266787379"
+                  href="tel:+79266187379"
                   className={`text-[18px] leading-none transition duration-300 ease-out ${light ? "hover:text-[#111]" : "hover:text-white"}`}
                 >
-                  +7 (926) 678-73-79
+                  +7 926 618 73 79
                 </a>
               </div>
               <div className={`grid gap-2 border-t pt-4 ${light ? "border-[#ddd3c6]" : "border-white/10"}`}>

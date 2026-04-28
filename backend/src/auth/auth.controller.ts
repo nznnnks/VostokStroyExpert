@@ -7,6 +7,8 @@ import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { RequestEmailVerificationDto } from './dto/request-email-verification.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { AuthenticatedAdmin } from './interfaces/auth-principal.interface';
 
 @Controller('auth')
@@ -21,6 +23,26 @@ export class AuthController {
   @Post('user/register')
   registerUser(@Body() dto: RegisterUserDto) {
     return this.authService.registerUser(dto);
+  }
+
+  @Post('user/verify-email')
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyUserEmail(dto);
+  }
+
+  @Post('user/resend-verification')
+  resendVerification(@Body() dto: RequestEmailVerificationDto) {
+    return this.authService.resendUserEmailVerification(dto.email);
+  }
+
+  @Post('user/verify-login-code')
+  verifyLoginCode(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyUserLoginCode(dto);
+  }
+
+  @Post('user/resend-login-code')
+  resendLoginCode(@Body() dto: RequestEmailVerificationDto) {
+    return this.authService.resendUserLoginCode(dto.email);
   }
 
   @Post('admin/login')

@@ -5,7 +5,7 @@ export const heroStats = [
     desktopLabel: "реализованных проектов",
   },
   {
-    value: "10+",
+    value: "15+",
     mobileLines: ["лет", "практики"],
     desktopLabel: "лет на рынке инженерных решений",
   },
@@ -19,7 +19,7 @@ export const heroStats = [
 export const trustHighlights = [
   { value: "25", lines: ["лет на", "российском рынке"] },
   { value: "100+", lines: ["реализованных", "проектов"] },
-  { value: "10+", lines: ["лет инженерной", "практики"] },
+  { value: "15+", lines: ["лет инженерной", "практики"] },
   { value: "62+", lines: ["брендов в", "ассортименте"] },
 ] as const;
 

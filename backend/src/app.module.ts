@@ -10,6 +10,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ServiceOfferingsModule } from './service-offerings/service-offerings.module';
 import { UsersModule } from './users/users.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     OrdersModule,
     NewsModule,
     AdminUsersModule,
+    MailModule,
   ],
 })
 export class AppModule {}
