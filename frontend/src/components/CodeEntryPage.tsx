@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 
 import SiteHeader from "./SiteHeader";
-import SiteFooter from "./SiteFooter";
 import {
   resendUserEmailVerification,
   resendUserLoginCode,
@@ -143,12 +142,12 @@ export function CodeEntryPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
-      <div className="flex-1">
+    <main className="flex h-screen flex-col overflow-hidden bg-white text-[#111] [font-family:DM_Sans,Manrope,'Liberation_Sans',sans-serif]">
+      <div className="flex min-h-0 flex-1 flex-col">
         <SiteHeader />
 
-        <section className="px-4 py-8 md:px-10 md:py-20">
-          <div className="mx-auto max-w-[1120px] border border-[#e8e3db] bg-white 2xl:max-w-[1480px]">
+        <section className="flex min-h-0 flex-1 overflow-y-auto px-4 py-6 [webkit-overflow-scrolling:touch] md:px-10 md:py-10">
+          <div className="mx-auto w-full max-w-[1120px] border border-[#e8e3db] bg-white 2xl:max-w-[1480px]">
             <div className="grid md:grid-cols-[140px_1fr]">
               <div className="bg-[#111]">
                 <img
@@ -177,7 +176,7 @@ export function CodeEntryPage() {
                     : "Мы отправили 6-значный код подтверждения на вашу почту. Пожалуйста, проверьте папку «Входящие» и «Спам»."}
                 </p>
 
-                <div className="mt-8 grid grid-cols-3 gap-3 md:mt-16 md:grid-cols-6 md:gap-5">
+                <div className="mt-8 grid grid-cols-3 gap-3 md:mt-12 md:grid-cols-6 md:gap-5">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <label key={index} className="block">
                       <span className="sr-only">Цифра {index + 1}</span>
@@ -203,7 +202,7 @@ export function CodeEntryPage() {
                 <button
                   disabled={loading || !canSubmit}
                   onClick={handleSubmit}
-                  className="mt-8 inline-flex h-12 w-full items-center justify-center bg-[#1f1f1f] px-8 text-[clamp(0.9rem,1.2vw,1.4rem)] uppercase tracking-[1.8px] text-white md:mt-16 md:h-20 md:tracking-[4px] [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
+                  className="mt-8 inline-flex h-12 w-full items-center justify-center bg-[#1f1f1f] px-8 text-[clamp(0.9rem,1.2vw,1.4rem)] uppercase tracking-[1.8px] text-white md:mt-12 md:h-20 md:tracking-[4px] [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
                 >
                   {loading ? "..." : "подтвердить"}
                 </button>
@@ -217,9 +216,9 @@ export function CodeEntryPage() {
                   <button
                     disabled={!email || resending || cooldownSeconds > 0}
                     onClick={handleResend}
-                    className="mt-3 text-[clamp(0.78rem,0.8vw,1rem)] uppercase tracking-[1.6px] text-[#d0d0cb] md:mt-4 md:tracking-[3px] [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
+                    className="mt-4 inline-flex h-11 w-full items-center justify-center border border-[#111] bg-[#111] px-6 text-[clamp(0.88rem,1vw,1.05rem)] uppercase tracking-[1.6px] text-white transition duration-200 ease-out hover:bg-[#1c1c1c] active:scale-[0.99] md:mt-5 md:h-12 md:tracking-[3px] [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {resending ? "..." : "отправить код"}
+                    {resending ? "..." : "Отправить код ещё раз"}
                   </button>
                 </div>
               </div>
@@ -228,7 +227,6 @@ export function CodeEntryPage() {
         </section>
       </div>
 
-      <SiteFooter />
     </main>
   );
 }
