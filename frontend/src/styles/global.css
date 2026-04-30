@@ -144,7 +144,7 @@ body {
 
 .hero-model-edgefade--tablet {
   --hero-model-fade-top: 8%;
-  --hero-model-fade-right: 5%;
+  --hero-model-fade-right: 2.5%;
   --hero-model-fade-bottom: 16%;
   --hero-model-fade-left: 0%;
   --hero-model-corner-x: 18%;
@@ -153,7 +153,7 @@ body {
 
 .hero-model-edgefade--compact {
   --hero-model-fade-top: 8%;
-  --hero-model-fade-right: 7%;
+  --hero-model-fade-right: 2.25%;
   --hero-model-fade-bottom: 20%;
   --hero-model-fade-left: 0%;
   --hero-model-corner-x: 22%;
@@ -162,7 +162,7 @@ body {
 
 .hero-model-edgefade--medium {
   --hero-model-fade-top: 9%;
-  --hero-model-fade-right: 6%;
+  --hero-model-fade-right: 2%;
   --hero-model-fade-bottom: 18%;
   --hero-model-fade-left: 0%;
   --hero-model-corner-x: 22%;
@@ -171,7 +171,7 @@ body {
 
 .hero-model-edgefade--wide {
   --hero-model-fade-top: 10%;
-  --hero-model-fade-right: 5%;
+  --hero-model-fade-right: 1.5%;
   --hero-model-fade-bottom: 16%;
   --hero-model-fade-left: 2%;
   --hero-model-corner-x: 20%;
