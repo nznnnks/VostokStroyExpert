@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 
 type MailEnvelopeAddress = { name?: string | null; address?: string | null };
 
+type MailSendOptions = { to: string; subject: string; text?: string; html?: string };
+
 function toAddressString(value: unknown) {
   if (!value) {
     return null;
@@ -82,14 +84,34 @@ export class MailService {
     return process.env.MAIL_FROM ?? this.mailUser ?? undefined;
   }
 
-  private assertConfigured() {
+  private get smtpConfigured() {
+    return Boolean(this.mailUser && this.mailPass);
+  }
+
+  private get resendApiKey() {
+    return process.env.RESEND_API_KEY;
+  }
+
+  private get resendBaseUrl() {
+    return process.env.RESEND_BASE_URL ?? 'https://api.resend.com';
+  }
+
+  private get resendFrom() {
+    return process.env.RESEND_FROM ?? this.mailFrom ?? undefined;
+  }
+
+  private get resendConfigured() {
+    return Boolean(this.resendApiKey && this.resendFrom);
+  }
+
+  private assertImapConfigured() {
     if (!this.mailUser || !this.mailPass) {
       throw new BadRequestException('MAIL_USER and MAIL_PASS must be configured on the backend.');
     }
   }
 
   async testConnections() {
-    this.assertConfigured();
+    this.assertImapConfigured();
 
     const imapOk = await this.testImap();
     const smtpOk = await this.testSmtp();
@@ -98,7 +120,7 @@ export class MailService {
   }
 
   async listRecentInbox(limit = 10) {
-    this.assertConfigured();
+    this.assertImapConfigured();
 
     const client = new ImapFlow({
       host: this.imapHost,
@@ -160,9 +182,34 @@ export class MailService {
     }
   }
 
-  async sendMail(options: { to: string; subject: string; text?: string; html?: string }) {
-    this.assertConfigured();
+  async sendMail(options: MailSendOptions) {
+    if (this.smtpConfigured) {
+      try {
+        return await this.sendViaSmtp(options);
+      } catch (error) {
+        if (!this.resendConfigured) {
+          throw error;
+        }
 
+        this.logger.warn(
+          `SMTP send failed, falling back to Resend: to="${options.to}" subject="${options.subject}"`,
+          error instanceof Error ? error.stack : String(error),
+        );
+
+        return this.sendViaResend(options);
+      }
+    }
+
+    if (this.resendConfigured) {
+      return this.sendViaResend(options);
+    }
+
+    throw new BadRequestException(
+      'Mail sending is not configured. Set MAIL_USER/MAIL_PASS for SMTP or RESEND_API_KEY/RESEND_FROM for Resend.',
+    );
+  }
+
+  private async sendViaSmtp(options: MailSendOptions) {
     const transporter = nodemailer.createTransport({
       host: this.smtpHost,
       port: this.smtpPort,
@@ -197,7 +244,7 @@ export class MailService {
         );
       }
 
-      return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
+      return { provider: 'smtp', messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
     } catch (error) {
       this.logger.error(
         `SMTP send failed: host="${this.smtpHost}" port=${this.smtpPort} secure=${this.smtpSecure} requireTLS=${this.smtpRequireTls}`,
@@ -205,6 +252,66 @@ export class MailService {
       );
       throw new ServiceUnavailableException('SMTP send failed.');
     }
+  }
+
+  private async sendViaResend(options: MailSendOptions) {
+    const apiKey = this.resendApiKey;
+    const from = this.resendFrom;
+
+    if (!apiKey) {
+      throw new BadRequestException('RESEND_API_KEY must be configured on the backend.');
+    }
+
+    if (!from) {
+      throw new BadRequestException('RESEND_FROM (or MAIL_FROM) must be configured on the backend.');
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.resendBaseUrl}/emails`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to: [options.to],
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        }),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Resend request failed: baseUrl="${this.resendBaseUrl}" to="${options.to}" subject="${options.subject}"`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new ServiceUnavailableException('Resend send failed.');
+    }
+
+    const rawBody = await response.text();
+
+    if (!response.ok) {
+      this.logger.error(
+        `Resend send failed: status=${response.status} baseUrl="${this.resendBaseUrl}" body="${rawBody.slice(0, 500)}"`,
+      );
+      throw new ServiceUnavailableException('Resend send failed.');
+    }
+
+    let data: unknown = null;
+    try {
+      data = rawBody ? JSON.parse(rawBody) : null;
+    } catch {
+      // ignore
+    }
+
+    const messageId =
+      data && typeof data === 'object' && 'id' in data && typeof (data as { id?: unknown }).id === 'string'
+        ? (data as { id: string }).id
+        : undefined;
+
+    return { provider: 'resend', messageId };
   }
 
   private async testImap() {

@@ -10,6 +10,7 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { buildAuthCodeEmailTemplate } from '../mail/templates/auth-code-email.template';
 import { isAdminUserRole } from './constants/auth.constants';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
@@ -30,6 +31,14 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly mailService: MailService,
   ) {}
+
+  private get brandName() {
+    return process.env.MAIL_BRAND_NAME ?? 'Climatrade';
+  }
+
+  private get publicUrl() {
+    return process.env.MAIL_PUBLIC_URL;
+  }
 
   async loginUser(dto: LoginUserDto) {
     const user = await this.prisma.user.findUnique({
@@ -507,10 +516,19 @@ export class AuthService {
     });
 
     try {
+      const template = buildAuthCodeEmailTemplate({
+        purpose: 'email_verification',
+        code,
+        expiresMinutes: 10,
+        brandName: this.brandName,
+        publicUrl: this.publicUrl,
+      });
+
       await this.mailService.sendMail({
         to: user.email,
-        subject: 'Код подтверждения',
-        text: `Ваш код подтверждения: ${code}\n\nКод действует 10 минут.`,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
       });
     } catch {
       throw new ServiceUnavailableException('Failed to send verification email.');
@@ -544,10 +562,19 @@ export class AuthService {
     });
 
     try {
+      const template = buildAuthCodeEmailTemplate({
+        purpose: 'login_code',
+        code,
+        expiresMinutes: 10,
+        brandName: this.brandName,
+        publicUrl: this.publicUrl,
+      });
+
       await this.mailService.sendMail({
         to: user.email,
-        subject: 'Код для входа',
-        text: `Ваш код для входа: ${code}\n\nКод действует 10 минут.`,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
       });
     } catch {
       throw new ServiceUnavailableException('Failed to send login code email.');

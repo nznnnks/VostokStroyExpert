@@ -23,6 +23,13 @@ npm run prisma:generate
 npm run build
 ```
 
+## Mail sending (SMTP with Resend fallback)
+
+The backend can send mail via SMTP (primary). If SMTP is not configured or sending fails, it can fall back to Resend.
+
+- SMTP config: `MAIL_USER`, `MAIL_PASS`, optional `MAIL_FROM`, `MAIL_SMTP_*`.
+- Resend fallback config: `RESEND_API_KEY`, `RESEND_FROM` (must be a verified sender, e.g. `no-reply@climatrade.store`).
+
 ## Frontend-oriented JSON rules
 
 - `Decimal` values are serialized to numbers.
