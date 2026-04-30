@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
-import { createOrder, type CartView } from "../lib/backend-api";
+import { createOrder, createYooKassaPayment, getYooKassaPaymentStatus, type CartView } from "../lib/backend-api";
 import { addProductToSessionCartBySlug, clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
+
+const YOOKASSA_PENDING_PAYMENT_KEY = "vostokstroyexpert-yookassa-pending-payment";
 
 const paymentOptions = [
   ["card", "Банковская карта/СБП", "", "/checkout/card.svg"],
@@ -69,6 +71,12 @@ type AddressVerificationState = {
   postalCode: string;
 };
 
+type PaymentBannerState =
+  | { kind: "success"; message: string }
+  | { kind: "pending"; message: string }
+  | { kind: "error"; message: string }
+  | null;
+
 export function CheckoutPage() {
   const orderSummaryRef = useRef<HTMLElement | null>(null);
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
@@ -81,6 +89,7 @@ export function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string>("");
   const [submitSuccess, setSubmitSuccess] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentBanner, setPaymentBanner] = useState<PaymentBannerState>(null);
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [addressLine, setAddressLine] = useState("");
@@ -159,6 +168,83 @@ export function CheckoutPage() {
     }
 
     run();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("payment") !== "return") {
+      return;
+    }
+
+    const rawPending = window.sessionStorage.getItem(YOOKASSA_PENDING_PAYMENT_KEY);
+    if (!rawPending) {
+      setPaymentBanner({
+        kind: "pending",
+        message: "Мы получили возврат с YooKassa, но не нашли локальные данные платежа. Проверьте статус заказа в личном кабинете или свяжитесь с нами.",
+      });
+      return;
+    }
+
+    let pendingPayment: { paymentId: string; orderId: string } | null = null;
+    try {
+      pendingPayment = JSON.parse(rawPending) as { paymentId: string; orderId: string };
+    } catch {
+      window.sessionStorage.removeItem(YOOKASSA_PENDING_PAYMENT_KEY);
+      return;
+    }
+
+    if (!pendingPayment?.paymentId) {
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const status = await getYooKassaPaymentStatus(pendingPayment!.paymentId);
+        if (!active) return;
+
+        if (status.status === "succeeded" || status.paid) {
+          clearSessionCart();
+          setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
+          window.sessionStorage.removeItem(YOOKASSA_PENDING_PAYMENT_KEY);
+          setPaymentBanner({
+            kind: "success",
+            message: "Оплата прошла успешно. Заказ подтвержден.",
+          });
+          return;
+        }
+
+        if (status.status === "canceled") {
+          setPaymentBanner({
+            kind: "error",
+            message: "Оплата была отменена. Вы можете попробовать еще раз.",
+          });
+          return;
+        }
+
+        setPaymentBanner({
+          kind: "pending",
+          message: "Платеж еще обрабатывается. Если статус не обновится автоматически, проверьте заказ чуть позже.",
+        });
+      } catch (error) {
+        if (!active) return;
+
+        setPaymentBanner({
+          kind: "pending",
+          message:
+            error instanceof Error
+              ? `Не удалось проверить статус оплаты автоматически: ${error.message}`
+              : "Не удалось проверить статус оплаты автоматически.",
+        });
+      }
+    })();
 
     return () => {
       active = false;
@@ -389,7 +475,7 @@ export function CheckoutPage() {
         throw new ApiError("Товары не найдены в каталоге. Обновите страницу.", 400);
       }
 
-      await createOrder({
+      const order = await createOrder({
         contactName: contactName || undefined,
         contactPhone: contactPhone || undefined,
         email: isQuickCheckout ? contactEmail || undefined : undefined,
@@ -402,6 +488,28 @@ export function CheckoutPage() {
           method: selectedPayment === "card" ? "CARD" : "INVOICE",
         },
       });
+
+      if (selectedPayment === "card") {
+        const payment = await createYooKassaPayment({
+          orderId: order.id,
+          returnUrl: `${window.location.origin}/checkout?payment=return&order=${encodeURIComponent(order.id)}`,
+        });
+
+        if (!payment.confirmationUrl) {
+          throw new ApiError("Не удалось получить ссылку на оплату YooKassa.", 500);
+        }
+
+        window.sessionStorage.setItem(
+          YOOKASSA_PENDING_PAYMENT_KEY,
+          JSON.stringify({
+            paymentId: payment.paymentId,
+            orderId: order.id,
+          }),
+        );
+
+        window.location.href = payment.confirmationUrl;
+        return;
+      }
 
       clearSessionCart();
       setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
@@ -440,6 +548,20 @@ export function CheckoutPage() {
             <p className="mt-4 max-w-[520px] text-[clamp(0.98rem,1.1vw,1.15rem)] leading-[1.45] text-[#75756f] md:mt-6">
               Пожалуйста, заполните данные для доставки и оплаты вашей системы ВостокСтройЭксперт.
             </p>
+
+            {paymentBanner ? (
+              <div
+                className={`mt-8 border px-5 py-4 text-[13px] uppercase tracking-[1.2px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                  paymentBanner.kind === "success"
+                    ? "border-[#bfd8c7] bg-[#eff8f2] text-[#2f7a52]"
+                    : paymentBanner.kind === "error"
+                      ? "border-[#e7c3bc] bg-[#fff4f1] text-[#b24a3a]"
+                      : "border-[#e6dcc8] bg-[#fffaf0] text-[#7a6a40]"
+                }`}
+              >
+                {paymentBanner.message}
+              </div>
+            ) : null}
 
             <form id="checkout-form" className="mt-10 md:mt-20" onSubmit={handleSubmit}>
               <div className="flex items-center gap-5 text-[#111]">

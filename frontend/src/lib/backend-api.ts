@@ -243,6 +243,23 @@ type ApiPayment = {
   paidAt?: string | null;
 };
 
+type ApiYooKassaCreatePaymentResponse = {
+  orderId: string;
+  orderNumber: string;
+  paymentId: string;
+  status: string;
+  confirmationUrl: string;
+  test?: boolean;
+  payment: ApiPayment;
+};
+
+type ApiYooKassaPaymentStatusResponse = {
+  paymentId: string;
+  status: string;
+  paid: boolean;
+  test?: boolean;
+};
+
 type ApiAccountDiscount = {
   personalDiscountPercent?: number | string | null;
 };
@@ -1841,6 +1858,20 @@ export async function createOrder(payload: {
     authToken: authToken ?? undefined,
     body: payload,
   });
+}
+
+export async function createYooKassaPayment(payload: { orderId: string; returnUrl?: string }) {
+  const authToken = getStoredAccessToken("user");
+
+  return apiRequest<ApiYooKassaCreatePaymentResponse>("/api/payments/yookassa/create", {
+    method: "POST",
+    authToken: authToken ?? undefined,
+    body: payload,
+  });
+}
+
+export async function getYooKassaPaymentStatus(paymentId: string) {
+  return apiRequest<ApiYooKassaPaymentStatusResponse>(`/api/payments/yookassa/${encodeURIComponent(paymentId)}/status`);
 }
 
 export async function createAdminClientProfile(payload: {
