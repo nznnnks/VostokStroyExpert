@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 
@@ -19,6 +19,8 @@ function toAddressString(value: unknown) {
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
+
   private get imapHost() {
     return process.env.MAIL_IMAP_HOST ?? 'imap.mail.ru';
   }
@@ -53,6 +55,19 @@ export class MailService {
 
   private get smtpSocketTimeoutMs() {
     return Number(process.env.MAIL_SMTP_SOCKET_TIMEOUT_MS ?? 10000);
+  }
+
+  private get smtpRequireTls() {
+    if (process.env.MAIL_SMTP_REQUIRE_TLS !== undefined) {
+      return ['1', 'true', 'yes', 'on'].includes(String(process.env.MAIL_SMTP_REQUIRE_TLS).toLowerCase());
+    }
+
+    // Port 587 is typically used with STARTTLS.
+    return this.smtpPort === 587;
+  }
+
+  private get logSmtpResults() {
+    return ['1', 'true', 'yes', 'on'].includes(String(process.env.MAIL_LOG_SMTP ?? '').toLowerCase());
   }
 
   private get mailUser() {
@@ -152,6 +167,7 @@ export class MailService {
       host: this.smtpHost,
       port: this.smtpPort,
       secure: this.smtpSecure,
+      requireTLS: this.smtpRequireTls,
       auth: {
         user: this.mailUser!,
         pass: this.mailPass!,
@@ -172,6 +188,14 @@ export class MailService {
         text: options.text,
         html: options.html,
       });
+
+      if (this.logSmtpResults) {
+        this.logger.log(
+          `SMTP sent: to="${options.to}" subject="${options.subject}" messageId="${info.messageId}" accepted=${JSON.stringify(
+            info.accepted ?? [],
+          )} rejected=${JSON.stringify(info.rejected ?? [])}`,
+        );
+      }
 
       return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
     } catch {
