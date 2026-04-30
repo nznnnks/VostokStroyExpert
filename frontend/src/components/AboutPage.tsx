@@ -3,12 +3,14 @@ import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
 import type { NewsPostView } from "../lib/backend-api";
 
+const BLOG_ENABLED = false;
+
 type AboutPageProps = {
   newsPosts?: NewsPostView[];
 };
 
 const aboutHeroStats = [
-  { value: "25", lines: ["лет на", "российском рынке"] },
+  { value: "15", lines: ["лет на", "российском рынке"] },
   { value: "100+", lines: ["реализованных", "проектов"] },
   { value: "10+", lines: ["лет инженерной", "практики"] },
   { value: "63+", lines: ["брендов в", "ассортименте"] },
@@ -20,7 +22,10 @@ const aboutBrandLogoFiles = [
   "Fish.png",
   "KFC.png",
   "The toy.png",
+  "aroundtheworld.png",
   "artest.png",
+  "atrium.png",
+  "aviapark.png",
   "belgian-beer-cafe.png",
   "bijou.png",
   "botanika.png",
@@ -38,6 +43,7 @@ const aboutBrandLogoFiles = [
   "enzo-2.png",
   "erch.png",
   "farshing.png",
+  "federationtower.png",
   "folk.png",
   "frank-by-basta-2.png",
   "franklins-burger.png",
@@ -55,6 +61,7 @@ const aboutBrandLogoFiles = [
   "kvartiranti.png",
   "moremania.png",
   "narval.png",
+  "nevatowers.png",
   "nino.png",
   "papa-johns.png",
   "port.png",
@@ -65,12 +72,14 @@ const aboutBrandLogoFiles = [
   "rostics.png",
   "sakhalin.png",
   "sbarro.png",
+  "sber.png",
   "sesilia.png",
   "svarnya.png",
   "syrovarnya.png",
   "tanuki1.png",
   "tashir-pizza.png",
   "tehnikum.png",
+  "tsum.png",
   "turquoise-circle-logo.png",
   "ugolek.png",
   "urok.png",
@@ -178,11 +187,11 @@ const formatRelativePublication = (value: string) => {
 
 export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
-  const aboutBlogTopRow = aboutBlog.slice(0, 2);
-  const aboutBlogBottomRow = aboutBlog.slice(2, 4);
-  const mobileAboutBlogLead = aboutBlog[0];
-  const mobileAboutBlogMiddle = aboutBlog.slice(1, 3);
-  const mobileAboutBlogTail = aboutBlog[3];
+  const aboutBlogTopRow = BLOG_ENABLED ? aboutBlog.slice(0, 2) : [];
+  const aboutBlogBottomRow = BLOG_ENABLED ? aboutBlog.slice(2, 4) : [];
+  const mobileAboutBlogLead = BLOG_ENABLED ? aboutBlog[0] : null;
+  const mobileAboutBlogMiddle = BLOG_ENABLED ? aboutBlog.slice(1, 3) : [];
+  const mobileAboutBlogTail = BLOG_ENABLED ? aboutBlog[3] : null;
 
   useEffect(() => {
     if (!copiedLabel) return;
@@ -348,7 +357,7 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
             <div className="grid gap-4 md:gap-5 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-stretch xl:gap-8">
               <div className="flex min-h-[118px] flex-col justify-start rounded-[18px] bg-white px-6 py-6 text-[#12120f] md:min-h-[124px] md:px-8 md:py-6 xl:min-h-[132px] xl:justify-between xl:px-10 xl:py-7">
                 <p className="text-[clamp(10px,0.28vw+9px,13px)] uppercase tracking-[0.18em] text-[#7f8ea3] [font-family:'JetBrains_Mono',monospace]">
-                  25 лет на российском рынке
+                  15 лет на российском рынке
                 </p>
                 <h1 className="mt-8 max-w-[12ch] text-[clamp(32px,8vw,46px)] leading-[0.9] tracking-[-0.035em] [font-family:'Cormorant_Garamond',serif] md:mt-0 md:max-w-[14ch] md:text-[clamp(30px,2.1vw,42px)] md:leading-[0.96] md:tracking-[-0.028em]">
                   ВостокСтройЭксперт
@@ -414,6 +423,7 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
           </div>
         </section>
 
+        {BLOG_ENABLED ? (
         <section id="about-blog" className="bg-white px-3 py-10 sm:px-5 md:px-10 md:py-14 xl:px-12 xl:py-16 2xl:px-20">
           <div className="mx-auto max-w-[1860px]">
             <div className="flex items-end justify-between gap-3">
@@ -452,6 +462,7 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
             </div>
           </div>
         </section>
+        ) : null}
 
         <section className="bg-white px-3 pb-8 sm:px-5 md:px-10 md:pb-12 xl:px-12 xl:pb-14 2xl:px-20">
           <div className="mx-auto max-w-[1860px]">

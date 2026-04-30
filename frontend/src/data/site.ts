@@ -1,4 +1,6 @@
-export const navLinks = [
+const BLOG_ENABLED = false;
+
+const navLinksAll = [
   { href: "/", label: "главная" },
   { href: "/about", label: "о нас" },
   { href: "/services", label: "услуги" },
@@ -6,7 +8,9 @@ export const navLinks = [
   { href: "/news", label: "блог" },
 ] as const;
 
-export const footerColumns = [
+export const navLinks = (BLOG_ENABLED ? navLinksAll : navLinksAll.filter((link) => link.href !== "/news")) as typeof navLinksAll;
+
+const footerColumnsAll = [
   [
     { href: "/", label: "Главная" },
     { href: "/about", label: "О нас" },
@@ -27,6 +31,10 @@ export const footerColumns = [
     { href: "/services/acoustic-tuning", label: "Акустическая настройка" },
   ],
 ] as const;
+
+export const footerColumns = (BLOG_ENABLED
+  ? footerColumnsAll
+  : footerColumnsAll.map((column) => column.filter((link) => link.href !== "/news"))) as typeof footerColumnsAll;
 
 export const services = [
   {

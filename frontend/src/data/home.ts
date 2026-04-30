@@ -17,7 +17,7 @@ export const heroStats = [
 ] as const;
 
 export const trustHighlights = [
-  { value: "25", lines: ["лет на", "российском рынке"] },
+  { value: "15", lines: ["лет на", "российском рынке"] },
   { value: "100+", lines: ["реализованных", "проектов"] },
   { value: "15+", lines: ["лет инженерной", "практики"] },
   { value: "62+", lines: ["брендов в", "ассортименте"] },

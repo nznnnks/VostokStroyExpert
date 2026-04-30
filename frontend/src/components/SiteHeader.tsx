@@ -297,7 +297,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
         ) : null}
         <div className={`${fullBleed && !isScrolled ? "px-0" : "px-2 md:px-4"} pt-0`}>
           <div
-            className={`${fullBleed && !isScrolled ? "w-full max-w-none" : "mx-auto max-w-[1480px] 2xl:max-w-[1860px]"} mt-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-3.5 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 md:py-4 xl:gap-6 xl:px-12 2xl:px-16 ${
+            className={`${fullBleed && !isScrolled ? "w-full max-w-none" : "mx-auto max-w-[1480px] 2xl:max-w-[1860px]"} relative mt-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-3.5 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 md:py-4 xl:gap-6 xl:px-12 2xl:px-16 ${
               isScrolled
                 ? light
                   ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] border border-[#1b1b1b]/24 bg-[#e1ddd6] shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] md:backdrop-blur-md 2xl:max-w-[1760px]"
@@ -322,7 +322,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               />
             </a>
           <nav
-            className={`hidden w-full items-center justify-center gap-[clamp(18px,1.8vw,48px)] text-[clamp(14px,0.6vw+12px,21px)] uppercase tracking-[1.4px] lg:flex lg:justify-self-center [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+            className={`hidden items-center justify-center gap-[clamp(18px,1.8vw,48px)] text-[clamp(14px,0.6vw+12px,21px)] uppercase tracking-[1.4px] lg:absolute lg:left-1/2 lg:top-1/2 lg:flex lg:-translate-x-1/2 lg:-translate-y-1/2 [font-family:Jaldi,'JetBrains_Mono',monospace] ${
               light ? "text-[#6d6d67]" : "text-white/80"
             }`}
           >

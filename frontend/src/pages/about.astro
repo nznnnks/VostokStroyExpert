@@ -1,12 +1,11 @@
 ---
 import { AboutPage } from "../components/AboutPage";
-import { loadNewsPosts } from "../lib/backend-api";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import "../styles/global.css";
 
 export const prerender = false;
-
-const newsPosts = await loadNewsPosts();
+// Blog/news blocks are currently hidden; avoid loading posts to save resources.
+const newsPosts = [];
 ---
 
 <!doctype html>

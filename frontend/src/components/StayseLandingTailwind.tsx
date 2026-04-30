@@ -749,7 +749,7 @@ export function StayseLandingTailwind() {
           <div className="px-3 sm:px-5 md:px-10 xl:px-12 2xl:px-20">
             <div className="grid gap-4 xl:grid-cols-4 xl:items-stretch xl:gap-6 2xl:gap-8">
             <div className="flex min-h-[118px] flex-col justify-start rounded-[18px] bg-white px-6 py-5 text-[#12120f] md:min-h-[124px] md:px-8 md:py-5 xl:min-h-[132px] xl:justify-between xl:px-10 xl:py-6">
-              <p className="text-[clamp(10px,0.32vw+9px,14px)] uppercase tracking-[0.22em] text-[#7f8ea3] [font-family:'JetBrains_Mono',monospace]">25 лет на российском рынке</p>
+              <p className="text-[clamp(10px,0.32vw+9px,14px)] uppercase tracking-[0.22em] text-[#7f8ea3] [font-family:'JetBrains_Mono',monospace]">15 лет на российском рынке</p>
               <h2 className="mt-7 max-w-[12ch] text-[clamp(32px,8vw,46px)] leading-[0.92] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif] md:mt-0 md:max-w-[14ch] md:text-[clamp(28px,2vw,40px)] md:leading-[0.98] md:tracking-[-0.02em]">ВостокСтройЭксперт</h2>
             </div>
             <div className="flex min-h-[116px] items-center rounded-[18px] bg-white px-6 py-5 text-[#12120f] md:min-h-[124px] md:px-8 md:py-5 xl:col-span-3 xl:min-h-[132px] xl:px-14 2xl:px-16">
