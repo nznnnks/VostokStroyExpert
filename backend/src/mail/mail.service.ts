@@ -198,7 +198,11 @@ export class MailService {
       }
 
       return { messageId: info.messageId, accepted: info.accepted, rejected: info.rejected };
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `SMTP send failed: host="${this.smtpHost}" port=${this.smtpPort} secure=${this.smtpSecure} requireTLS=${this.smtpRequireTls}`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw new ServiceUnavailableException('SMTP send failed.');
     }
   }

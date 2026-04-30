@@ -1,3 +1,4 @@
+import { config as loadDotenv } from 'dotenv';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -7,6 +8,11 @@ import { join } from 'node:path';
 import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
 import { JsonSerializerInterceptor } from './common/interceptors/json-serializer.interceptor';
+
+const envPath = join(process.cwd(), '.env');
+if (existsSync(envPath)) {
+  loadDotenv({ path: envPath });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
