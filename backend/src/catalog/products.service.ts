@@ -134,7 +134,7 @@ export class ProductsService {
       ? this.buildPublicCatalogWhere({ ...query, minPrice: undefined, maxPrice: undefined }, categoryIds)
       : undefined;
 
-    const [totalAll, total, pagedProducts, metadataProducts] = await Promise.all([
+    const [totalAll, total, pagedProducts, metadata] = await Promise.all([
       this.prisma.product.count({
         where: { status: ProductStatus.ACTIVE },
       }),
@@ -148,47 +148,12 @@ export class ProductsService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      query.includeMeta && metadataWhere && !cachedMetadata
-        ? this.prisma.product.findMany({
-            where: metadataWhere,
-            select: {
-              id: true,
-              name: true,
-              brand: true,
-              country: true,
-              type: true,
-              price: true,
-              images: true,
-              power: true,
-              volume: true,
-              createdAt: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-              filterValues: {
-                include: {
-                  parameter: {
-                    include: {
-                      group: true,
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: { createdAt: 'desc' },
-          })
+      query.includeMeta && metadataWhere
+        ? cachedMetadata ?? this.getOrBuildCatalogMetadataLite(query, metadataWhere)
         : Promise.resolve(null),
     ]);
 
     const items = pagedProducts.map((product) => this.toProductResponse(product));
-    const metadata =
-      query.includeMeta
-        ? cachedMetadata ?? (metadataProducts ? this.getOrBuildCatalogMetadata(query, metadataProducts, categories) : null)
-        : null;
 
     return {
       items,
@@ -198,6 +163,63 @@ export class ProductsService {
       totalAll,
       hasMore: page * limit < total,
       meta: metadata,
+    };
+  }
+
+  private async getOrBuildCatalogMetadataLite(query: CatalogQueryDto, where: Prisma.ProductWhereInput) {
+    const cacheKey = this.buildCatalogMetadataCacheKey(query);
+    const now = Date.now();
+    const cached = this.metadataCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+
+    const value = await this.buildCatalogMetadataLite(where);
+    this.metadataCache.set(cacheKey, { value, expiresAt: now + this.metadataCacheTtlMs });
+
+    if (this.metadataCache.size > 100) {
+      const oldestKey = this.metadataCache.keys().next().value;
+      if (oldestKey) {
+        this.metadataCache.delete(oldestKey);
+      }
+    }
+
+    return value;
+  }
+
+  private async buildCatalogMetadataLite(where: Prisma.ProductWhereInput): Promise<CatalogMetadata> {
+    const [brandRows, countryRows, typeRows, priceAgg] = await Promise.all([
+      this.prisma.product.findMany({ where, select: { brand: true }, distinct: ['brand'] }),
+      this.prisma.product.findMany({ where, select: { country: true }, distinct: ['country'] }),
+      this.prisma.product.findMany({ where, select: { type: true }, distinct: ['type'] }),
+      this.prisma.product.aggregate({ where, _max: { price: true } }),
+    ]);
+
+    const brands = brandRows
+      .map((row) => row.brand)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+    const countries = countryRows
+      .map((row) => row.country)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+    const types = typeRows
+      .map((row) => row.type)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+
+    const maxPrice = priceAgg._max.price ? priceAgg._max.price.toNumber() : 0;
+
+    return {
+      brands,
+      countries,
+      types,
+      maxPrice,
+      categoryCards: [],
+      categoryTypeTree: [],
+      currentCategoryTypes: [],
+      dynamicFilters: [],
     };
   }
 
