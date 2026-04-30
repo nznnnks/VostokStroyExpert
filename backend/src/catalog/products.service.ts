@@ -428,13 +428,21 @@ export class ProductsService {
     const search = query.search?.trim();
 
     if (search) {
+      const searchVariants = Array.from(
+        new Set([search, search.replaceAll('ё', 'е'), search.replaceAll('е', 'ё')]),
+      )
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+
       and.push({
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { slug: { contains: search, mode: 'insensitive' } },
-          { sku: { contains: search, mode: 'insensitive' } },
-          { brand: { contains: search, mode: 'insensitive' } },
-        ],
+        OR: searchVariants.flatMap((term) => [
+          { name: { contains: term, mode: 'insensitive' } },
+          { slug: { contains: term, mode: 'insensitive' } },
+          { sku: { contains: term, mode: 'insensitive' } },
+          { brand: { contains: term, mode: 'insensitive' } },
+          { type: { contains: term, mode: 'insensitive' } },
+          { category: { name: { contains: term, mode: 'insensitive' } } },
+        ]),
       });
     }
 

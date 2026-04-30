@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import AuthHeaderButton from "./AuthHeaderButton";
 import { navLinks } from "../data/site";
 import { formatPrice, type Product } from "../data/products";
-import { loadCatalogProducts } from "../lib/backend-api";
+import { loadCatalogListing } from "../lib/backend-api";
 import { loadSessionCart, SESSION_CART_UPDATED_EVENT } from "../lib/session-cart";
 
 type SiteHeaderProps = {
@@ -17,6 +17,10 @@ function isCatalogPath(pathname: string) {
   return pathname === "/catalog" || pathname.startsWith("/catalog/");
 }
 
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase().replaceAll("ё", "е");
+}
+
 export function SiteHeader({ light = true, fullBleed = false, lockScrolledState = false }: SiteHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileMenuActive, setIsMobileMenuActive] = useState(false);
@@ -24,9 +28,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const [isScrolled, setIsScrolled] = useState(false);
   const [pathname, setPathname] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [catalogProducts, setCatalogProducts] = useState<Product[] | null>(
-    null,
-  );
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -186,39 +188,44 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
 
   useEffect(() => {
     if (!isSearchOpen) return;
+
     let isActive = true;
-    setIsLoadingProducts(true);
-    loadCatalogProducts()
-      .then((items) => {
-        if (!isActive) return;
-        setCatalogProducts(items);
+    const normalizedQuery = normalizeSearchValue(searchQuery);
+    const debounceMs = normalizedQuery.length > 0 ? 250 : 0;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsLoadingProducts(true);
+      loadCatalogListing({
+        search: normalizedQuery.length > 0 ? normalizedQuery : undefined,
+        page: 1,
+        limit: 12,
+        includeMeta: false,
+        sort: "new",
       })
-      .finally(() => {
-        if (!isActive) return;
-        setIsLoadingProducts(false);
-      });
+        .then((result) => {
+          if (!isActive) return;
+          setCatalogProducts(result.items);
+        })
+        .catch(() => {
+          if (!isActive) return;
+          setCatalogProducts([]);
+        })
+        .finally(() => {
+          if (!isActive) return;
+          setIsLoadingProducts(false);
+        });
+    }, debounceMs);
+
     return () => {
       isActive = false;
+      window.clearTimeout(timeoutId);
     };
-  }, [isSearchOpen]);
+  }, [isSearchOpen, searchQuery]);
 
   // Page transition overlay was removed in favor of the synchronous GlobalPreloader.
 
-  const trimmedQuery = searchQuery.trim().toLowerCase();
   const isCatalogHeader = isCatalogPath(pathname);
-  const searchSource = catalogProducts ?? [];
-  const searchResults = trimmedQuery
-    ? searchSource.filter((item) =>
-        [
-          item.title,
-          item.brand,
-          item.brandLabel,
-          item.category,
-          item.slug,
-        ].some((value) => value.toLowerCase().includes(trimmedQuery)),
-      )
-    : searchSource;
-  const visibleResults = searchResults.slice(0, 2);
+  const visibleResults = catalogProducts.slice(0, 2);
 
   const handleNavLinkClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
