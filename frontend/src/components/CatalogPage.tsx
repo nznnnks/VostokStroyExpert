@@ -66,7 +66,9 @@ export function CatalogPage({
   const [isFetchingResults, setIsFetchingResults] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const requestIdRef = useRef(0);
+  const searchDebounceTimeoutRef = useRef<number | null>(null);
   const suppressCatalogReloadRef = useRef(false);
+  const lastMetaRequestKeyRef = useRef<string | null>(null);
   const previousDynamicFilterBoundsRef = useRef<Record<string, [number, number]>>({});
   const formatFilterCountLabel = (count: number) => {
     const mod10 = count % 10;
@@ -110,6 +112,7 @@ export function CatalogPage({
   const itemsPerPage = initialLimit;
 
   const [query, setQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory ?? "all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, globalMaxProductPrice]);
   const [priceRangeDraft, setPriceRangeDraft] = useState<[number, number]>([0, globalMaxProductPrice]);
@@ -396,6 +399,18 @@ export function CatalogPage({
           return entry[1][0] !== filter.min || entry[1][1] !== filter.max;
         }),
     );
+    const metaRequestKey = JSON.stringify({
+      search: query.trim(),
+      category: selectedCategory !== "all" ? selectedCategory : "",
+      minPrice: priceRange[0] > 0 ? priceRange[0] : null,
+      maxPrice: priceRange[1] < maxProductPrice ? priceRange[1] : null,
+      brands: [...selectedBrands].sort(),
+      countries: [...selectedCountries].sort(),
+      types: [...selectedTypes].sort(),
+      textFilters: selectedTextFiltersPayload,
+      numericFilters: selectedNumericFiltersPayload,
+    });
+    const shouldIncludeMeta = mode === "replace" && lastMetaRequestKeyRef.current !== metaRequestKey;
 
     if (mode === "append") {
       setIsFetchingMore(true);
@@ -417,13 +432,14 @@ export function CatalogPage({
         sort: sortMode,
         textFilters: selectedTextFiltersPayload,
         numericFilters: selectedNumericFiltersPayload,
-        includeMeta: mode === "replace",
+        includeMeta: shouldIncludeMeta,
       });
 
       if (requestId !== requestIdRef.current) return;
 
       setProducts((current) => (mode === "append" ? [...current, ...response.items] : response.items));
       if (response.meta) {
+        lastMetaRequestKeyRef.current = metaRequestKey;
         setCatalogMeta((current) => ({
           ...response.meta,
           brands: selectedBrands.length > 0 ? current.brands : response.meta.brands,
@@ -537,9 +553,100 @@ export function CatalogPage({
   }, [query]);
 
   useEffect(() => {
+    const normalizedSearch = searchInput.trim();
+    const normalizedQuery = query.trim();
+    if (normalizedSearch === normalizedQuery) {
+      return;
+    }
+
+    if (searchDebounceTimeoutRef.current !== null) {
+      window.clearTimeout(searchDebounceTimeoutRef.current);
+    }
+
+    searchDebounceTimeoutRef.current = window.setTimeout(() => {
+      searchDebounceTimeoutRef.current = null;
+      setQuery(searchInput);
+      setPage(1);
+    }, 250);
+
+    return () => {
+      if (searchDebounceTimeoutRef.current !== null) {
+        window.clearTimeout(searchDebounceTimeoutRef.current);
+        searchDebounceTimeoutRef.current = null;
+      }
+    };
+  }, [searchInput, query]);
+
+  function clearSearch() {
+    if (searchDebounceTimeoutRef.current !== null) {
+      window.clearTimeout(searchDebounceTimeoutRef.current);
+      searchDebounceTimeoutRef.current = null;
+    }
+
+    const hasOnlySearchApplied =
+      query.trim().length > 0 &&
+      selectedCategory === (initialCategory ?? "all") &&
+      selectedBrands.length === 0 &&
+      selectedCountries.length === 0 &&
+      selectedTypes.length === 0 &&
+      sortMode === "popular" &&
+      priceRange[0] === 0 &&
+      priceRange[1] === maxProductPrice &&
+      Object.values(selectedTextFilters).every((values) => values.length === 0) &&
+      Object.entries(selectedNumericFilters).every(([filterId, range]) => {
+        const filter = dynamicFilters.find((item) => item.id === filterId);
+        if (!filter || filter.parameterType !== "NUMBER") {
+          return true;
+        }
+        return range[0] === filter.min && range[1] === filter.max;
+      });
+
+    if (hasOnlySearchApplied) {
+      requestIdRef.current += 1;
+      suppressCatalogReloadRef.current = true;
+      setProducts(initialProducts);
+      setCatalogMeta(initialMeta);
+      setCatalogTotal(initialTotal);
+      setCatalogTotalAll(initialTotalAll);
+      setHasMore(initialHasMore);
+      setIsFetchingResults(false);
+      setIsFetchingMore(false);
+      lastMetaRequestKeyRef.current = JSON.stringify({
+        search: "",
+        category: initialCategory ?? "",
+        minPrice: null,
+        maxPrice: null,
+        brands: [],
+        countries: [],
+        types: [],
+        textFilters: {},
+        numericFilters: {},
+      });
+    }
+
+    setSearchInput("");
+    setQuery("");
+    setPage(1);
+  }
+
+  useEffect(() => {
     if (!initialCategory) return;
     setSelectedCategory(initialCategory);
     setPage(1);
+  }, [initialCategory]);
+
+  useEffect(() => {
+    lastMetaRequestKeyRef.current = JSON.stringify({
+      search: "",
+      category: initialCategory ?? "",
+      minPrice: null,
+      maxPrice: null,
+      brands: [],
+      countries: [],
+      types: [],
+      textFilters: {},
+      numericFilters: {},
+    });
   }, [initialCategory]);
 
   useEffect(() => {
@@ -564,6 +671,7 @@ export function CatalogPage({
       return;
     }
 
+    setSearchInput(brandFromQuery);
     setQuery(brandFromQuery);
     setPage(1);
   }, [brands]);
@@ -654,7 +762,7 @@ export function CatalogPage({
   }
 
   function resetAllFilters() {
-    setQuery("");
+    clearSearch();
     setSelectedCategory(initialCategory ?? "all");
     setSelectedBrands([]);
     setSelectedCountries([]);
@@ -1456,21 +1564,17 @@ export function CatalogPage({
                           </svg>
                           <input
                             type="text"
-                            value={query}
+                            value={searchInput}
                             onChange={(event) => {
-                              setQuery(event.target.value);
-                              setPage(1);
+                              setSearchInput(event.target.value);
                             }}
                             placeholder="Поиск"
                             className="w-full min-w-0 border-0 bg-transparent text-[15px] text-[#3c3c38] placeholder:text-[#bdbcb7] focus:outline-none [font-family:DM_Sans,Manrope,sans-serif]"
                           />
-                          {query ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setQuery("");
-                                setPage(1);
-                              }}
+                          {searchInput ? (
+                              <button
+                                type="button"
+                                onClick={clearSearch}
                               className="ml-2 flex h-9 w-9 items-center justify-center text-[#7a7a75]"
                               aria-label="Очистить поиск"
                             >
@@ -1631,21 +1735,17 @@ export function CatalogPage({
                       </svg>
                       <input
                         type="text"
-                        value={query}
+                        value={searchInput}
                         onChange={(event) => {
-                          setQuery(event.target.value);
-                          setPage(1);
+                          setSearchInput(event.target.value);
                         }}
                         placeholder="Поиск по каталогу"
                         className="w-full min-w-0 border-0 bg-transparent text-[20px] text-[#3c3c38] placeholder:text-[#c2c2bf] focus:outline-none 2xl:text-[22px] [font-family:DM_Sans,Manrope,sans-serif]"
                       />
-                      {query ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuery("");
-                            setPage(1);
-                          }}
+                      {searchInput ? (
+                          <button
+                            type="button"
+                            onClick={clearSearch}
                           className="flex h-9 w-9 items-center justify-center text-[#7a7a75] hover:text-[#111]"
                           aria-label="Очистить поиск"
                         >

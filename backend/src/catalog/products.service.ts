@@ -129,6 +129,7 @@ export class ProductsService {
     const limit = query.limit;
     const page = query.page;
     const publicWhere = this.buildPublicCatalogWhere(query, categoryIds);
+    const cachedMetadata = query.includeMeta ? this.getCachedCatalogMetadata(query) : null;
     const metadataWhere = query.includeMeta
       ? this.buildPublicCatalogWhere({ ...query, minPrice: undefined, maxPrice: undefined }, categoryIds)
       : undefined;
@@ -147,7 +148,7 @@ export class ProductsService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      query.includeMeta && metadataWhere
+      query.includeMeta && metadataWhere && !cachedMetadata
         ? this.prisma.product.findMany({
             where: metadataWhere,
             select: {
@@ -185,8 +186,8 @@ export class ProductsService {
 
     const items = pagedProducts.map((product) => this.toProductResponse(product));
     const metadata =
-      query.includeMeta && metadataProducts
-        ? this.getOrBuildCatalogMetadata(query, metadataProducts, categories)
+      query.includeMeta
+        ? cachedMetadata ?? (metadataProducts ? this.getOrBuildCatalogMetadata(query, metadataProducts, categories) : null)
         : null;
 
     return {
@@ -877,6 +878,21 @@ export class ProductsService {
     return value;
   }
 
+  private getCachedCatalogMetadata(query: CatalogQueryDto) {
+    const cacheKey = this.buildCatalogMetadataCacheKey(query);
+    const cached = this.metadataCache.get(cacheKey);
+    if (!cached) {
+      return null;
+    }
+
+    if (cached.expiresAt <= Date.now()) {
+      this.metadataCache.delete(cacheKey);
+      return null;
+    }
+
+    return cached.value;
+  }
+
   private buildCatalogMetadataCacheKey(query: CatalogQueryDto) {
     const textFilterEntries = Object.entries(query.textFilters)
       .map(([key, values]) => [key, [...values].sort()] as [string, string[]])
@@ -891,7 +907,6 @@ export class ProductsService {
       brands: [...query.brands].sort(),
       countries: [...query.countries].sort(),
       types: [...query.types].sort(),
-      sort: query.sort,
       textFilters: Object.fromEntries(textFilterEntries),
       numericFilters: Object.fromEntries(numericFilterEntries),
     });
