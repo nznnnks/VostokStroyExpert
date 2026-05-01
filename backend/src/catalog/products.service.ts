@@ -132,11 +132,15 @@ export class ProductsService {
     const page = query.page;
     const publicWhere = this.buildPublicCatalogWhere(query, categoryIds);
     const cachedMetadata = query.includeMeta ? this.getCachedCatalogMetadata(query) : null;
-    const metadataWhere = query.includeMeta && !cachedMetadata
-      ? this.buildPublicCatalogWhere({ ...query, minPrice: undefined, maxPrice: undefined }, categoryIds)
-      : undefined;
+    const metadataSqlWhere =
+      query.includeMeta && !cachedMetadata
+        ? this.buildPublicCatalogSqlWhere(
+            { ...query, minPrice: undefined, maxPrice: undefined },
+            categoryIds,
+          )
+        : null;
 
-    const [totalAll, total, pagedProducts, metadataProducts] = await Promise.all([
+    const [totalAll, total, pagedProducts, metadata] = await Promise.all([
       this.prisma.product.count({
         where: { status: ProductStatus.ACTIVE },
       }),
@@ -150,62 +154,12 @@ export class ProductsService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      metadataWhere
-        ? this.prisma.product.findMany({
-            where: metadataWhere,
-            select: {
-              id: true,
-              name: true,
-              brand: true,
-              country: true,
-              type: true,
-              price: true,
-              images: true,
-              power: true,
-              volume: true,
-              createdAt: true,
-              showcaseCategorySlug: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-              filterValues: {
-                select: {
-                  parameterId: true,
-                  value: true,
-                  numericValue: true,
-                  parameter: {
-                    select: {
-                      id: true,
-                      name: true,
-                      slug: true,
-                      type: true,
-                      unit: true,
-                      group: {
-                        select: {
-                          id: true,
-                          name: true,
-                          slug: true,
-                          sortOrder: true,
-                        },
-                      },
-                    },
-                  },
-                },
-                orderBy: { createdAt: 'asc' },
-              },
-            },
-          })
+      query.includeMeta && metadataSqlWhere
+        ? cachedMetadata ?? this.getOrBuildCatalogMetadataLite(query, metadataSqlWhere)
         : Promise.resolve(null),
     ]);
 
     const items = pagedProducts.map((product) => this.toProductResponse(product));
-    const metadata =
-      cachedMetadata ??
-      (query.includeMeta && metadataProducts ? this.getOrBuildCatalogMetadata(query, metadataProducts, categories) : null);
 
     return {
       items,
@@ -218,7 +172,7 @@ export class ProductsService {
     };
   }
 
-  private async getOrBuildCatalogMetadataLite(query: CatalogQueryDto, where: Prisma.ProductWhereInput) {
+  private async getOrBuildCatalogMetadataLite(query: CatalogQueryDto, sqlWhere: Prisma.Sql) {
     const cacheKey = this.buildCatalogMetadataCacheKey(query);
     const now = Date.now();
     const cached = this.metadataCache.get(cacheKey);
@@ -227,7 +181,7 @@ export class ProductsService {
       return cached.value;
     }
 
-    const value = await this.buildCatalogMetadataLite(where);
+    const value = await this.buildCatalogMetadataLite(sqlWhere);
     this.metadataCache.set(cacheKey, { value, expiresAt: now + this.metadataCacheTtlMs });
 
     if (this.metadataCache.size > 100) {
@@ -240,38 +194,150 @@ export class ProductsService {
     return value;
   }
 
-  private async buildCatalogMetadataLite(where: Prisma.ProductWhereInput): Promise<CatalogMetadata> {
-    const [brandRows, countryRows, typeRows, priceAgg] = await Promise.all([
-      this.prisma.product.findMany({ where, select: { brand: true }, distinct: ['brand'] }),
-      this.prisma.product.findMany({ where, select: { country: true }, distinct: ['country'] }),
-      this.prisma.product.findMany({ where, select: { type: true }, distinct: ['type'] }),
-      this.prisma.product.aggregate({ where, _max: { price: true } }),
-    ]);
+  private async buildCatalogMetadataLite(sqlWhere: Prisma.Sql): Promise<CatalogMetadata> {
+    // NOTE:
+    // Some Prisma Query Engine versions can panic on complex `findMany`/`include` queries at scale.
+    // We compute catalog metadata via raw SQL aggregations to keep the query engine in the "simple" path.
+    const [priceAgg, brands, countries, types, dynamicFilters, legacyPower, legacyVolume] =
+      await Promise.all([
+        this.prisma.$queryRaw<Array<{ maxPrice: number | null }>>`
+          select max(p.price)::double precision as "maxPrice"
+          from "Product" p
+          ${sqlWhere}
+        `,
+        this.prisma.$queryRaw<Array<{ value: string }>>`
+          select distinct p.brand as value
+          from "Product" p
+          ${sqlWhere}
+            and p.brand is not null and btrim(p.brand) <> ''
+          order by value asc
+        `,
+        this.prisma.$queryRaw<Array<{ value: string }>>`
+          select distinct p.country as value
+          from "Product" p
+          ${sqlWhere}
+            and p.country is not null and btrim(p.country) <> ''
+          order by value asc
+        `,
+        this.prisma.$queryRaw<Array<{ value: string }>>`
+          select distinct p.type as value
+          from "Product" p
+          ${sqlWhere}
+            and p.type is not null and btrim(p.type) <> ''
+          order by value asc
+        `,
+        this.prisma.$queryRaw<
+          Array<{
+            id: string;
+            groupId: string;
+            groupName: string;
+            groupSlug: string;
+            parameterName: string;
+            parameterSlug: string;
+            parameterType: 'TEXT' | 'NUMBER';
+            unit: string | null;
+            values: string[];
+            numericValues: number[];
+            min: number | null;
+            max: number | null;
+          }>
+        >`
+          select
+            fp.id as "id",
+            fp."groupId" as "groupId",
+            fg.name as "groupName",
+            fg.slug as "groupSlug",
+            fp.name as "parameterName",
+            fp.slug as "parameterSlug",
+            fp.type::text as "parameterType",
+            fp.unit as "unit",
+            coalesce(array_agg(distinct pfv.value) filter (where fp.type = 'TEXT'), array[]::text[]) as "values",
+            coalesce(array_agg(distinct (pfv."numericValue")::double precision) filter (where pfv."numericValue" is not null), array[]::double precision[]) as "numericValues",
+            min(pfv."numericValue") filter (where pfv."numericValue" is not null) as "min",
+            max(pfv."numericValue") filter (where pfv."numericValue" is not null) as "max"
+          from "ProductFilterValue" pfv
+          join "FilterParameter" fp on fp.id = pfv."parameterId"
+          join "FilterGroup" fg on fg.id = fp."groupId"
+          join "Product" p on p.id = pfv."productId"
+          ${sqlWhere}
+            and fp."isActive" = true
+          group by fp.id, fp."groupId", fg.name, fg.slug, fp.name, fp.slug, fp.type, fp.unit
+          order by fg.name asc, fp.name asc
+        `,
+        this.prisma.$queryRaw<Array<{ min: number | null; max: number | null }>>`
+          select min(p.power)::double precision as min, max(p.power)::double precision as max
+          from "Product" p
+          ${sqlWhere}
+            and p.power is not null and p.power > 0
+        `,
+        this.prisma.$queryRaw<Array<{ min: number | null; max: number | null }>>`
+          select min(p.volume)::double precision as min, max(p.volume)::double precision as max
+          from "Product" p
+          ${sqlWhere}
+            and p.volume is not null and p.volume > 0
+        `,
+      ]);
 
-    const brands = brandRows
-      .map((row) => row.brand)
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .sort((a, b) => a.localeCompare(b, 'ru'));
-    const countries = countryRows
-      .map((row) => row.country)
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .sort((a, b) => a.localeCompare(b, 'ru'));
-    const types = typeRows
-      .map((row) => row.type)
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .sort((a, b) => a.localeCompare(b, 'ru'));
+    const maxPrice = priceAgg[0]?.maxPrice ?? 0;
 
-    const maxPrice = priceAgg._max.price ? priceAgg._max.price.toNumber() : 0;
+    const legacyGroupName = 'Основные параметры';
+    const legacyGroupSlug = 'osnovnye-parametry';
+    const legacyGroupId = 'legacy-main';
+
+    const normalizedDynamicFilters = dynamicFilters.map((item) => ({
+      ...item,
+      unit: item.unit ?? undefined,
+      values: Array.isArray(item.values) ? item.values.filter(Boolean).sort((a, b) => a.localeCompare(b, 'ru')) : [],
+      numericValues: Array.isArray(item.numericValues) ? item.numericValues.filter((n) => Number.isFinite(n)) : [],
+      min: item.min ?? 0,
+      max: item.max ?? 0,
+    }));
+
+    const powerRow = legacyPower[0];
+    if (powerRow?.min !== null && powerRow?.max !== null) {
+      normalizedDynamicFilters.unshift({
+        id: 'legacy-power',
+        groupId: legacyGroupId,
+        groupName: legacyGroupName,
+        groupSlug: legacyGroupSlug,
+        parameterName: 'Мощность',
+        parameterSlug: 'power',
+        parameterType: 'NUMBER',
+        unit: 'кВт',
+        values: [],
+        numericValues: [],
+        min: powerRow.min,
+        max: powerRow.max,
+      });
+    }
+
+    const volumeRow = legacyVolume[0];
+    if (volumeRow?.min !== null && volumeRow?.max !== null) {
+      normalizedDynamicFilters.unshift({
+        id: 'legacy-volume',
+        groupId: legacyGroupId,
+        groupName: legacyGroupName,
+        groupSlug: legacyGroupSlug,
+        parameterName: 'Объём',
+        parameterSlug: 'volume',
+        parameterType: 'NUMBER',
+        unit: 'л',
+        values: [],
+        numericValues: [],
+        min: volumeRow.min,
+        max: volumeRow.max,
+      });
+    }
 
     return {
-      brands,
-      countries,
-      types,
+      brands: brands.map((row) => row.value).filter(Boolean),
+      countries: countries.map((row) => row.value).filter(Boolean),
+      types: types.map((row) => row.value).filter(Boolean),
       maxPrice,
       categoryCards: [],
       categoryTypeTree: [],
       currentCategoryTypes: [],
-      dynamicFilters: [],
+      dynamicFilters: normalizedDynamicFilters,
     };
   }
 
@@ -584,6 +650,107 @@ export class ProductsService {
     }
 
     return and.length === 1 ? and[0] : { AND: and };
+  }
+
+  private buildPublicCatalogSqlWhere(
+    query: Pick<
+      CatalogQueryDto,
+      | 'search'
+      | 'category'
+      | 'brands'
+      | 'countries'
+      | 'types'
+      | 'minPrice'
+      | 'maxPrice'
+      | 'textFilters'
+      | 'numericFilters'
+    >,
+    categoryIds: string[] = [],
+  ) {
+    const conditions: Prisma.Sql[] = [Prisma.sql`p.status = 'ACTIVE'`];
+    const search = query.search?.trim();
+
+    if (search) {
+      const variants = Array.from(new Set([search, search.replaceAll('ё', 'е'), search.replaceAll('е', 'ё')]))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
+
+      const likeParts = variants.map((term) => {
+        const like = `%${term}%`;
+        return Prisma.sql`(
+          p.name ilike ${like}
+          or p.slug ilike ${like}
+          or p.sku ilike ${like}
+          or p.brand ilike ${like}
+          or p.type ilike ${like}
+        )`;
+      });
+
+      if (likeParts.length > 0) {
+        conditions.push(Prisma.sql`(${Prisma.join(likeParts, ' or ')})`);
+      }
+    }
+
+    const landingDefinition = findShowcaseCategoryDefinition(query.category);
+    if (landingDefinition) {
+      conditions.push(Prisma.sql`p."showcaseCategorySlug" = ${landingDefinition.slug}`);
+    } else if (categoryIds.length > 0) {
+      conditions.push(Prisma.sql`p."categoryId" in (${Prisma.join(categoryIds)})`);
+    }
+
+    if (query.brands.length > 0) {
+      conditions.push(Prisma.sql`p.brand in (${Prisma.join(query.brands)})`);
+    }
+
+    if (query.countries.length > 0) {
+      conditions.push(Prisma.sql`p.country in (${Prisma.join(query.countries)})`);
+    }
+
+    if (query.types.length > 0) {
+      conditions.push(Prisma.sql`p.type in (${Prisma.join(query.types)})`);
+    }
+
+    if (typeof query.minPrice === 'number') {
+      conditions.push(Prisma.sql`p.price >= ${query.minPrice}`);
+    }
+    if (typeof query.maxPrice === 'number') {
+      conditions.push(Prisma.sql`p.price <= ${query.maxPrice}`);
+    }
+
+    for (const [parameterId, values] of Object.entries(query.textFilters)) {
+      if (!values || values.length === 0) continue;
+      conditions.push(Prisma.sql`exists (
+        select 1 from "ProductFilterValue" pfv
+        where pfv."productId" = p.id
+          and pfv."parameterId" = ${parameterId}
+          and pfv.value in (${Prisma.join(values)})
+      )`);
+    }
+
+    for (const [parameterId, range] of Object.entries(query.numericFilters)) {
+      if (!Array.isArray(range) || range.length < 2) continue;
+      const [min, max] = range;
+
+      if (parameterId === 'legacy-power') {
+        conditions.push(Prisma.sql`p.power >= ${min} and p.power <= ${max}`);
+        continue;
+      }
+      if (parameterId === 'legacy-volume') {
+        conditions.push(Prisma.sql`p.volume >= ${min} and p.volume <= ${max}`);
+        continue;
+      }
+
+      conditions.push(Prisma.sql`exists (
+        select 1 from "ProductFilterValue" pfv
+        where pfv."productId" = p.id
+          and pfv."parameterId" = ${parameterId}
+          and pfv."numericValue" is not null
+          and pfv."numericValue" >= ${min}
+          and pfv."numericValue" <= ${max}
+      )`);
+    }
+
+    return Prisma.sql`where ${Prisma.join(conditions, ' and ')}`;
   }
 
   private buildCatalogMetadata(
