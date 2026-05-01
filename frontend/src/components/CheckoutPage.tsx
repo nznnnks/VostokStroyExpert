@@ -71,6 +71,46 @@ type AddressVerificationState = {
   postalCode: string;
 };
 
+function formatPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const normalized = digits.startsWith("8") ? `7${digits.slice(1)}` : digits;
+  const trimmed = normalized.startsWith("7") ? normalized.slice(0, 11) : `7${normalized}`.slice(0, 11);
+  const local = trimmed.slice(1);
+
+  let result = "+7";
+  if (local.length > 0) {
+    result += ` (${local.slice(0, 3)}`;
+  }
+  if (local.length >= 4) {
+    result += `) ${local.slice(3, 6)}`;
+  }
+  if (local.length >= 7) {
+    result += `-${local.slice(6, 8)}`;
+  }
+  if (local.length >= 9) {
+    result += `-${local.slice(8, 10)}`;
+  }
+
+  return result;
+}
+
+function normalizePhoneForSubmit(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.startsWith("8")) {
+    return `+7${digits.slice(1, 11)}`;
+  }
+
+  if (digits.startsWith("7")) {
+    return `+${digits.slice(0, 11)}`;
+  }
+
+  return `+7${digits.slice(0, 10)}`;
+}
+
 type PaymentBannerState =
   | { kind: "success"; message: string }
   | { kind: "pending"; message: string }
@@ -91,9 +131,13 @@ export function CheckoutPage() {
   const [submitSuccess, setSubmitSuccess] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState<PaymentBannerState>(null);
+  const [phone, setPhone] = useState("+7");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [addressLine, setAddressLine] = useState("");
+  const [entrance, setEntrance] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [courierComment, setCourierComment] = useState("");
   const [isAddressLoading, setIsAddressLoading] = useState(true);
   const [addressVerification, setAddressVerification] = useState<AddressVerificationState>({
     confirmed: false,
@@ -421,13 +465,13 @@ export function CheckoutPage() {
     };
   }, [hydratedItems.length, subtotal, vat, total, selectedPayment, isQuickCheckout]);
 
-  function handleCityChange(value: string) {
-    setCity(value);
-    setAddressVerification((prev) => ({ ...prev, confirmed: false, formattedAddress: "", coords: "", postalCode: "" }));
-  }
-
   function handleAddressChange(value: string) {
     setAddressLine(value);
+    setCity("");
+    setPostalCode("");
+    setEntrance("");
+    setApartment("");
+    setCourierComment("");
     setAddressVerification((prev) => ({ ...prev, confirmed: false, formattedAddress: "", coords: "", postalCode: "" }));
     setSubmitError("");
   }
@@ -459,12 +503,22 @@ export function CheckoutPage() {
 
     const formData = new FormData(event.currentTarget);
     const contactName = `${formData.get("first_name") ?? ""} ${formData.get("last_name") ?? ""}`.trim();
-    const contactPhone = String(formData.get("phone") ?? "").trim();
+    const contactPhone = normalizePhoneForSubmit(String(formData.get("phone") ?? "").trim());
     const contactEmail = String(formData.get("email") ?? "").trim();
     const deliveryAddress = addressLine.trim() || addressVerification.formattedAddress;
+    const deliveryCommentParts = [
+      entrance.trim() ? `Подъезд: ${entrance.trim()}` : "",
+      apartment.trim() ? `Квартира: ${apartment.trim()}` : "",
+      courierComment.trim() ? `Комментарий курьеру: ${courierComment.trim()}` : "",
+    ].filter(Boolean);
 
     if (isQuickCheckout && !contactEmail) {
       setSubmitError("Укажите email для быстрого оформления.");
+      return;
+    }
+
+    if (!contactPhone || contactPhone.replace(/\D/g, "").length < 11) {
+      setSubmitError("Укажите корректный номер телефона.");
       return;
     }
 
@@ -484,6 +538,7 @@ export function CheckoutPage() {
         deliveryMethod: addressVerification.coords
           ? `Курьерская доставка (${addressVerification.coords})`
           : "Курьерская доставка",
+        comment: deliveryCommentParts.join(" | ") || undefined,
         items: itemsPayload,
         payment: {
           method: selectedPayment === "card" ? "CARD" : "INVOICE",
@@ -595,6 +650,9 @@ export function CheckoutPage() {
                   name="phone"
                   autoComplete="tel"
                   placeholder="+7 (999) 123-45-67"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
                   className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
                 />
               </label>
@@ -623,9 +681,9 @@ export function CheckoutPage() {
                   <input
                     name="city"
                     autoComplete="address-level2"
-                    placeholder="Например, Москва"
+                    placeholder="Определится автоматически"
                     value={city}
-                    onChange={(event) => handleCityChange(event.target.value)}
+                    readOnly
                     className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
                   />
                 </label>
@@ -634,9 +692,9 @@ export function CheckoutPage() {
                   <input
                     name="postal_code"
                     autoComplete="postal-code"
-                    placeholder="101000"
+                    placeholder="Определится автоматически"
                     value={postalCode}
-                    onChange={(event) => setPostalCode(event.target.value)}
+                    readOnly
                     className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
                   />
                 </label>
@@ -671,6 +729,43 @@ export function CheckoutPage() {
                   </p>
                 )}
               </div>
+              {isAddressConfirmed ? (
+                <>
+                  <div className="mt-8 grid gap-8 md:mt-10 md:gap-12 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Подъезд</span>
+                      <input
+                        name="entrance"
+                        placeholder="Например, 3"
+                        value={entrance}
+                        onChange={(event) => setEntrance(event.target.value)}
+                        className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Квартира</span>
+                      <input
+                        name="apartment"
+                        placeholder="Например, 25"
+                        value={apartment}
+                        onChange={(event) => setApartment(event.target.value)}
+                        className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-8 block md:mt-10">
+                    <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Комментарий курьеру</span>
+                    <textarea
+                      name="courier_comment"
+                      rows={3}
+                      placeholder="Например, код домофона, ориентир или удобное время"
+                      value={courierComment}
+                      onChange={(event) => setCourierComment(event.target.value)}
+                      className="mt-3 w-full border-b border-[#e8e3db] bg-transparent pb-4 outline-none placeholder:text-[#b4b0a8] resize-none"
+                    />
+                  </label>
+                </>
+              ) : null}
             </div>
 
             <div className="mt-10 max-w-[860px] md:mt-20">
