@@ -6,8 +6,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CatalogQueryDto } from './dto/catalog-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import {
-  HIDDEN_CATEGORY_NAME_KEYWORDS,
-  HIDDEN_CATEGORY_ROOT_NAMES,
+  findShowcaseCategoryDefinition,
+  resolveShowcaseCategoryMatch,
+  resolveShowcaseMatchedType,
+} from './showcase-category.matcher';
+import {
   SHOWCASE_CATEGORY_DEFINITIONS,
 } from './showcase-category.config';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -41,6 +44,7 @@ type CatalogMetadataSourceProduct = {
   power: Prisma.Decimal | null;
   volume: Prisma.Decimal | null;
   createdAt: Date;
+  showcaseCategorySlug: string | null;
   category: { id: string; name: string; slug: string } | null;
   filterValues: Array<{
     parameterId: string;
@@ -106,8 +110,6 @@ type LandingCategoryDefinition = {
   fallbackIncludeNames?: string[];
 };
 const LANDING_CATEGORY_DEFINITIONS: LandingCategoryDefinition[] = SHOWCASE_CATEGORY_DEFINITIONS;
-const HIDDEN_CATEGORY_ROOT_NAME_SET = new Set(HIDDEN_CATEGORY_ROOT_NAMES.map((item) => item.trim().toLowerCase()));
-const HIDDEN_CATEGORY_KEYWORD_SET = HIDDEN_CATEGORY_NAME_KEYWORDS.map((item) => item.trim().toLowerCase());
 
 @Injectable()
 export class ProductsService {
@@ -130,11 +132,11 @@ export class ProductsService {
     const page = query.page;
     const publicWhere = this.buildPublicCatalogWhere(query, categoryIds);
     const cachedMetadata = query.includeMeta ? this.getCachedCatalogMetadata(query) : null;
-    const metadataWhere = query.includeMeta
+    const metadataWhere = query.includeMeta && !cachedMetadata
       ? this.buildPublicCatalogWhere({ ...query, minPrice: undefined, maxPrice: undefined }, categoryIds)
       : undefined;
 
-    const [totalAll, total, pagedProducts, metadata] = await Promise.all([
+    const [totalAll, total, pagedProducts, metadataProducts] = await Promise.all([
       this.prisma.product.count({
         where: { status: ProductStatus.ACTIVE },
       }),
@@ -148,12 +150,62 @@ export class ProductsService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      query.includeMeta && metadataWhere
-        ? cachedMetadata ?? this.getOrBuildCatalogMetadataLite(query, metadataWhere)
+      metadataWhere
+        ? this.prisma.product.findMany({
+            where: metadataWhere,
+            select: {
+              id: true,
+              name: true,
+              brand: true,
+              country: true,
+              type: true,
+              price: true,
+              images: true,
+              power: true,
+              volume: true,
+              createdAt: true,
+              showcaseCategorySlug: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+              filterValues: {
+                select: {
+                  parameterId: true,
+                  value: true,
+                  numericValue: true,
+                  parameter: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                      type: true,
+                      unit: true,
+                      group: {
+                        select: {
+                          id: true,
+                          name: true,
+                          slug: true,
+                          sortOrder: true,
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          })
         : Promise.resolve(null),
     ]);
 
     const items = pagedProducts.map((product) => this.toProductResponse(product));
+    const metadata =
+      cachedMetadata ??
+      (query.includeMeta && metadataProducts ? this.getOrBuildCatalogMetadata(query, metadataProducts, categories) : null);
 
     return {
       items,
@@ -271,10 +323,11 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.ensureCategoryExists(dto.categoryId);
+    const showcaseCategorySlug = await this.resolveShowcaseCategorySlug(dto.categoryId);
 
     const product = await this.prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
-        data: this.toCreateProductData(dto),
+        data: this.toCreateProductData(dto, showcaseCategorySlug),
       });
 
       await this.syncProductFilterValues(tx, created.id, dto.filterValues);
@@ -296,10 +349,13 @@ export class ProductsService {
       await this.ensureCategoryExists(dto.categoryId);
     }
 
+    const showcaseCategorySlug =
+      'categoryId' in dto && dto.categoryId ? await this.resolveShowcaseCategorySlug(dto.categoryId) : undefined;
+
     const product = await this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id },
-        data: this.toUpdateProductData(dto),
+        data: this.toUpdateProductData(dto, showcaseCategorySlug),
       });
 
       if ('filterValues' in dto) {
@@ -446,7 +502,11 @@ export class ProductsService {
       });
     }
 
-    if (categoryIds.length > 0) {
+    const landingDefinition = findShowcaseCategoryDefinition(query.category);
+
+    if (landingDefinition) {
+      and.push({ showcaseCategorySlug: landingDefinition.slug });
+    } else if (categoryIds.length > 0) {
       and.push({
         categoryId: { in: categoryIds },
       });
@@ -575,61 +635,19 @@ export class ProductsService {
       return path;
     };
 
-    const matchLandingCategory = (categoryPath: CategoryTreeNode[]) => {
-      const categoryNames = categoryPath.map((item) => item.name);
-      for (const definition of LANDING_CATEGORY_DEFINITIONS) {
-        const matchedType = [...definition.includeNames]
-          .reverse()
-          .find((item) => categoryNames.includes(item));
-        if (matchedType) {
-          return { definition, matchedType };
-        }
-      }
-
-      return null;
-    };
-
-    const isHiddenCategoryName = (name: string, { allowRoot = false }: { allowRoot?: boolean } = {}) => {
-      const normalized = name.trim().toLowerCase();
-      if (!allowRoot && HIDDEN_CATEGORY_ROOT_NAME_SET.has(normalized)) {
-        return true;
-      }
-
-      return HIDDEN_CATEGORY_KEYWORD_SET.some((keyword) => normalized.includes(keyword));
-    };
-
-    const resolveFallbackLandingGroup = (categoryPath: CategoryTreeNode[]) => {
-      if (categoryPath.length === 0) {
-        return null;
-      }
-
-      const normalizedNames = categoryPath.map((item) => item.name.trim().toLowerCase());
-      const deepestVisibleNode =
-        [...categoryPath].reverse().find((node) => !isHiddenCategoryName(node.name, { allowRoot: true })) ??
-        categoryPath[categoryPath.length - 1];
-
-      for (const definition of LANDING_CATEGORY_DEFINITIONS) {
-        const includeNames = (definition.fallbackIncludeNames ?? []).map((item) => item.trim().toLowerCase());
-        const rootNames = (definition.fallbackRootNames ?? []).map((item) => item.trim().toLowerCase());
-
-        if (
-          !includeNames.some((item) => normalizedNames.includes(item)) &&
-          !rootNames.some((item) => normalizedNames[0] === item)
-        ) {
-          continue;
-        }
-
-        return {
-          definition,
-          matchedType: deepestVisibleNode.name,
-        };
-      }
-      return null;
-    };
-
     for (const product of products) {
       const categoryPath = resolveCategoryPath(product.category?.id);
-      const match = matchLandingCategory(categoryPath) ?? resolveFallbackLandingGroup(categoryPath);
+      const categoryPathNames = categoryPath.map((item) => item.name);
+      const persistedDefinition = product.showcaseCategorySlug
+        ? definitionBySlug.get(product.showcaseCategorySlug)
+        : undefined;
+      const match =
+        persistedDefinition
+          ? {
+              definition: persistedDefinition,
+              matchedType: resolveShowcaseMatchedType(categoryPathNames, persistedDefinition) ?? persistedDefinition.name,
+            }
+          : resolveShowcaseCategoryMatch(categoryPathNames);
       if (!match) continue;
 
       const categoryImage = product.images[0] ?? undefined;
@@ -648,11 +666,9 @@ export class ProductsService {
       }
     }
 
-    const categoryCards = LANDING_CATEGORY_DEFINITIONS.map((item) => categoryCardsMap.get(item.slug)!)
-      .filter((item) => item.count > 0);
+    const categoryCards = LANDING_CATEGORY_DEFINITIONS.map((item) => categoryCardsMap.get(item.slug)!);
 
     const categoryTypeTree = LANDING_CATEGORY_DEFINITIONS.map((item) => categoryTreeMap.get(item.slug)!)
-      .filter((item) => item.count > 0)
       .map((item) => ({
         category: item.category,
         slug: item.slug,
@@ -698,10 +714,15 @@ export class ProductsService {
 
     if (selectedDefinition) {
       for (const product of products) {
+        if (product.showcaseCategorySlug !== selectedDefinition.slug) {
+          continue;
+        }
+
         const categoryPath = resolveCategoryPath(product.category?.id);
-        const matchedType = [...selectedDefinition.includeNames]
-          .reverse()
-          .find((item) => categoryPath.some((node) => node.name === item));
+        const matchedType = resolveShowcaseMatchedType(
+          categoryPath.map((item) => item.name),
+          selectedDefinition,
+        );
         if (!matchedType) {
           continue;
         }
@@ -946,6 +967,32 @@ export class ProductsService {
     this.metadataCache.clear();
   }
 
+  private async resolveShowcaseCategorySlug(categoryId: string) {
+    const categories = await this.prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+      },
+    });
+
+    const categoryMap = new Map(categories.map((item) => [item.id, item]));
+    const categoryPathNames: string[] = [];
+    let currentId: string | null | undefined = categoryId;
+
+    while (currentId) {
+      const current = categoryMap.get(currentId);
+      if (!current) {
+        break;
+      }
+
+      categoryPathNames.unshift(current.name);
+      currentId = current.parentId;
+    }
+
+    return resolveShowcaseCategoryMatch(categoryPathNames)?.definition.slug ?? null;
+  }
+
   private resolveCategoryIds(categoryQuery: string | undefined, categories: CategoryTreeNode[]) {
     const value = categoryQuery?.trim();
     if (!value) return [];
@@ -970,27 +1017,29 @@ export class ProductsService {
       return Array.from(resolved);
     };
 
-    const landingDefinition = LANDING_CATEGORY_DEFINITIONS.find((item) => item.name === value || item.slug === value);
+    const landingDefinition = findShowcaseCategoryDefinition(value);
     if (landingDefinition) {
-      const matching = categories
-        .filter((item) => landingDefinition.includeNames.includes(item.name))
-        .map((item) => item.id);
-
-      return collectWithDescendants(matching);
+      return [];
     }
 
     const matching = categories.filter((item) => item.name === value || item.slug === value).map((item) => item.id);
     return collectWithDescendants(matching);
   }
 
-  private toCreateProductData(dto: CreateProductDto) {
+  private toCreateProductData(dto: CreateProductDto, showcaseCategorySlug: string | null) {
     const { filterValues: _filterValues, ...productData } = dto;
-    return productData;
+    return {
+      ...productData,
+      showcaseCategorySlug,
+    };
   }
 
-  private toUpdateProductData(dto: UpdateProductDto) {
+  private toUpdateProductData(dto: UpdateProductDto, showcaseCategorySlug: string | null | undefined) {
     const { filterValues: _filterValues, ...productData } = dto;
-    return productData;
+    return {
+      ...productData,
+      ...(showcaseCategorySlug !== undefined ? { showcaseCategorySlug } : {}),
+    };
   }
 
   private async syncProductFilterValues(

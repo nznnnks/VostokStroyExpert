@@ -28,12 +28,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const [isScrolled, setIsScrolled] = useState(false);
   const [pathname, setPathname] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const searchRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollLockUntilRef = useRef(0);
+  const searchDebounceTimeoutRef = useRef<number | null>(null);
 
   const openMobileMenu = () => {
     setIsOpen(true);
@@ -83,6 +85,30 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
       document.removeEventListener("mousedown", onClick);
     };
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    const normalizedInput = normalizeSearchValue(searchInput);
+    const normalizedQuery = normalizeSearchValue(searchQuery);
+    if (normalizedInput === normalizedQuery) {
+      return;
+    }
+
+    if (searchDebounceTimeoutRef.current !== null) {
+      window.clearTimeout(searchDebounceTimeoutRef.current);
+    }
+
+    searchDebounceTimeoutRef.current = window.setTimeout(() => {
+      searchDebounceTimeoutRef.current = null;
+      setSearchQuery(searchInput);
+    }, 250);
+
+    return () => {
+      if (searchDebounceTimeoutRef.current !== null) {
+        window.clearTimeout(searchDebounceTimeoutRef.current);
+        searchDebounceTimeoutRef.current = null;
+      }
+    };
+  }, [searchInput, searchQuery]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -191,41 +217,74 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
 
     let isActive = true;
     const normalizedQuery = normalizeSearchValue(searchQuery);
-    const debounceMs = normalizedQuery.length > 0 ? 250 : 0;
+    if (normalizedQuery.length === 0) {
+      setCatalogProducts([]);
+      setIsLoadingProducts(false);
+      return () => {
+        isActive = false;
+      };
+    }
 
-    const timeoutId = window.setTimeout(() => {
-      setIsLoadingProducts(true);
-      loadCatalogListing({
-        search: normalizedQuery.length > 0 ? normalizedQuery : undefined,
-        page: 1,
-        limit: 12,
-        includeMeta: false,
-        sort: "new",
+    setIsLoadingProducts(true);
+    loadCatalogListing({
+      search: normalizedQuery,
+      page: 1,
+      limit: 12,
+      includeMeta: false,
+      sort: "new",
+    })
+      .then((result) => {
+        if (!isActive) return;
+        setCatalogProducts(result.items);
       })
-        .then((result) => {
-          if (!isActive) return;
-          setCatalogProducts(result.items);
-        })
-        .catch(() => {
-          if (!isActive) return;
-          setCatalogProducts([]);
-        })
-        .finally(() => {
-          if (!isActive) return;
-          setIsLoadingProducts(false);
-        });
-    }, debounceMs);
+      .catch(() => {
+        if (!isActive) return;
+        setCatalogProducts([]);
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingProducts(false);
+      });
 
     return () => {
       isActive = false;
-      window.clearTimeout(timeoutId);
     };
   }, [isSearchOpen, searchQuery]);
+
+  function closeSearch() {
+    setIsSearchOpen(false);
+  }
+
+  function clearSearch() {
+    if (searchDebounceTimeoutRef.current !== null) {
+      window.clearTimeout(searchDebounceTimeoutRef.current);
+      searchDebounceTimeoutRef.current = null;
+    }
+    setSearchInput("");
+    setSearchQuery("");
+    setCatalogProducts([]);
+    setIsLoadingProducts(false);
+  }
+
+  function submitSearch() {
+    const normalizedQuery = searchInput.trim();
+    if (!normalizedQuery) {
+      clearSearch();
+      return;
+    }
+
+    setIsOpen(false);
+    setIsMobileMenuActive(false);
+    setIsSearchOpen(false);
+    if (typeof window !== "undefined") {
+      window.location.href = `/catalog?search=${encodeURIComponent(normalizedQuery)}`;
+    }
+  }
 
   // Page transition overlay was removed in favor of the synchronous GlobalPreloader.
 
   const isCatalogHeader = isCatalogPath(pathname);
-  const visibleResults = catalogProducts.slice(0, 2);
+  const visibleResults = catalogProducts.slice(0, 4);
 
   const handleNavLinkClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
@@ -582,17 +641,35 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                   <input
                     ref={inputRef}
                     type="search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        submitSearch();
+                      }
+                    }}
                     placeholder="Поиск по каталогу"
                     className={`w-full bg-transparent text-[16px] outline-none placeholder:text-[#b7b2aa] md:text-[15px] ${
                       light ? "text-[#111]" : "text-white"
                     }`}
                   />
                 </div>
+                {searchInput ? (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-[8px] border ${
+                      light ? "border-[#e1ddd5] text-[#111]" : "border-white/20 text-white"
+                    }`}
+                    aria-label="Очистить поиск"
+                  >
+                    ×
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  onClick={() => setIsSearchOpen(false)}
+                  onClick={closeSearch}
                   className={`inline-flex h-11 w-11 items-center justify-center rounded-[8px] border ${
                     light
                       ? "border-[#e1ddd5] text-[#111]"
@@ -613,6 +690,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     }`}
                   >
                     Загружаем товары...
+                  </div>
+                ) : searchQuery.trim().length === 0 ? (
+                  <div
+                    className={`rounded-[10px] border px-4 py-3 text-[14px] ${
+                      light ? "border-[#ece8e1] text-[#7d7d78]" : "border-white/10 text-white/70"
+                    }`}
+                  >
+                    Начните вводить название товара
                   </div>
                 ) : visibleResults.length === 0 ? (
                   <div
@@ -659,6 +744,17 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     </a>
                   ))
                 )}
+                {searchQuery.trim().length > 0 && visibleResults.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={submitSearch}
+                    className={`rounded-[10px] border px-4 py-3 text-left text-[14px] transition ${
+                      light ? "border-[#ece8e1] text-[#111] hover:border-[#d3b46a]" : "border-white/10 text-white hover:border-white/40"
+                    }`}
+                  >
+                    Показать все результаты в каталоге
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -798,8 +894,14 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                   <input
                     ref={inputRef}
                     type="search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        submitSearch();
+                      }
+                    }}
                     placeholder="Поиск по каталогу"
                     className={`w-full bg-transparent text-[16px] outline-none placeholder:text-[#b7b2aa] md:text-[15px] ${
                       light ? "text-[#111]" : "text-white"
@@ -812,6 +914,12 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                       className={`rounded-[10px] border px-4 py-3 text-[14px] ${light ? "border-[#ece8e1] text-[#7d7d78]" : "border-white/10 text-white/70"}`}
                     >
                       Загружаем товары...
+                    </div>
+                  ) : searchQuery.trim().length === 0 ? (
+                    <div
+                      className={`rounded-[10px] border px-4 py-3 text-[14px] ${light ? "border-[#ece8e1] text-[#7d7d78]" : "border-white/10 text-white/70"}`}
+                    >
+                      Начните вводить название товара
                     </div>
                   ) : visibleResults.length === 0 ? (
                     <div
@@ -861,6 +969,17 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                       </a>
                     ))
                   )}
+                  {searchQuery.trim().length > 0 && visibleResults.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={submitSearch}
+                      className={`rounded-[10px] border px-4 py-3 text-left text-[14px] transition ${
+                        light ? "border-[#ece8e1] text-[#111] hover:border-[#d3b46a]" : "border-white/10 text-white hover:border-white/40"
+                      }`}
+                    >
+                      Показать все результаты в каталоге
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : null}

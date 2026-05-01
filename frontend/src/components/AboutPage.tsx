@@ -12,7 +12,7 @@ type AboutPageProps = {
 const aboutHeroStats = [
   { value: "15", lines: ["лет на", "российском рынке"] },
   { value: "100+", lines: ["реализованных", "проектов"] },
-  { value: "10+", lines: ["лет инженерной", "практики"] },
+  { value: "15+", lines: ["лет инженерной", "практики"] },
   { value: "63+", lines: ["брендов в", "ассортименте"] },
 ] as const;
 
@@ -365,7 +365,7 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
               </div>
               <div className="flex min-h-[116px] items-center rounded-[18px] bg-white px-6 py-6 text-[#12120f] md:min-h-[124px] md:px-8 md:py-6 xl:min-h-[132px] xl:px-14 2xl:px-16">
                 <p className="max-w-[61ch] text-[clamp(24px,1.5vw,40px)] leading-[1.14] tracking-[-0.01em] [font-family:'Cormorant_Garamond',serif]">
-                  Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса. Когда тишина становится ощутимой.
+                  Прецизионный климат-контроль ClimaTrade для элитных резиденций и промышленных объектов высшего класса. Когда тишина становится ощутимой.
                 </p>
               </div>
             </div>

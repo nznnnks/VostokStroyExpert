@@ -96,7 +96,7 @@ export function ServicesPage({ services }: { services: ServiceView[] }) {
                     className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.03]"
                   />
 
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[42%] bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.52)_44%,rgba(0,0,0,0.9)_100%)] opacity-90 transition duration-700 group-hover:opacity-95" />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.28)_0%,rgba(0,0,0,0.34)_22%,rgba(0,0,0,0.58)_54%,rgba(0,0,0,0.9)_100%)] opacity-95 transition duration-700 group-hover:opacity-100" />
                   <div className="absolute inset-0 border border-white/10 transition duration-500 group-hover:border-[#b99863]/55" />
                   <div className="absolute right-5 top-5 h-9 w-9 border-r border-t border-[#e1ddd6]/20 opacity-0 transition duration-500 group-hover:opacity-100" />
 
@@ -106,12 +106,12 @@ export function ServicesPage({ services }: { services: ServiceView[] }) {
                     </div>
 
                     <div className="mt-16 transition duration-500 md:mt-24 lg:mt-10">
-                      <h2 className="max-w-[13ch] text-[clamp(1.7rem,7.3vw,2.7rem)] uppercase leading-[0.9] text-[#f4f1ea] [font-family:'Cormorant_Garamond',serif] sm:text-[clamp(1.95rem,8.1vw,3.25rem)] lg:max-w-[12.5ch] lg:text-[clamp(2rem,2.25vw,3.35rem)] xl:text-[clamp(2.2rem,2.35vw,3.55rem)] 2xl:max-w-[12.5ch] 2xl:text-[clamp(2.15rem,2vw,3.15rem)]">
+                      <h2 className="max-w-[13ch] text-[clamp(1.7rem,7.3vw,2.7rem)] uppercase leading-[0.9] text-[#f4f1ea] [text-shadow:0_3px_20px_rgba(0,0,0,0.52),0_1px_4px_rgba(0,0,0,0.42)] [font-family:'Cormorant_Garamond',serif] sm:text-[clamp(1.95rem,8.1vw,3.25rem)] lg:max-w-[12.5ch] lg:text-[clamp(2rem,2.25vw,3.35rem)] xl:text-[clamp(2.2rem,2.35vw,3.55rem)] 2xl:max-w-[12.5ch] 2xl:text-[clamp(2.15rem,2vw,3.15rem)]">
                         <span className="block">{service.titleLines[0]}</span>
                         <span className="block">{service.titleLines[1]}</span>
                       </h2>
 
-                      <p className="mt-4 max-w-[520px] text-[0.9rem] leading-[1.42] text-[#e1ddd6]/78 opacity-100 transition duration-500 sm:mt-5 sm:text-[0.96rem] lg:max-h-0 lg:translate-y-2 lg:overflow-hidden lg:opacity-0 lg:transition-[max-height,opacity,transform] lg:duration-700 lg:ease-[cubic-bezier(0.22,1,0.36,1)] lg:group-hover:max-h-32 lg:group-hover:translate-y-0 lg:group-hover:opacity-100 xl:text-[1.06rem]">
+                      <p className="mt-4 max-w-[520px] text-[0.9rem] leading-[1.42] text-[#f0ece5]/92 [text-shadow:0_2px_14px_rgba(0,0,0,0.4),0_1px_3px_rgba(0,0,0,0.32)] opacity-100 transition duration-500 sm:mt-5 sm:text-[0.96rem] lg:max-h-0 lg:translate-y-2 lg:overflow-hidden lg:opacity-0 lg:transition-[max-height,opacity,transform] lg:duration-700 lg:ease-[cubic-bezier(0.22,1,0.36,1)] lg:group-hover:max-h-32 lg:group-hover:translate-y-0 lg:group-hover:opacity-100 xl:text-[1.06rem]">
                         {service.description}
                       </p>
 

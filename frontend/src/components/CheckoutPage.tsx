@@ -78,6 +78,7 @@ type PaymentBannerState =
   | null;
 
 export function CheckoutPage() {
+  const collapsedItemsLimit = 1;
   const orderSummaryRef = useRef<HTMLElement | null>(null);
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -252,8 +253,8 @@ export function CheckoutPage() {
   }, []);
 
   const hydratedItems = useMemo(() => cart?.items ?? [], [cart]);
-  const visibleItems = showAllItems ? hydratedItems : hydratedItems.slice(0, 3);
-  const hiddenItemsCount = Math.max(hydratedItems.length - 3, 0);
+  const visibleItems = showAllItems ? hydratedItems : hydratedItems.slice(0, collapsedItemsLimit);
+  const hiddenItemsCount = Math.max(hydratedItems.length - collapsedItemsLimit, 0);
   const subtotal = cart?.subtotal ?? 0;
   const vat = Math.round(subtotal * 0.2);
   const total = cart?.total ?? subtotal + vat;
@@ -741,7 +742,7 @@ export function CheckoutPage() {
                     >
                       ↓
                     </span>
-                    {showAllItems ? "Свернуть список" : `Показать еще ${hiddenItemsCount}`}
+                    {showAllItems ? "Свернуть список" : `Открыть еще ${hiddenItemsCount}`}
                   </button>
                 ) : null}
               </div>

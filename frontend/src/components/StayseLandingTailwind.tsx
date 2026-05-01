@@ -63,7 +63,7 @@ const stats = [
     desktopLabel: "реализованных проектов",
   },
   {
-    value: "10+",
+    value: "15+",
     mobileLines: ["лет", "практики"],
     desktopLabel: "лет на рынке инженерных решений",
   },
@@ -84,7 +84,7 @@ const trustHighlights = [
     lines: ["реализованных", "проектов"],
   },
   {
-    value: "10+",
+    value: "15+",
     lines: ["лет инженерной", "практики"],
   },
   {
@@ -268,7 +268,7 @@ export function StayseLandingTailwind() {
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) {
-      setAnimatedStats([100, 10]);
+      setAnimatedStats([100, 15]);
       setHeroStatsVisible(true);
       return;
     }
@@ -278,7 +278,7 @@ export function StayseLandingTailwind() {
     let startTimeout = 0;
     const duration = 3400;
     const delays = [0, 420];
-    const targets = [100, 10];
+    const targets = [100, 15];
     let start = 0;
 
     const tick = (now: number) => {
@@ -652,7 +652,7 @@ export function StayseLandingTailwind() {
               Совершенство
             </h1>
             <p className="hero__lead">
-              Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
+              Прецизионный климат-контроль ClimaTrade для элитных резиденций и промышленных объектов высшего класса.
               Когда тишина становится ощутимой.
             </p>
             <div className="hero__actions">
@@ -754,7 +754,7 @@ export function StayseLandingTailwind() {
             </div>
             <div className="flex min-h-[116px] items-center rounded-[18px] bg-white px-6 py-5 text-[#12120f] md:min-h-[124px] md:px-8 md:py-5 xl:col-span-3 xl:min-h-[132px] xl:px-14 2xl:px-16">
               <p className="max-w-[68ch] text-[clamp(24px,1.55vw,42px)] leading-[1.08] [font-family:'Cormorant_Garamond',serif]">
-                Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса. Когда тишина становится ощутимой.
+                Прецизионный климат-контроль ClimaTrade для элитных резиденций и промышленных объектов высшего класса. Когда тишина становится ощутимой.
               </p>
             </div>
           </div>
@@ -983,12 +983,12 @@ export function StayseLandingTailwind() {
                       height="560"
                       className="relative z-[1] h-full w-full rounded-none object-cover transition duration-500 ease-out group-hover:scale-[1.02] group-hover:opacity-0 md:rounded-[22px]"
                     />
-                    <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(11,12,14,0.16)_0%,rgba(11,12,14,0.18)_26%,rgba(11,12,14,0.36)_52%,rgba(11,12,14,0.72)_100%)] md:hidden" />
+                    <div className="absolute inset-0 z-[2] bg-[linear-gradient(180deg,rgba(11,12,14,0.32)_0%,rgba(11,12,14,0.34)_22%,rgba(11,12,14,0.48)_46%,rgba(11,12,14,0.82)_100%)] md:hidden" />
                     <div className="absolute inset-x-0 bottom-0 z-[3] px-6 pb-10 pt-12 text-white md:hidden">
-                      <h3 className="max-w-[12ch] text-[clamp(1.9rem,7.2vw,3rem)] uppercase leading-[0.88] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif]">
+                      <h3 className="max-w-[12ch] text-[clamp(1.9rem,7.2vw,3rem)] uppercase leading-[0.88] tracking-[-0.03em] [text-shadow:0_2px_16px_rgba(0,0,0,0.42),0_1px_3px_rgba(0,0,0,0.38)] [font-family:'Cormorant_Garamond',serif]">
                         {service.title}
                       </h3>
-                      <p className="mt-4 max-w-[78%] text-[clamp(1.14rem,4.2vw,1.38rem)] leading-[1.12] tracking-[-0.01em] text-white/92 [font-family:'Cormorant_Garamond',serif]">
+                      <p className="mt-4 max-w-[78%] text-[clamp(1.14rem,4.2vw,1.38rem)] leading-[1.12] tracking-[-0.01em] text-white/95 [text-shadow:0_2px_14px_rgba(0,0,0,0.38),0_1px_3px_rgba(0,0,0,0.32)] [font-family:'Cormorant_Garamond',serif]">
                         {service.text}
                       </p>
                     </div>

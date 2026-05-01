@@ -66,9 +66,13 @@ export function CatalogPage({
   const [isFetchingResults, setIsFetchingResults] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const requestIdRef = useRef(0);
+  const cartSyncRequestIdRef = useRef(0);
   const searchDebounceTimeoutRef = useRef<number | null>(null);
   const suppressCatalogReloadRef = useRef(false);
   const lastMetaRequestKeyRef = useRef<string | null>(null);
+  const cartQuantitiesRef = useRef<Record<string, number>>({});
+  const cartSyncInFlightRef = useRef<Set<string>>(new Set());
+  const pendingCartQuantityRef = useRef<Record<string, number>>({});
   const previousDynamicFilterBoundsRef = useRef<Record<string, [number, number]>>({});
   const formatFilterCountLabel = (count: number) => {
     const mod10 = count % 10;
@@ -128,6 +132,7 @@ export function CatalogPage({
   const [allFiltersOpen, setAllFiltersOpen] = useState(false);
   const [categoriesCollapsed, setCategoriesCollapsed] = useState(false);
   const [brandsCollapsed, setBrandsCollapsed] = useState(false);
+  const [brandSearchQuery, setBrandSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<"popular" | "new" | "price-asc" | "price-desc">("popular");
   const isSortApplied = sortMode !== "popular";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -169,12 +174,13 @@ export function CatalogPage({
     let active = true;
 
     const syncCartQuantities = async () => {
+      const requestId = ++cartSyncRequestIdRef.current;
       try {
         const cart = await loadSessionCart();
-        if (!active) return;
+        if (!active || requestId !== cartSyncRequestIdRef.current) return;
         setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
       } catch {
-        if (!active) return;
+        if (!active || requestId !== cartSyncRequestIdRef.current) return;
       }
     };
 
@@ -195,6 +201,10 @@ export function CatalogPage({
       }
     };
   }, []);
+
+  useEffect(() => {
+    cartQuantitiesRef.current = cartQuantities;
+  }, [cartQuantities]);
 
   useEffect(() => {
     if (!allFiltersOpen) return;
@@ -583,6 +593,12 @@ export function CatalogPage({
       searchDebounceTimeoutRef.current = null;
     }
 
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("search");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+
     const hasOnlySearchApplied =
       query.trim().length > 0 &&
       selectedCategory === (initialCategory ?? "all") &&
@@ -652,13 +668,20 @@ export function CatalogPage({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const searchFromQuery = params.get("search")?.trim();
     const brandFromQuery = params.get("brand")?.trim();
     const typesFromQuery = params.getAll("type").map((value) => value.trim()).filter(Boolean);
+
+    if (searchFromQuery) {
+      setSearchInput(searchFromQuery);
+      setQuery(searchFromQuery);
+      setPage(1);
+    }
 
     if (typesFromQuery.length > 0) {
       const matchedTypes = types.filter((type) => typesFromQuery.some((item) => item.toLowerCase() === type.toLowerCase()));
       if (matchedTypes.length > 0) {
-        setSelectedTypes(matchedTypes);
+          setSelectedTypes(matchedTypes);
       }
     }
 
@@ -740,20 +763,52 @@ export function CatalogPage({
     }
   }
 
-  async function handleCartQuantityChange(slug: string, quantity: number) {
-    if (pendingCartSlug === slug) return;
-
-    setPendingCartSlug(slug);
-    try {
-      const cart = await updateSessionCartItem(slug, quantity);
-      setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
-      setAnimatedCartSlug(slug);
-    } finally {
-      setPendingCartSlug((current) => (current === slug ? null : current));
-      window.setTimeout(() => {
-        setAnimatedCartSlug((current) => (current === slug ? null : current));
-      }, 420);
+  async function flushCartQuantity(slug: string) {
+    if (cartSyncInFlightRef.current.has(slug)) {
+      return;
     }
+
+    cartSyncInFlightRef.current.add(slug);
+
+    try {
+      while (true) {
+        const quantity = pendingCartQuantityRef.current[slug];
+        const cart = await updateSessionCartItem(slug, quantity);
+        const nextQuantities = Object.fromEntries(cart.items.map((item) => [item.slug, item.qty]));
+        const currentPending = pendingCartQuantityRef.current[slug];
+
+        if (currentPending === quantity) {
+          cartSyncRequestIdRef.current += 1;
+          setCartQuantities((current) => ({
+            ...current,
+            [slug]: nextQuantities[slug] ?? 0,
+          }));
+          delete pendingCartQuantityRef.current[slug];
+          break;
+        }
+      }
+    } finally {
+      cartSyncInFlightRef.current.delete(slug);
+    }
+  }
+
+  function handleCartQuantityChange(slug: string, quantity: number) {
+    const safeQuantity = Math.max(0, quantity);
+    pendingCartQuantityRef.current[slug] = safeQuantity;
+    setCartQuantities((current) => ({
+      ...current,
+      [slug]: safeQuantity,
+    }));
+    setAnimatedCartSlug(slug);
+    window.setTimeout(() => {
+      setAnimatedCartSlug((current) => (current === slug ? null : current));
+    }, 420);
+    void flushCartQuantity(slug);
+  }
+
+  function handleCartQuantityStep(slug: string, delta: number) {
+    const currentQuantity = pendingCartQuantityRef.current[slug] ?? cartQuantitiesRef.current[slug] ?? 0;
+    handleCartQuantityChange(slug, currentQuantity + delta);
   }
 
   function toggleValue(value: string, selected: string[], setter: (values: string[]) => void) {
@@ -1045,8 +1100,39 @@ export function CatalogPage({
                 {filterGroups.map(([title, items]) => (
                   <section key={title}>
                     <h2 className="text-[16px] uppercase tracking-[1.6px] 2xl:text-[20px] min-[2200px]:text-[24px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{title}</h2>
+                    {title === "Бренд" ? (
+                      <div className="mt-3">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={brandSearchQuery}
+                            onChange={(event) => setBrandSearchQuery(event.target.value)}
+                            placeholder="Поиск бренда"
+                            className="h-12 w-full border border-[#e7e1d9] bg-white px-4 pr-12 text-[14px] text-[#3c3c38] placeholder:text-[#bdbcb7] focus:border-[#d3b46a] focus:outline-none 2xl:h-14 2xl:text-[16px] [font-family:DM_Sans,Manrope,sans-serif]"
+                          />
+                          {brandSearchQuery ? (
+                            <button
+                              type="button"
+                              onClick={() => setBrandSearchQuery("")}
+                              className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#7a7a75] transition-colors hover:text-[#111]"
+                              aria-label="Очистить поиск бренда"
+                            >
+                              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
+                                <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 border-t border-[#e7e1d9] pt-3 2xl:pt-4 [column-gap:22px] 2xl:[column-gap:30px] xl:columns-2">
-                      {items.map((item, index) => {
+                      {(title === "Бренд"
+                        ? items
+                            .filter((item) => item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
+                            .sort((a, b) => a.localeCompare(b, "ru"))
+                        : items
+                      ).map((item, index) => {
                         const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                         const [selected, setSelected] = getFilterState(String(title));
 
@@ -1102,6 +1188,32 @@ export function CatalogPage({
                   {title}
                 </h2>
               )}
+              {title === "Бренд" ? (
+                <div className="mt-3">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={brandSearchQuery}
+                      onChange={(event) => setBrandSearchQuery(event.target.value)}
+                      placeholder="Поиск бренда"
+                      className="h-12 w-full border border-[#e7e1d9] bg-white px-4 pr-12 text-[14px] text-[#3c3c38] placeholder:text-[#bdbcb7] focus:border-[#d3b46a] focus:outline-none 2xl:h-14 2xl:text-[16px] [font-family:DM_Sans,Manrope,sans-serif]"
+                    />
+                    {brandSearchQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setBrandSearchQuery("")}
+                        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#7a7a75] transition-colors hover:text-[#111]"
+                        aria-label="Очистить поиск бренда"
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12" />
+                          <path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               <div
                 className={[
                   "mt-3 border-t border-[#e7e1d9]",
@@ -1119,7 +1231,15 @@ export function CatalogPage({
                       : undefined
                   }
                 >
-                {items.map((item, index) => {
+                {(title === "Бренд"
+                  ? (isOverlay
+                      ? items
+                      : items.slice(0, 20)
+                    )
+                      .filter((item) => item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
+                      .sort((a, b) => a.localeCompare(b, "ru"))
+                  : items
+                ).map((item, index) => {
                   const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                   const [selected, setSelected] = getFilterState(String(title));
 
@@ -1859,9 +1979,8 @@ export function CatalogPage({
                             >
                               <button
                                 type="button"
-                                onClick={() => void handleCartQuantityChange(product.slug, Math.max(0, (cartQuantities[product.slug] ?? 0) - 1))}
-                                disabled={pendingCartSlug === product.slug}
-                                className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70 md:text-[28px]"
+                                onClick={() => handleCartQuantityStep(product.slug, -1)}
+                                className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 md:text-[28px]"
                                 aria-label="Уменьшить количество"
                               >
                                 −
@@ -1881,9 +2000,8 @@ export function CatalogPage({
                               </div>
                               <button
                                 type="button"
-                                onClick={() => void handleAddToCart(product)}
-                                disabled={pendingCartSlug === product.slug}
-                                className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70 md:text-[26px]"
+                                onClick={() => handleCartQuantityStep(product.slug, 1)}
+                                className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8 md:text-[26px]"
                                 aria-label="Увеличить количество"
                               >
                                 +

@@ -13,7 +13,7 @@ export default function HeroHomeIsland() {
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) {
-      setAnimatedStats([100, 10]);
+      setAnimatedStats([100, 15]);
       setHeroStatsVisible(true);
       return;
     }
@@ -23,7 +23,7 @@ export default function HeroHomeIsland() {
     let startTimeout = 0;
     const duration = 3400;
     const delays = [0, 420];
-    const targets = [100, 10];
+    const targets = [100, 15];
     let start = 0;
 
     const tick = (now: number) => {
@@ -138,7 +138,7 @@ export default function HeroHomeIsland() {
                 Совершенство
               </h1>
               <p className="hero__lead">
-                Прецизионный климат-контроль Dantex для элитных резиденций и промышленных объектов высшего класса.
+                Прецизионный климат-контроль ClimaTrade для элитных резиденций и промышленных объектов высшего класса.
                 Когда тишина становится ощутимой.
               </p>
               <div className="hero__actions">

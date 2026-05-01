@@ -8,6 +8,7 @@ import { buildUniqueProductSlug, slugifyProductValue } from "./product-slug";
 type CatalogRow = Record<string, string | undefined>;
 
 const prisma = new PrismaClient();
+const CHECK_ONLY = process.argv.includes("--check-only");
 
 function slugify(value: string) {
   return slugifyProductValue(value);
@@ -71,15 +72,16 @@ function parseCharacteristics(value: string | undefined) {
   const raw = (value ?? "").trim();
   if (!raw) return [];
 
-  return raw
-    .split(/\s*\/\s*/g)
-    .map((chunk) => chunk.trim())
-    .filter(Boolean)
-    .map((chunk) => {
-      const index = chunk.indexOf(":");
-      if (index === -1) return null;
-      const key = normalizeSpaces(chunk.slice(0, index));
-      const val = normalizeSpaces(chunk.slice(index + 1));
+  const matches = Array.from(
+    raw.matchAll(/(?:^|\s\/\s)([^:]+?):\s*([\s\S]*?)(?=(?:\s\/\s[^:]+?:\s)|$)/g),
+  );
+
+  if (!matches.length) return [];
+
+  return matches
+    .map((match) => {
+      const key = normalizeSpaces(match[1] ?? "");
+      const val = normalizeSpaces(match[2] ?? "");
       if (!key || !val) return null;
       return { key, value: val };
     })
@@ -99,7 +101,6 @@ function parseSingleNumber(value: string) {
 
   const numeric = Number(match[1].replace(",", "."));
   if (!Number.isFinite(numeric)) return null;
-  // ProductFilterValue.numericValue is Decimal(12,2): max abs < 10^10.
   if (Math.abs(numeric) >= 1e10) {
     return null;
   }
@@ -229,13 +230,98 @@ async function ensureFilterParameter(options: {
   return entry;
 }
 
+function parseRow(record: CatalogRow) {
+  const sku = normalizeSpaces(record["Артикул"] ?? "");
+  const name = normalizeSpaces(record["Наименование"] ?? "");
+  const brand = normalizeSpaces(record["Бренд"] ?? "");
+  const categoryPath = normalizeSpaces(record["Название категории"] ?? "");
+
+  if (!sku || !name || !categoryPath) {
+    return { ok: false as const, reason: "missing-required" };
+  }
+
+  const priceString = parseMoney(record["Цена"]);
+  if (!priceString) {
+    return { ok: false as const, reason: "missing-price" };
+  }
+
+  const images = splitCommaList(record["Изображение"]);
+  const descriptionFromHtml = htmlToPlainText(record["Статья"]);
+  const characteristics = parseCharacteristics(record["Характеристики"]);
+
+  let power: number | null = null;
+  let volume: number | null = null;
+  let country: string | null = null;
+  let type: string | null = null;
+  let rating: string | null = null;
+  let efficiency: string | null = null;
+
+  const normalizedCharacteristics = characteristics.map(({ key, value }) => {
+    const normalizedKey = key.toLowerCase();
+    const isPower = /мощност/.test(normalizedKey);
+    const isVolume = /объем|объём/.test(normalizedKey);
+    const parsedNumber = parseSingleNumber(value);
+
+    if (isPower && parsedNumber) power = parsedNumber.numericValue;
+    if (isVolume && parsedNumber) volume = parsedNumber.numericValue;
+    if (/страна/.test(normalizedKey)) country = value;
+    if (!type && /тип вентиляционной решетки|тип вентиляционной решетк|тип решетки|вид/.test(normalizedKey)) {
+      type = value;
+    }
+    if (!rating && /типоразмер|серия|сечение/.test(normalizedKey)) {
+      rating = `${key}: ${value}`;
+    }
+    if (!efficiency && /материал корпуса|цвет корпуса|температурный диапазон эксплуатации/.test(normalizedKey)) {
+      efficiency = `${key}: ${value}`;
+    }
+
+    return {
+      key,
+      value,
+      normalizedKey,
+      isPower,
+      isVolume,
+      parsedNumber,
+      parameterSlug: isPower ? "power" : isVolume ? "volume" : slugify(key),
+      parameterType:
+        parsedNumber && (isPower || isVolume || parsedNumber.unit)
+          ? FilterParameterType.NUMBER
+          : FilterParameterType.TEXT,
+      unit: parsedNumber?.unit ?? null,
+      isActive: ACTIVE_CHARACTERISTIC_KEYS.has(normalizedKey) || isPower || isVolume,
+    };
+  });
+
+  return {
+    ok: true as const,
+    data: {
+      sku,
+      name,
+      brand,
+      categoryPath,
+      priceString,
+      images,
+      descriptionFromHtml,
+      characteristics: normalizedCharacteristics,
+      country,
+      type,
+      rating,
+      efficiency,
+      nsCode: pickFirstDefined(record["НС-код"]) ?? null,
+      barcode: pickFirstDefined(record["Штрих код"]) ?? null,
+      power,
+      volume,
+    },
+  };
+}
+
 async function main() {
   const confirm = (process.env.CONFIRM_IMPORT_CATALOG ?? "").toLowerCase();
-  if (confirm !== "yes") {
+  if (!CHECK_ONLY && confirm !== "yes") {
     throw new Error("Refusing to import catalog. Set CONFIRM_IMPORT_CATALOG=yes to continue.");
   }
 
-  if (process.env.NODE_ENV === "production" && process.env.FORCE_PROD_IMPORT !== "1") {
+  if (!CHECK_ONLY && process.env.NODE_ENV === "production" && process.env.FORCE_PROD_IMPORT !== "1") {
     throw new Error("Refusing to import catalog in production. Set FORCE_PROD_IMPORT=1 to continue.");
   }
 
@@ -248,8 +334,8 @@ async function main() {
   const categoryCache = new Map<string, string>();
   const parameterCache = new Map<string, { id: string; type: FilterParameterType; unit: string | null }>();
 
-  const mainGroup = await ensureFilterGroup("osnovnye-parametry", "Основные параметры");
-  const catalogGroup = await ensureFilterGroup("katalog-harakteristiki", "Характеристики");
+  const mainGroup = CHECK_ONLY ? null : await ensureFilterGroup("osnovnye-parametry", "Основные параметры");
+  const catalogGroup = CHECK_ONLY ? null : await ensureFilterGroup("katalog-harakteristiki", "Характеристики");
 
   const parser = parse({
     columns: true,
@@ -266,38 +352,41 @@ async function main() {
 
   let imported = 0;
   let skipped = 0;
+  let parsed = 0;
+  let skippedMissingRequired = 0;
+  let skippedMissingPrice = 0;
+  let characteristicsTotal = 0;
+  let rowsWithCharacteristics = 0;
 
   for await (const rawRecord of parser) {
     const record = rawRecord as CatalogRow;
+    const parsedRow = parseRow(record);
 
-    const sku = normalizeSpaces(record["Артикул"] ?? "");
-    const name = normalizeSpaces(record["Наименование"] ?? "");
-    const brand = normalizeSpaces(record["Бренд"] ?? "");
-    const categoryPath = normalizeSpaces(record["Название категории"] ?? "");
-
-    if (!sku || !name || !categoryPath) {
+    if (!parsedRow.ok) {
       skipped += 1;
+      if (parsedRow.reason === "missing-required") skippedMissingRequired += 1;
+      if (parsedRow.reason === "missing-price") skippedMissingPrice += 1;
       continue;
     }
 
-    const priceString = parseMoney(record["Цена"]);
-    if (!priceString) {
-      skipped += 1;
+    parsed += 1;
+    characteristicsTotal += parsedRow.data.characteristics.length;
+    if (parsedRow.data.characteristics.length > 0) {
+      rowsWithCharacteristics += 1;
+    }
+
+    if (CHECK_ONLY) {
+      imported += 1;
+      if (limitRows > 0 && imported >= limitRows) {
+        break;
+      }
       continue;
     }
 
-    const { leafId: categoryId, leafName: leafCategoryName } = await ensureCategoryPath(categoryPath, categoryCache);
-
-    const images = splitCommaList(record["Изображение"]);
-    const descriptionFromHtml = htmlToPlainText(record["Статья"]);
-    const characteristics = parseCharacteristics(record["Характеристики"]);
-
-    let power: number | null = null;
-    let volume: number | null = null;
-    let country: string | null = null;
-    let type: string | null = null;
-    let rating: string | null = null;
-    let efficiency: string | null = null;
+    const { leafId: categoryId, leafName: leafCategoryName } = await ensureCategoryPath(
+      parsedRow.data.categoryPath,
+      categoryCache,
+    );
 
     const filterValuesPayload: Array<{
       parameterId: string;
@@ -305,84 +394,50 @@ async function main() {
       numericValue?: number | null;
     }> = [];
 
-    for (const { key, value } of characteristics) {
-      const normalizedKey = key.toLowerCase();
-
-      const isPower = /мощност/.test(normalizedKey);
-      const isVolume = /объем|объём/.test(normalizedKey);
-
-      const parsedNumber = parseSingleNumber(value);
-
-      const parameterGroupId = isPower || isVolume ? mainGroup.id : catalogGroup.id;
-      const parameterSlug = isPower ? "power" : isVolume ? "volume" : slugify(key);
-      const parameterType =
-        parsedNumber && (isPower || isVolume || parsedNumber.unit)
-          ? FilterParameterType.NUMBER
-          : FilterParameterType.TEXT;
-      const unit = parsedNumber?.unit ?? null;
-      const isActive = ACTIVE_CHARACTERISTIC_KEYS.has(normalizedKey) || isPower || isVolume;
+    for (const item of parsedRow.data.characteristics) {
+      const parameterGroupId = item.isPower || item.isVolume ? mainGroup!.id : catalogGroup!.id;
 
       const parameter = await ensureFilterParameter({
         cache: parameterCache,
         groupId: parameterGroupId,
-        slug: parameterSlug,
-        name: key,
-        type: parameterType,
-        unit,
-        isActive,
+        slug: item.parameterSlug,
+        name: item.key,
+        type: item.parameterType,
+        unit: item.unit,
+        isActive: item.isActive,
       });
 
       filterValuesPayload.push({
         parameterId: parameter.id,
-        value,
-        numericValue: parsedNumber?.numericValue ?? null,
+        value: item.value,
+        numericValue: item.parsedNumber?.numericValue ?? null,
       });
-
-      if (isPower && parsedNumber) {
-        power = parsedNumber.numericValue;
-      }
-
-      if (isVolume && parsedNumber) {
-        volume = parsedNumber.numericValue;
-      }
-
-      if (/страна/.test(normalizedKey)) {
-        country = value;
-      }
-
-      if (!type && /тип вентиляционной решетки|тип вентиляционной решетк|тип решетки|вид/.test(normalizedKey)) {
-        type = value;
-      }
-
-      if (!rating && /типоразмер|серия|сечение/.test(normalizedKey)) {
-        rating = `${key}: ${value}`;
-      }
-
-      if (!efficiency && /материал корпуса|цвет корпуса|температурный диапазон эксплуатации/.test(normalizedKey)) {
-        efficiency = `${key}: ${value}`;
-      }
     }
 
-    type = type ?? leafCategoryName;
-    country = country ?? "Не указано";
+    const type = parsedRow.data.type ?? leafCategoryName;
+    const country = parsedRow.data.country ?? "Не указано";
 
     try {
-      const finalImages = images.length ? images : ["/catalog/product-1.png"];
-      const nsCode = pickFirstDefined(record["НС-код"]) ?? null;
-      const barcode = pickFirstDefined(record["Штрих код"]) ?? null;
-      const safePower = power !== null && Math.abs(power) < 1e6 ? power : undefined;
-      const safeVolume = volume !== null && Math.abs(volume) < 1e6 ? volume : undefined;
+      const finalImages = parsedRow.data.images.length ? parsedRow.data.images : ["/catalog/product-1.png"];
+      const safePower =
+        parsedRow.data.power !== null && Math.abs(parsedRow.data.power) < 1e6
+          ? parsedRow.data.power
+          : undefined;
+      const safeVolume =
+        parsedRow.data.volume !== null && Math.abs(parsedRow.data.volume) < 1e6
+          ? parsedRow.data.volume
+          : undefined;
 
       const existingBySku = await prisma.product.findUnique({
-        where: { sku },
+        where: { sku: parsedRow.data.sku },
         select: { id: true },
       });
 
       const nextSlug = await buildUniqueProductSlug(prisma, {
-        name,
-        sku,
-        nsCode,
-        barcode,
+        name: parsedRow.data.name,
+        sku: parsedRow.data.sku,
+        nsCode: parsedRow.data.nsCode,
+        barcode: parsedRow.data.barcode,
         productId: existingBySku?.id,
       });
 
@@ -392,17 +447,17 @@ async function main() {
             data: {
               categoryId,
               slug: nextSlug,
-              name,
-              brand: brand || null,
-              brandLabel: brand || null,
+              name: parsedRow.data.name,
+              brand: parsedRow.data.brand || null,
+              brandLabel: parsedRow.data.brand || null,
               country,
               type,
-              price: priceString,
+              price: parsedRow.data.priceString,
               power: safePower,
               volume: safeVolume,
-              rating: rating ?? null,
-              efficiency: efficiency ?? null,
-              description: descriptionFromHtml,
+              rating: parsedRow.data.rating ?? null,
+              efficiency: parsedRow.data.efficiency ?? null,
+              description: parsedRow.data.descriptionFromHtml,
               images: finalImages,
               stock: 12,
               status: ProductStatus.ACTIVE,
@@ -410,21 +465,21 @@ async function main() {
             select: { id: true },
           })
         : await prisma.product.create({
-          data: {
-            categoryId,
-            slug: nextSlug,
-            sku,
-            name,
-              brand: brand || null,
-              brandLabel: brand || null,
+            data: {
+              categoryId,
+              slug: nextSlug,
+              sku: parsedRow.data.sku,
+              name: parsedRow.data.name,
+              brand: parsedRow.data.brand || null,
+              brandLabel: parsedRow.data.brand || null,
               country,
               type,
-              price: priceString,
+              price: parsedRow.data.priceString,
               power: safePower,
               volume: safeVolume,
-              rating: rating ?? null,
-              efficiency: efficiency ?? null,
-              description: descriptionFromHtml,
+              rating: parsedRow.data.rating ?? null,
+              efficiency: parsedRow.data.efficiency ?? null,
+              description: parsedRow.data.descriptionFromHtml,
               images: finalImages,
               stock: 12,
               status: ProductStatus.ACTIVE,
@@ -455,7 +510,6 @@ async function main() {
             continue;
           }
 
-          // Prefer numeric values, otherwise keep the latest one.
           if (existing.numericValue === null && next.numericValue !== null) {
             uniqueByParameter.set(entry.parameterId, next);
             continue;
@@ -477,7 +531,7 @@ async function main() {
     } catch (error) {
       skipped += 1;
       // eslint-disable-next-line no-console
-      console.error(`[import][row-error] sku="${sku}" name="${name}"`, error);
+      console.error(`[import][row-error] sku="${parsedRow.data.sku}" name="${parsedRow.data.name}"`, error);
       continue;
     }
 
@@ -494,7 +548,23 @@ async function main() {
   }
 
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ imported, skipped }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        mode: CHECK_ONLY ? "check-only" : "import",
+        csvPath,
+        parsed,
+        imported,
+        skipped,
+        skippedMissingRequired,
+        skippedMissingPrice,
+        rowsWithCharacteristics,
+        characteristicsTotal,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 main()
