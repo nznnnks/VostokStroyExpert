@@ -207,7 +207,7 @@ export class ProductsService {
       return cached.value;
     }
 
-    const value = await this.buildCatalogMetadataLite(sqlWhere);
+    const value = await this.buildCatalogMetadataLite(sqlWhere, query.category);
     this.metadataCache.set(cacheKey, { value, expiresAt: now + this.metadataCacheTtlMs });
 
     if (this.metadataCache.size > 100) {
@@ -220,11 +220,11 @@ export class ProductsService {
     return value;
   }
 
-  private async buildCatalogMetadataLite(sqlWhere: Prisma.Sql): Promise<CatalogMetadata> {
+  private async buildCatalogMetadataLite(sqlWhere: Prisma.Sql, selectedCategory?: string): Promise<CatalogMetadata> {
     // NOTE:
     // Some Prisma Query Engine versions can panic on complex `findMany`/`include` queries at scale.
     // We compute catalog metadata via raw SQL aggregations to keep the query engine in the "simple" path.
-    const [priceAgg, brands, countries, types, dynamicFilters, legacyPower, legacyVolume] =
+    const [priceAgg, brands, countries, types, categoryCounts, categoryTypeCounts, dynamicFilters, legacyPower, legacyVolume] =
       await Promise.all([
         this.prisma.$queryRaw<Array<{ maxPrice: number | null }>>`
           select max(p.price)::double precision as "maxPrice"
@@ -251,6 +251,28 @@ export class ProductsService {
           ${sqlWhere}
             and p.type is not null and btrim(p.type) <> ''
           order by value asc
+        `,
+        this.prisma.$queryRaw<Array<{ slug: string; count: number; image: string | null }>>`
+          select
+            p."showcaseCategorySlug" as slug,
+            count(*)::int as count,
+            (array_remove(array_agg((p.images)[1]), null))[1] as image
+          from "Product" p
+          ${sqlWhere}
+            and p."showcaseCategorySlug" is not null
+          group by p."showcaseCategorySlug"
+        `,
+        this.prisma.$queryRaw<Array<{ showcaseSlug: string; type: string; typeSlug: string; count: number }>>`
+          select
+            p."showcaseCategorySlug" as "showcaseSlug",
+            c.name as type,
+            c.slug as "typeSlug",
+            count(*)::int as count
+          from "Product" p
+          join "Category" c on c.id = p."categoryId"
+          ${sqlWhere}
+            and p."showcaseCategorySlug" is not null
+          group by p."showcaseCategorySlug", c.name, c.slug
         `,
         this.prisma.$queryRaw<
           Array<{
@@ -305,6 +327,46 @@ export class ProductsService {
       ]);
 
     const maxPrice = priceAgg[0]?.maxPrice ?? 0;
+    const categoryCountMap = new Map(categoryCounts.map((row) => [row.slug, row]));
+    const categoryTypeMap = new Map<string, Array<{ type: string; slug: string; count: number }>>();
+
+    for (const row of categoryTypeCounts) {
+      const bucket = categoryTypeMap.get(row.showcaseSlug) ?? [];
+      bucket.push({
+        type: row.type,
+        slug: row.typeSlug,
+        count: row.count,
+      });
+      categoryTypeMap.set(row.showcaseSlug, bucket);
+    }
+
+    const categoryCards = SHOWCASE_CATEGORY_DEFINITIONS.map((definition) => {
+      const row = categoryCountMap.get(definition.slug);
+      return {
+        name: definition.name,
+        slug: definition.slug,
+        count: row?.count ?? 0,
+        image: row?.image ?? undefined,
+      };
+    });
+
+    const categoryTypeTree = SHOWCASE_CATEGORY_DEFINITIONS.map((definition) => ({
+      category: definition.name,
+      slug: definition.slug,
+      count: categoryCountMap.get(definition.slug)?.count ?? 0,
+      types: (categoryTypeMap.get(definition.slug) ?? []).sort(
+        (left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru'),
+      ),
+    }));
+
+    const selectedDefinition = selectedCategory
+      ? findShowcaseCategoryDefinition(selectedCategory.trim())
+      : undefined;
+    const currentCategoryTypes = selectedDefinition
+      ? (categoryTypeMap.get(selectedDefinition.slug) ?? []).sort(
+          (left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru'),
+        )
+      : [];
 
     const legacyGroupName = 'Основные параметры';
     const legacyGroupSlug = 'osnovnye-parametry';
@@ -360,9 +422,9 @@ export class ProductsService {
       countries: countries.map((row) => row.value).filter(Boolean),
       types: types.map((row) => row.value).filter(Boolean),
       maxPrice,
-      categoryCards: [],
-      categoryTypeTree: [],
-      currentCategoryTypes: [],
+      categoryCards,
+      categoryTypeTree,
+      currentCategoryTypes,
       dynamicFilters: normalizedDynamicFilters,
     };
   }
