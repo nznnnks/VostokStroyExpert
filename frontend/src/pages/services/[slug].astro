@@ -112,8 +112,12 @@ const detailTextParagraphs = (generatedCopy?.detailText ?? service.detailText)
               <h1 class="max-w-[920px] break-words text-[clamp(2.2rem,7vw,4.6rem)] leading-[0.92] [font-family:'Cormorant_Garamond',serif] 2xl:text-[clamp(3rem,4.35vw,6rem)]">{service.heroTitle}</h1>
               <p class="mt-4 max-w-[900px] border-l border-[#b99863]/55 pl-4 text-[clamp(1rem,3.9vw,1.42rem)] leading-[1.5] text-[#555550] md:mt-6 md:pl-6 md:leading-[1.58] 2xl:text-[clamp(1.18rem,1.1vw,1.75rem)]">{service.lead}</p>
               <div class="mt-5 flex flex-wrap gap-3 md:mt-7 md:gap-4">
-                <ServiceOrderModal client:load serviceTitle={service.title} />
-                <a href="/services" class="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[13px] uppercase tracking-[1.2px] text-[#111] md:h-14 md:px-8 md:text-[14px] md:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <ServiceOrderModal
+                  client:load
+                  serviceTitle={service.title}
+                  triggerClassName="inline-flex h-12 items-center justify-center bg-[#111] px-6 text-[13px] uppercase tracking-[1.2px] text-white transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_16px_36px_rgba(0,0,0,0.28)] active:translate-y-0 md:h-14 md:px-8 md:text-[14px] md:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                />
+                <a href="/services" class="inline-flex h-12 items-center justify-center border border-[#111] px-6 text-[13px] uppercase tracking-[1.2px] text-[#111] transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#111] hover:text-white hover:shadow-[0_16px_36px_rgba(0,0,0,0.12)] active:translate-y-0 md:h-14 md:px-8 md:text-[14px] md:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   Все услуги
                 </a>
               </div>

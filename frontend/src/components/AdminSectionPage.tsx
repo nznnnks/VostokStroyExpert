@@ -886,13 +886,16 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   }
 
   async function refreshAdminData() {
-    const data = await loadAdminSectionData();
+    const adminRole = session?.type === "admin" ? session.admin?.role ?? null : null;
+    const canManageCatalog = adminRole !== "MANAGER";
+    const data = await loadAdminSectionData({ adminRole });
     setClients(data.clients);
     setOrders(data.orders);
     setNews(data.news);
     setCatalog(data.catalog);
 
     if (activeKey === "catalog") {
+      if (!canManageCatalog) return;
       const [nextCategories, nextFilterGroups] = await Promise.all([loadAdminCategories(), loadAdminFilterGroups()]);
       setCategories(nextCategories);
       setFilterGroups(nextFilterGroups);
@@ -919,6 +922,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     }
 
     if (activeKey === "clients") {
+      if (!canManageCatalog) return;
       const nextUsers = await loadUsers();
       setUsers(
         nextUsers.map((item) => ({
@@ -932,6 +936,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     }
 
     if (activeKey === "settings") {
+      if (!canManageCatalog) return;
       const [nextDiscounts, nextAdmins, nextFilterGroups] = await Promise.all([
         loadAdminDiscounts(),
         loadAdminUsers(),

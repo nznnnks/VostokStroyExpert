@@ -38,6 +38,8 @@ export function ServiceOrderModal({
 }: ServiceOrderModalProps) {
   const titleId = useId();
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [contacts, setContacts] = useState<string[]>([]);
@@ -53,7 +55,7 @@ export function ServiceOrderModal({
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key === "Escape") startClose();
     };
 
     document.body.style.overflow = "hidden";
@@ -65,10 +67,28 @@ export function ServiceOrderModal({
     };
   }, [isOpen]);
 
-  const resetAndClose = () => {
+  useEffect(() => {
+    if (isOpen) {
+      setRendered(true);
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  const finishClose = () => {
+    setRendered(false);
     setIsOpen(false);
+    setIsClosing(false);
     setError("");
     setSent(false);
+    setName("");
+    setPhone("");
+    setContacts([]);
+  };
+
+  const startClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => finishClose(), 260);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -96,6 +116,7 @@ export function ServiceOrderModal({
       });
       setError("");
       setSent(true);
+      window.setTimeout(() => startClose(), 900);
     } catch (error) {
       setError(error instanceof Error ? error.message : "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ Р·Р°СЏРІРєСѓ.");
     }
@@ -108,27 +129,27 @@ export function ServiceOrderModal({
         onClick={() => setIsOpen(true)}
         className={
           triggerClassName ??
-          "inline-flex h-12 items-center justify-center bg-[#111] px-6 text-[13px] uppercase tracking-[1.2px] text-white md:h-14 md:px-8 md:text-[14px] md:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+          "inline-flex h-12 items-center justify-center bg-[#111] px-6 text-[13px] uppercase tracking-[1.2px] text-white transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_16px_36px_rgba(0,0,0,0.28)] active:translate-y-0 md:h-14 md:px-8 md:text-[14px] md:tracking-[1.5px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
         }
       >
         {trigger ?? triggerLabel}
       </button>
 
-      {isOpen && mounted ? createPortal(
+      {rendered && mounted ? createPortal(
         <div
-          className="fixed inset-0 z-[300] flex items-end justify-center bg-black/60 px-3 py-3 sm:items-center sm:px-5"
+          className={`fixed inset-0 z-[300] flex items-end justify-center px-3 py-3 transition-opacity duration-200 sm:items-center sm:px-5 ${isClosing ? "bg-black/0 opacity-0" : "bg-black/60 opacity-100"}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) resetAndClose();
+            if (event.target === event.currentTarget) startClose();
           }}
         >
-          <div className="relative w-full max-w-[560px] overflow-hidden rounded-[22px] bg-[#e1ddd6] text-[#111] shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+          <div className={`relative w-full max-w-[560px] overflow-hidden rounded-[22px] bg-[#e1ddd6] text-[#111] shadow-[0_24px_80px_rgba(0,0,0,0.35)] transition-[transform,opacity] duration-200 ${isClosing ? "translate-y-3 opacity-0 sm:translate-y-0 sm:scale-[0.98]" : "translate-y-0 opacity-100 sm:scale-100"}`}>
             <button
               type="button"
               aria-label="Закрыть"
-              onClick={resetAndClose}
+              onClick={startClose}
               className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center border border-[#111]/15 text-[26px] leading-none text-[#111] transition hover:bg-[#111] hover:text-white"
             >
               ×
@@ -214,7 +235,8 @@ export function ServiceOrderModal({
 
               <button
                 type="submit"
-                className="mt-1 inline-flex h-14 items-center justify-center bg-[#111] px-6 text-[13px] uppercase tracking-[1.4px] text-white [font-family:'JetBrains_Mono',monospace]"
+                className="mt-1 inline-flex h-14 items-center justify-center bg-[#111] px-6 text-[13px] uppercase tracking-[1.4px] text-white transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_16px_36px_rgba(0,0,0,0.24)] active:translate-y-0 disabled:opacity-60 [font-family:'JetBrains_Mono',monospace]"
+                disabled={sent}
               >
                 Отправить
               </button>
