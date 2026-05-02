@@ -4,6 +4,7 @@ import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import { loadNewsPostBySlug, loadNewsPosts } from "../../lib/backend-api";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../lib/seo";
 
 export const prerender = false;
 
@@ -11,6 +12,10 @@ const slug = Astro.params.slug ?? "";
 const post = await loadNewsPostBySlug(slug);
 const allPosts = await loadNewsPosts();
 const relatedPosts = allPosts.filter((item) => item.slug !== slug).slice(0, 3);
+
+const pageTitle = normalizeSeoText(post?.metaTitle ?? post?.title ?? "Новость");
+const pageDescription = truncateSeoDescription(post?.metaDescription ?? post?.excerpt ?? "Новости компании и отрасли.");
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 
 const formatRelativePublication = (value?: string | null) => {
   if (!value) {
@@ -37,10 +42,12 @@ const formatRelativePublication = (value?: string | null) => {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{post?.metaTitle ?? post?.title ?? "РќРѕРІРѕСЃС‚СЊ"}</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="description" content={post?.metaDescription ?? post?.excerpt ?? "РќРѕРІРѕСЃС‚Рё РєРѕРјРїР°РЅРёРё Рё РѕС‚СЂР°СЃР»Рё."} />
-    {post?.metaKeywords ? <meta name="keywords" content={post.metaKeywords} /> : null}
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

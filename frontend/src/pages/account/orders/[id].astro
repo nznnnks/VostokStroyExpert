@@ -1,11 +1,15 @@
----
+﻿---
 import { AccountOrderDetailPage } from "../../../components/AccountOrderDetailPage";
 import GlobalPreloader from "../../../components/GlobalPreloader.astro";
 import "../../../styles/global.css";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../../lib/seo";
 
 export const prerender = false;
 
 const id = Astro.params.id ?? "";
+const pageTitle = normalizeSeoText("Личный кабинет");
+const pageDescription = truncateSeoDescription("Раздел личного кабинета.");
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 ---
 
 <!doctype html>
@@ -13,8 +17,10 @@ const id = Astro.params.id ?? "";
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Детали заказа</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@400;500&family=Jaldi:wght@400;700&family=JetBrains+Mono:wght@400&family=Manrope:wght@200;400;500&display=swap" rel="stylesheet" />

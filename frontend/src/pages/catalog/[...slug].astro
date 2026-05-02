@@ -55,7 +55,7 @@ function buildAutoKeywords() {
 
 const pageTitle = normalizeText(product.metaTitle ?? product.title);
 const pageDescription = normalizeText(product.metaDescription ?? buildAutoDescription());
-const pageKeywords = normalizeText(product.metaKeywords ?? buildAutoKeywords());
+const pageKeywords = normalizeText(buildAutoKeywords());
 ---
 
 <!doctype html>

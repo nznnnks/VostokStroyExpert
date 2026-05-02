@@ -210,6 +210,15 @@ type ApiService = {
   metaKeywords?: string | null;
 };
 
+type ApiSeoPage = {
+  key: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
+};
+
+export type SeoPageView = ApiSeoPage;
+
 type ApiAdminUser = {
   id: string;
   email: string;
@@ -251,6 +260,10 @@ type ApiRequest = {
 
 type ApiRequestsSummary = {
   unprocessedCount: number;
+};
+
+type ApiOrdersSummary = {
+  newCount: number;
 };
 
 type ApiYooKassaCreatePaymentResponse = {
@@ -1359,6 +1372,34 @@ export async function loadAdminCategories() {
   });
 }
 
+export async function loadSeoPage(key: string) {
+  return apiRequest<ApiSeoPage>(`/api/seo-pages/${encodeURIComponent(key)}`);
+}
+
+export async function loadAdminSeoPages() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<{ items: ApiSeoPage[] }>("/api/seo-pages", { authToken });
+}
+
+export async function updateAdminSeoPage(key: string, payload: { metaTitle?: string; metaDescription?: string }) {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiSeoPage>(`/api/seo-pages/${encodeURIComponent(key)}`, {
+    authToken,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
 export async function loadAdminServices() {
   const authToken = getStoredAccessToken("admin");
 
@@ -1443,6 +1484,16 @@ export async function loadAdminRequestsSummary() {
   }
 
   return apiRequest<ApiRequestsSummary>("/api/requests/summary", { authToken });
+}
+
+export async function loadAdminOrdersSummary() {
+  const authToken = getStoredAccessToken("admin");
+
+  if (!authToken) {
+    throw new ApiError("Требуется авторизация администратора.", 401);
+  }
+
+  return apiRequest<ApiOrdersSummary>("/api/orders/summary", { authToken });
 }
 
 export async function updateAdminRequest(id: string, payload: { processed: boolean }) {

@@ -2,6 +2,7 @@
 import { CatalogPage } from "../../../components/CatalogPage";
 import { loadCatalogCategories, loadCatalogListing } from "../../../lib/catalog-api";
 import GlobalPreloader from "../../../components/GlobalPreloader.astro";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../../lib/seo";
 import "../../../styles/global.css";
 
 export const prerender = false;
@@ -30,6 +31,7 @@ const landingCategoryNames: Record<string, string> = {
 };
 
 const categoryNameFromDb = categories.find((item) => item.slug === slug)?.name ?? "";
+const categorySeo = categories.find((item) => item.slug === slug) ?? null;
 const initialCatalog = await loadCatalogListing({ page: 1, limit: 24, category: slug });
 const categoryName =
   categoryNameFromDb ||
@@ -40,6 +42,10 @@ const categoryName =
 if (!categoryName || initialCatalog.total === 0) {
   return Astro.redirect("/catalog");
 }
+
+const pageTitle = normalizeSeoText(categorySeo?.metaTitle ?? categoryName);
+const pageDescription = truncateSeoDescription(categorySeo?.metaDescription ?? categorySeo?.description ?? `Товары категории: ${categoryName}.`);
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 ---
 
 <!doctype html>
@@ -47,8 +53,12 @@ if (!categoryName || initialCatalog.total === 0) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{categoryName}</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

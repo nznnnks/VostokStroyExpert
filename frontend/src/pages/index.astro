@@ -7,6 +7,8 @@ import HeroHomeIsland from "../components/HeroHomeIsland";
 import HomeReviewsIsland from "../components/HomeReviewsIsland";
 import HomeConsultationIsland from "../components/HomeConsultationIsland";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
+import { loadSeoPage } from "../lib/backend-api";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import {
   blog,
   serviceHrefByTitle,
@@ -25,6 +27,11 @@ const blogBottomRow = BLOG_ENABLED ? blog.slice(2, 4) : [];
 const mobileBlogLead = BLOG_ENABLED ? blog[0] : null;
 const mobileBlogMiddle = BLOG_ENABLED ? blog.slice(1, 3) : [];
 const mobileBlogTail = BLOG_ENABLED ? blog[3] : null;
+
+const seo = await loadSeoPage("home").catch(() => null);
+const pageTitle = normalizeSeoText(seo?.metaTitle ?? "Stayse Engineering");
+const pageDescription = truncateSeoDescription(seo?.metaDescription ?? "Премиальная инженерия и подбор оборудования для комфортного микроклимата.");
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 ---
 
 <!doctype html>
@@ -32,8 +39,12 @@ const mobileBlogTail = BLOG_ENABLED ? blog[3] : null;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stayse Engineering</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

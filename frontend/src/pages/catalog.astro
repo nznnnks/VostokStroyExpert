@@ -1,12 +1,18 @@
----
+﻿---
 import { CatalogPage } from "../components/CatalogPage";
 import { loadCatalogListing } from "../lib/catalog-api";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
+import { loadSeoPage } from "../lib/backend-api";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
 export const prerender = false;
 
 const initialCatalog = await loadCatalogListing({ page: 1, limit: 12 });
+const seo = await loadSeoPage("catalog").catch(() => null);
+const pageTitle = normalizeSeoText(seo?.metaTitle ?? "Каталог");
+const pageDescription = truncateSeoDescription(seo?.metaDescription ?? "Каталог товаров и оборудования.");
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 ---
 
 <!doctype html>
@@ -14,8 +20,12 @@ const initialCatalog = await loadCatalogListing({ page: 1, limit: 12 });
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Каталог</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

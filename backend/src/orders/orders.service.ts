@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DiscountType, ItemKind, Prisma } from '@prisma/client';
+import { DiscountType, ItemKind, OrderStatus, Prisma } from '@prisma/client';
 
 import { OptionalAuthPrincipal, AuthPrincipal } from '../auth/interfaces/auth-principal.interface';
 import { PasswordService } from '../auth/password.service';
@@ -37,6 +37,14 @@ export class OrdersService {
     private readonly mailService: MailService,
     private readonly passwordService: PasswordService,
   ) {}
+
+  async getSummary() {
+    const newCount = await this.prisma.order.count({
+      where: { status: OrderStatus.NEW },
+    });
+
+    return { newCount };
+  }
 
   async findAll(query: PaginationQueryDto, auth: AuthPrincipal) {
     const filters: Prisma.OrderWhereInput[] = [];

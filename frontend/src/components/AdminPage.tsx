@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { adminNav, adminUser } from "../data/admin";
 import { getStoredAuthSession } from "../lib/auth";
+import { loadAdminOrdersSummary, loadAdminRequestsSummary } from "../lib/backend-api";
 import LogoutLink from "./LogoutLink";
 
 type DashboardEvent = [string, string, string, string, string, string, string, string, "orders" | "requests" | "clients"];
@@ -48,16 +49,41 @@ type AdminPageProps = {
 
 export function AdminPage({ activeKey = "dashboard" }: AdminPageProps) {
   const session = getStoredAuthSession();
+  const [unprocessedRequestsCount, setUnprocessedRequestsCount] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+
+  useEffect(() => {
+    if (!session || session.type !== "admin") {
+      return;
+    }
+
+    loadAdminRequestsSummary()
+      .then((data) => setUnprocessedRequestsCount(data.unprocessedCount ?? 0))
+      .catch(() => null);
+
+    loadAdminOrdersSummary()
+      .then((data) => setNewOrdersCount(data.newCount ?? 0))
+      .catch(() => null);
+  }, [session]);
+
   const navItems = useMemo(() => {
     const role = session?.type === "admin" ? session.admin?.role : null;
 
+    const requestsBadge = unprocessedRequestsCount > 10 ? "9+" : unprocessedRequestsCount > 0 ? String(unprocessedRequestsCount) : undefined;
+    const ordersBadge = newOrdersCount > 10 ? "9+" : newOrdersCount > 0 ? String(newOrdersCount) : undefined;
+    const withBadges = adminNav.map((item) => {
+      if (item.key === "requests") return { ...item, badge: requestsBadge };
+      if (item.key === "orders") return { ...item, badge: ordersBadge };
+      return item;
+    });
+
     if (role === "MANAGER") {
       const forbidden = new Set(["clients", "news", "catalog"]);
-      return adminNav.filter((item) => !forbidden.has(item.key));
+      return withBadges.filter((item) => !forbidden.has(item.key));
     }
 
-    return adminNav;
-  }, [session]);
+    return withBadges;
+  }, [session, unprocessedRequestsCount, newOrdersCount]);
   const adminName =
     [session?.admin?.firstName, session?.admin?.lastName].filter(Boolean).join(" ").trim() ||
     session?.admin?.email ||

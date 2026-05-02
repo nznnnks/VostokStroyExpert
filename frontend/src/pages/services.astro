@@ -1,12 +1,17 @@
----
+﻿---
 import { ServicesPage } from "../components/ServicesPage";
-import { loadServices } from "../lib/backend-api";
+import { loadSeoPage, loadServices } from "../lib/backend-api";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
 export const prerender = false;
 
 const services = await loadServices();
+const seo = await loadSeoPage("services").catch(() => null);
+const pageTitle = normalizeSeoText(seo?.metaTitle ?? "Услуги");
+const pageDescription = truncateSeoDescription(seo?.metaDescription ?? "Услуги и сервисные решения.");
+const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
 ---
 
 <!doctype html>
@@ -14,8 +19,12 @@ const services = await loadServices();
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Услуги</title>
+    <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content={pageDescription} />
+    <meta name="keywords" content={pageKeywords} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

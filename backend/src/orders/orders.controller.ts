@@ -31,6 +31,12 @@ export class OrdersController {
     return this.ordersService.findAll(query, auth);
   }
 
+  @Get('summary')
+  @AdminAccess(UserRole.SUPERADMIN, UserRole.MANAGER)
+  summary() {
+    return this.ordersService.getSummary();
+  }
+
   @Get(':id')
   @AuthenticatedAccess()
   findOne(@Param('id') id: string, @CurrentAuth() auth: AuthPrincipal) {

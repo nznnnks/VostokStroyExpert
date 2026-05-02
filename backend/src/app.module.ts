@@ -12,6 +12,7 @@ import { ServiceOfferingsModule } from './service-offerings/service-offerings.mo
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { RequestsModule } from './requests/requests.module';
+import { SeoPagesModule } from './seo-pages/seo-pages.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RequestsModule } from './requests/requests.module';
     AdminUsersModule,
     MailModule,
     RequestsModule,
+    SeoPagesModule,
   ],
 })
 export class AppModule {}

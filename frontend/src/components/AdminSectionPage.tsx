@@ -3,6 +3,7 @@
 import { adminNav } from "../data/admin";
 import { ApiError } from "../lib/api-client";
 import { clearStoredAuthSession, getStoredAuthSession } from "../lib/auth";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText } from "../lib/seo";
 import {
   createAdminNews,
   createAdminProduct,
@@ -32,6 +33,8 @@ import {
   loadUsers,
   loadAdminRequests,
   loadAdminRequestsSummary,
+  loadAdminOrdersSummary,
+  loadAdminSeoPages,
   updateAdminRequest,
   loadAdminNewsById,
   loadAdminProductById,
@@ -42,6 +45,7 @@ import {
   type AdminNewsView,
   type AdminOrderStatus,
   type AdminOrderView,
+  type SeoPageView,
   updateAdminNews,
   updateAdminProduct,
   updateAdminFilterGroup,
@@ -52,6 +56,7 @@ import {
   updateAdminUser,
   updateUser,
   updateAdminOrderStatus,
+  updateAdminSeoPage,
   uploadAdminNewsImage,
   uploadAdminProductImage,
 } from "../lib/backend-api";
@@ -63,6 +68,13 @@ type AdminSectionPageProps = {
 };
 
 const CATALOG_PAGE_SIZE = 12;
+
+const seoPagesDirectory = [
+  { key: "home", label: "Главная (/)" },
+  { key: "about", label: "О компании (/about)" },
+  { key: "catalog", label: "Каталог (/catalog)" },
+  { key: "services", label: "Услуги (/services)" },
+] as const;
 
 function AdminTable({
   columns,
@@ -304,9 +316,11 @@ function toCatalogFilterFormItem(group: AdminFilterGroupView, parameter: AdminFi
 function SeoFields({
   value,
   onChange,
+  keywordsPreview,
 }: {
   value: typeof emptySeoFields;
   onChange: (field: keyof typeof emptySeoFields, nextValue: string) => void;
+  keywordsPreview: string;
 }) {
   return (
     <div className="mt-6 border border-[#ece8e1] bg-[#faf8f4] p-6">
@@ -317,8 +331,8 @@ function SeoFields({
           <input className="admin-input mt-2" value={value.metaTitle} onChange={(event) => onChange("metaTitle", event.target.value)} placeholder="Заголовок страницы для поисковиков" />
         </label>
         <label className="admin-toolbar__label">
-          Meta Keywords
-          <input className="admin-input mt-2" value={value.metaKeywords} onChange={(event) => onChange("metaKeywords", event.target.value)} placeholder="слово 1, слово 2, слово 3" />
+          Keywords (авто)
+          <input className="admin-input mt-2" value={keywordsPreview} readOnly placeholder="Будет сформировано автоматически" />
         </label>
       </div>
       <label className="admin-toolbar__label mt-4">
@@ -337,6 +351,7 @@ function SeoFields({
 export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPageProps) {
   const [session, setSession] = useState<ReturnType<typeof getStoredAuthSession>>(null);
   const [unprocessedRequestsCount, setUnprocessedRequestsCount] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
 
   useEffect(() => {
     setSession(getStoredAuthSession());
@@ -351,18 +366,32 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
       .then((data) => setUnprocessedRequestsCount(data.unprocessedCount ?? 0))
       .catch(() => null);
   }, [session]);
+
+  useEffect(() => {
+    if (!session || session.type !== "admin") {
+      return;
+    }
+
+    loadAdminOrdersSummary()
+      .then((data) => setNewOrdersCount(data.newCount ?? 0))
+      .catch(() => null);
+  }, [session]);
   const navItems = useMemo(() => {
     const role = session?.type === "admin" ? session.admin?.role : null;
 
     const requestsBadge = unprocessedRequestsCount > 10 ? "9+" : unprocessedRequestsCount > 0 ? String(unprocessedRequestsCount) : undefined;
-    const withBadges = adminNav.map((item) =>
-      item.key === "requests"
-        ? {
-            ...item,
-            badge: requestsBadge,
-          }
-        : item,
-    );
+    const ordersBadge = newOrdersCount > 10 ? "9+" : newOrdersCount > 0 ? String(newOrdersCount) : undefined;
+    const withBadges = adminNav.map((item) => {
+      if (item.key === "requests") {
+        return { ...item, badge: requestsBadge };
+      }
+
+      if (item.key === "orders") {
+        return { ...item, badge: ordersBadge };
+      }
+
+      return item;
+    });
 
     if (role === "MANAGER") {
       const forbidden = new Set(["clients", "news", "catalog"]);
@@ -370,7 +399,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     }
 
     return withBadges;
-  }, [session, unprocessedRequestsCount]);
+  }, [session, unprocessedRequestsCount, newOrdersCount]);
   const adminName =
     [session?.admin?.firstName, session?.admin?.lastName].filter(Boolean).join(" ").trim() ||
     session?.admin?.email ||
@@ -385,6 +414,11 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   const [services, setServices] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [discounts, setDiscounts] = useState<Array<{ id: string; name: string; value: string }>>([]);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [seoPages, setSeoPages] = useState<Record<string, SeoPageView>>({});
+  const [seoPageKey, setSeoPageKey] = useState<(typeof seoPagesDirectory)[number]["key"]>(seoPagesDirectory[0]?.key ?? "home");
+  const [seoPageForm, setSeoPageForm] = useState({ metaTitle: "", metaDescription: "" });
+  const [seoSaving, setSeoSaving] = useState(false);
+  const [seoError, setSeoError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; phone?: string; status: "ACTIVE" | "BLOCKED" }>>([]);
   const [requests, setRequests] = useState<Array<{ id: string; name: string; phone: string; contactMethods: string[]; processed: boolean }>>([]);
@@ -502,6 +536,14 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
       ),
     [filterGroups],
   );
+
+  useEffect(() => {
+    const page = seoPages[seoPageKey];
+    setSeoPageForm({
+      metaTitle: page?.metaTitle ?? "",
+      metaDescription: page?.metaDescription ?? "",
+    });
+  }, [seoPageKey, seoPages]);
 
   useEffect(() => {
     if (availableFilterParameters.some((item) => item.parameter.id === catalogFilterParameterId)) {
@@ -913,6 +955,29 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         groupId: prev.groupId || nextFilterGroups[0]?.id || "",
       }));
     }
+
+    if (activeKey === "seo") {
+      const nextSeoPages = await loadAdminSeoPages().catch(() => ({ items: [] as SeoPageView[] }));
+      setSeoPages(Object.fromEntries((nextSeoPages.items ?? []).map((item) => [item.key, item])));
+    }
+  }
+
+  async function handleSeoPageSubmit() {
+    setSeoSaving(true);
+    setSeoError(null);
+
+    try {
+      const updated = await updateAdminSeoPage(seoPageKey, {
+        metaTitle: seoPageForm.metaTitle,
+        metaDescription: seoPageForm.metaDescription,
+      });
+
+      setSeoPages((prev) => ({ ...prev, [updated.key]: updated }));
+    } catch (nextError) {
+      setSeoError(nextError instanceof Error ? nextError.message : "Не удалось сохранить SEO страницы.");
+    } finally {
+      setSeoSaving(false);
+    }
   }
 
   async function handleNewsSubmit() {
@@ -920,6 +985,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     const resolvedSlug = newsForm.slug.trim() || slugify(titleValue);
     const imagesValue = parseCatalogImages(newsForm.images);
     const publishedAtValue = newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined;
+    const keywordsValue = buildKeywordsFromTitleAndDescription(
+      newsForm.metaTitle.trim() || titleValue,
+      newsForm.metaDescription.trim() || newsForm.excerpt.trim(),
+    );
 
     if (!titleValue || !resolvedSlug) {
       setActionError("Заполните название и slug для новости.");
@@ -941,7 +1010,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           publishedAt: publishedAtValue,
           metaTitle: newsForm.metaTitle.trim() || undefined,
           metaDescription: newsForm.metaDescription.trim() || undefined,
-          metaKeywords: newsForm.metaKeywords.trim() || undefined,
+          metaKeywords: keywordsValue || undefined,
         });
       } else {
         await createAdminNews({
@@ -954,7 +1023,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           publishedAt: publishedAtValue,
           metaTitle: newsForm.metaTitle.trim() || undefined,
           metaDescription: newsForm.metaDescription.trim() || undefined,
-          metaKeywords: newsForm.metaKeywords.trim() || undefined,
+          metaKeywords: keywordsValue || undefined,
         });
       }
 
@@ -997,6 +1066,18 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
     const powerValue = catalogForm.power ? Number(catalogForm.power) : undefined;
     const volumeValue = catalogForm.volume ? Number(catalogForm.volume) : undefined;
     const imagesValue = parseCatalogImages(catalogForm.images);
+    const categoryName = categories.find((item) => item.id === catalogForm.categoryId)?.name ?? "";
+    const keywordsValue = (() => {
+      const values = [
+        nameValue,
+        categoryName,
+        catalogForm.brandLabel.trim() || catalogForm.brand.trim(),
+        catalogForm.sku.trim(),
+      ]
+        .map((item) => normalizeSeoText(item ?? ""))
+        .filter(Boolean);
+      return Array.from(new Set(values)).join(", ");
+    })();
 
     if (!nameValue || !resolvedSlug || !catalogForm.sku.trim() || !catalogForm.categoryId || Number.isNaN(priceValue)) {
       setActionError("Заполните обязательные поля товара: название, slug, артикул, цена, категория.");
@@ -1052,7 +1133,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         status: catalogForm.status as "ACTIVE" | "DRAFT" | "ARCHIVED",
         metaTitle: catalogForm.metaTitle.trim() || undefined,
         metaDescription: catalogForm.metaDescription.trim() || undefined,
-        metaKeywords: catalogForm.metaKeywords.trim() || undefined,
+        metaKeywords: keywordsValue || undefined,
       };
 
       if (catalogForm.id) {
@@ -1254,6 +1335,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   async function handleCategorySubmit() {
     const nameValue = categoryForm.name.trim();
     const resolvedSlug = categoryForm.slug.trim() || slugify(nameValue);
+    const keywordsValue = buildKeywordsFromTitleAndDescription(
+      categoryForm.metaTitle.trim() || nameValue,
+      categoryForm.metaDescription.trim() || categoryForm.description.trim(),
+    );
 
     if (!nameValue || !resolvedSlug) {
       setActionError("Заполните название и slug категории.");
@@ -1272,7 +1357,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           parentId: categoryForm.parentId || undefined,
           metaTitle: categoryForm.metaTitle.trim() || undefined,
           metaDescription: categoryForm.metaDescription.trim() || undefined,
-          metaKeywords: categoryForm.metaKeywords.trim() || undefined,
+          metaKeywords: keywordsValue || undefined,
         });
       } else {
         await createAdminCategory({
@@ -1282,7 +1367,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
           parentId: categoryForm.parentId || undefined,
           metaTitle: categoryForm.metaTitle.trim() || undefined,
           metaDescription: categoryForm.metaDescription.trim() || undefined,
-          metaKeywords: categoryForm.metaKeywords.trim() || undefined,
+          metaKeywords: keywordsValue || undefined,
         });
       }
 
@@ -1766,7 +1851,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
   }
 
   useEffect(() => {
-    if (!["clients", "orders", "news", "catalog", "requests", "settings"].includes(activeKey)) {
+    if (!["clients", "orders", "news", "catalog", "requests", "settings", "seo"].includes(activeKey)) {
       setLoading(false);
       return;
     }
@@ -1796,6 +1881,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         const nextDiscounts = activeKey === "settings" && canManageCatalog ? await loadAdminDiscounts() : [];
         const nextAdmins = activeKey === "settings" && canManageCatalog ? await loadAdminUsers() : [];
         const nextUsers = activeKey === "clients" ? await loadUsers() : [];
+        const nextSeoPages = activeKey === "seo" ? await loadAdminSeoPages().catch(() => ({ items: [] as SeoPageView[] })) : null;
 
         if (!active) {
           return;
@@ -1837,6 +1923,9 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
         setCatalogForm((prev) => ({ ...prev, categoryId: prev.categoryId || nextCategories[0]?.id || "" }));
         setFilterParameterForm((prev) => ({ ...prev, groupId: prev.groupId || nextFilterGroups[0]?.id || "" }));
         setCatalogFilterParameterId((prev) => prev || nextFilterGroups[0]?.parameters?.[0]?.id || "");
+        if (nextSeoPages) {
+          setSeoPages(Object.fromEntries((nextSeoPages.items ?? []).map((item) => [item.key, item])));
+        }
         setError(null);
       } catch (nextError) {
         if (!active) {
@@ -2118,6 +2207,76 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
             <div className="mx-auto max-w-[1280px] 2xl:max-w-[1480px]">
               <h1 className="text-[34px] leading-none md:text-[46px] xl:text-[64px] [font-family:'Cormorant_Garamond',serif]">{title}</h1>
               {subtitle ? <p className="mt-4 text-[16px] text-[#7a7a75] md:text-[18px] xl:text-[20px]">{subtitle}</p> : null}
+
+              {activeKey === "seo" ? (
+                <div className="mt-10 border border-[#e8e3db] bg-white p-8">
+                  <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[12px] uppercase tracking-[3px] text-[#b1ada6] [font-family:Jaldi,'JetBrains_Mono',monospace]">SEO</p>
+                      <h2 className="mt-3 text-[28px] [font-family:'Cormorant_Garamond',serif]">Основные страницы</h2>
+                      <p className="mt-3 max-w-[760px] text-[16px] leading-7 text-[#7a7a75]">
+                        Для главных страниц задаются <span className="font-medium">заголовок</span> и <span className="font-medium">описание</span>, а ключевые слова формируются автоматически: заголовок + описание.
+                      </p>
+                    </div>
+
+                    <div className="w-full max-w-[520px]">
+                      <div className="admin-form-grid">
+                        <label className="admin-toolbar__label">
+                          Страница
+                          <select className="admin-input mt-2" value={seoPageKey} onChange={(event) => setSeoPageKey(event.target.value as (typeof seoPagesDirectory)[number]["key"])}>
+                            {seoPagesDirectory.map((item) => (
+                              <option key={item.key} value={item.key}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="admin-toolbar__label">
+                          Meta Title
+                          <input className="admin-input mt-2" value={seoPageForm.metaTitle} onChange={(event) => setSeoPageForm((prev) => ({ ...prev, metaTitle: event.target.value }))} placeholder="Заголовок страницы" />
+                        </label>
+                      </div>
+
+                      <label className="admin-toolbar__label mt-4">
+                        Meta Description
+                        <textarea className="admin-input admin-textarea mt-2" value={seoPageForm.metaDescription} onChange={(event) => setSeoPageForm((prev) => ({ ...prev, metaDescription: event.target.value }))} placeholder="Короткое описание страницы" />
+                      </label>
+
+                      <label className="admin-toolbar__label mt-4">
+                        Keywords (авто)
+                        <input
+                          className="admin-input mt-2"
+                          value={buildKeywordsFromTitleAndDescription(
+                            seoPageForm.metaTitle || seoPagesDirectory.find((item) => item.key === seoPageKey)?.label || "",
+                            seoPageForm.metaDescription,
+                          )}
+                          readOnly
+                        />
+                      </label>
+
+                      {seoError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{seoError}</p> : null}
+                      <div className="admin-form-actions">
+                        <button className="admin-action-btn" type="button" onClick={handleSeoPageSubmit} disabled={seoSaving}>
+                          Сохранить
+                        </button>
+                        <button
+                          className="admin-action-btn admin-action-btn--ghost"
+                          type="button"
+                          onClick={() =>
+                            setSeoPageForm({
+                              metaTitle: "",
+                              metaDescription: "",
+                            })
+                          }
+                          disabled={seoSaving}
+                        >
+                          Очистить
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {["clients", "orders", "news", "catalog"].includes(activeKey) ? (
                 <div className="mt-10 flex flex-col gap-4 rounded-[8px] border border-[#e8e3db] bg-white p-5 md:flex-row md:items-end">
@@ -2768,6 +2927,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                     <SeoFields
                       value={newsForm}
                       onChange={(field, nextValue) => setNewsForm((prev) => ({ ...prev, [field]: nextValue }))}
+                      keywordsPreview={buildKeywordsFromTitleAndDescription(
+                        newsForm.metaTitle || newsForm.title,
+                        newsForm.metaDescription || newsForm.excerpt,
+                      )}
                     />
                     {actionError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{actionError}</p> : null}
                     <div className="admin-form-actions">
@@ -2871,6 +3034,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                     <SeoFields
                       value={categoryForm}
                       onChange={(field, nextValue) => setCategoryForm((prev) => ({ ...prev, [field]: nextValue }))}
+                      keywordsPreview={buildKeywordsFromTitleAndDescription(
+                        categoryForm.metaTitle || categoryForm.name,
+                        categoryForm.metaDescription || categoryForm.description,
+                      )}
                     />
                     {actionError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{actionError}</p> : null}
                     <div className="admin-form-actions">
@@ -3290,6 +3457,18 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                     <SeoFields
                       value={catalogForm}
                       onChange={(field, nextValue) => setCatalogForm((prev) => ({ ...prev, [field]: nextValue }))}
+                      keywordsPreview={(() => {
+                        const categoryName = categories.find((item) => item.id === catalogForm.categoryId)?.name ?? "";
+                        const values = [
+                          catalogForm.name,
+                          categoryName,
+                          catalogForm.brandLabel || catalogForm.brand,
+                          catalogForm.sku,
+                        ]
+                          .map((item) => normalizeSeoText(item ?? ""))
+                          .filter(Boolean);
+                        return Array.from(new Set(values)).join(", ");
+                      })()}
                     />
                     {actionError ? <p className="mt-3 text-[14px] text-[#9b3d2f]">{actionError}</p> : null}
                     <div className="admin-form-actions">
@@ -3832,7 +4011,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                 </div>
               ) : null}
 
-              {!["clients", "orders", "news", "catalog", "requests", "settings"].includes(activeKey) ? (
+              {!["clients", "orders", "news", "catalog", "requests", "settings", "seo"].includes(activeKey) ? (
                 <SectionMessage
                   title="Раздел не подключен"
                   description="Для этого раздела в текущем backend нет подходящего endpoint, либо он не входит в текущий этап интеграции. Экран оставлен без полной API-интеграции."

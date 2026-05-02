@@ -1,0 +1,16 @@
+---
+import AdminSectionPage from "../../components/AdminSectionPage";
+import AdminShell from "../../layouts/AdminShell.astro";
+
+export const prerender = false;
+---
+
+<AdminShell title="SEO — Админка">
+  <AdminSectionPage
+    client:load
+    activeKey="seo"
+    title="SEO"
+    subtitle="Главная, О нас, Услуги, Каталог."
+  />
+</AdminShell>
+
