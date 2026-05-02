@@ -9,8 +9,10 @@
     "manager:create": "ts-node prisma/create-manager.ts",
     "services:seed-ventilation": "ts-node prisma/seed-ventilation-services.ts",
     "requests:clear": "ts-node prisma/clear-requests.ts",
+    "orders:clear": "ts-node prisma/clear-orders.ts",
     "dev": "npm run start:dev",
     "catalog:import": "ts-node prisma/import-catalog.ts",
+    "catalog:ensure-prochee": "ts-node prisma/ensure-category-prochee.ts",
     "catalog:backfill-showcase": "ts-node prisma/backfill-showcase-category-slugs.ts",
     "catalog:backfill-slugs": "ts-node prisma/backfill-product-slugs.ts",
     "products:clear": "ts-node prisma/clear-products.ts",
@@ -20,6 +22,7 @@
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
