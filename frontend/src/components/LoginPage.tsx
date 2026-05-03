@@ -41,21 +41,21 @@ export function LoginPage() {
 
         <section className="border-b border-[#ece8e1]">
           <div className="grid min-h-[calc(100svh-90px)] overflow-hidden xl:min-h-[calc(100svh-112px)] xl:grid-cols-[1.4fr_1fr]">
-            <div className="hidden items-center justify-center border-r border-[#ece8e1] bg-white p-6 xl:flex">
+             <div className="hidden items-center justify-center overflow-hidden border-r border-[#ece8e1] bg-white xl:flex">
               <img
-                src="/login/login-photo.png"
-                alt="Промышленная система"
+                src="/image/complex.jpg"
+                alt="Вентиляционные системы"
                 width="1600"
                 height="2100"
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
-                className="max-h-full w-auto max-w-full object-contain"
+                className="h-full w-full object-cover object-center"
               />
             </div>
 
-            <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-start xl:pl-10 xl:pr-16 xl:py-8">
-              <div className="w-full max-w-[560px] xl:mr-auto">
+            <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-center xl:justify-center xl:pl-10 xl:pr-16 xl:py-8">
+              <div className="w-full max-w-[560px]">
                 <p className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   <a href="/" className="hover:text-[#111]">Главная</a>
                   <span className="mx-2 text-[#b5b2ab]">/</span>

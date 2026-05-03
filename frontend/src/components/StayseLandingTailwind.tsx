@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import ServiceOrderModal from "./ServiceOrderModal";
+import BrandScroller from "./BrandScroller";
 
 const LazyHeroDesktopModel = lazy(() => import("./HeroDesktopModel"));
 const PRELOADER_TEXT = "подготавливаем каталог и инженерные решения";
@@ -804,109 +805,7 @@ export function StayseLandingTailwind() {
 
             <div className="mt-5 bg-white/98 px-0 py-3 xl:py-4 2xl:mt-12">
               <div className="xl:max-w-none">
-                <div className="sm:hidden">
-                  <div className="grid grid-cols-2 gap-2 px-3">
-                    {[...trustLogoTopRow, ...trustLogoBottomRow].map(({ path, alt }, index) => (
-                      <article
-                        key={`${path}-${index}`}
-                        className="flex h-[84px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-3 py-2"
-                      >
-                        <div className="flex h-[52px] w-full items-center justify-center">
-                          <img
-                            src={path}
-                            alt={alt}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-auto max-w-[clamp(120px,34vw,170px)] object-contain object-center"
-                          />
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="hidden sm:block xl:hidden">
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-4 gap-3">
-                      {trustLogoTopRow.map(({ path, alt }) => (
-                        <article
-                          key={path}
-                          className="group flex min-h-[112px] items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)]"
-                        >
-                          <div className="flex h-[clamp(58px,6vw,82px)] w-full items-center justify-center">
-                            <img
-                              src={path}
-                              alt={alt}
-                              loading="lazy"
-                              decoding="async"
-                              className="h-full w-auto max-w-[clamp(172px,16vw,248px)] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
-                            />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 sm:mx-auto sm:w-[86%]">
-                      {trustLogoBottomRow.map(({ path, alt }) => (
-                        <article
-                          key={path}
-                          className="group flex min-h-[112px] items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)]"
-                        >
-                          <div className="flex h-[clamp(58px,6vw,82px)] w-full items-center justify-center">
-                            <img
-                              src={path}
-                              alt={alt}
-                              loading="lazy"
-                              decoding="async"
-                              className="h-full w-auto max-w-[clamp(172px,16vw,248px)] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
-                            />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-
-                  </div>
-                </div>
-
-                <div className="hidden space-y-3 xl:block 2xl:space-y-4">
-                  <div className="grid grid-cols-7 gap-3 2xl:gap-4">
-                    {trustLogoDesktopTopRow.map(({ path, alt }, index) => (
-                      <article
-                        key={`${path}-${index}`}
-                        className="group flex h-[112px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] 2xl:h-[118px] 2xl:px-5"
-                      >
-                        <div className="flex h-[clamp(62px,4.6vw,90px)] w-full items-center justify-center">
-                          <img
-                            src={path}
-                            alt={alt}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-auto max-w-[clamp(180px,11vw,250px)] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
-                          />
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="mx-auto grid w-[calc(100%-96px)] grid-cols-6 gap-3 2xl:w-[calc(100%-120px)] 2xl:gap-4">
-                    {trustLogoDesktopBottomRow.map(({ path, alt }, index) => (
-                      <article
-                        key={`${path}-${index}`}
-                        className="group flex h-[112px] min-w-0 items-center justify-center rounded-[18px] border border-[#f1eee8] bg-white px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#e1d3bb] hover:shadow-[0_14px_28px_rgba(0,0,0,0.08)] 2xl:h-[118px] 2xl:px-5"
-                      >
-                        <div className="flex h-[clamp(62px,4.6vw,90px)] w-full items-center justify-center">
-                          <img
-                            src={path}
-                            alt={alt}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-auto max-w-[clamp(180px,11vw,250px)] object-contain object-center transition duration-300 ease-out group-hover:scale-[1.06] group-hover:[filter:drop-shadow(0_8px_16px_rgba(0,0,0,0.08))_contrast(1.06)]"
-                          />
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
+                <BrandScroller logos={[...trustLogoDesktopTopRow, ...trustLogoDesktopBottomRow]} className="w-full" />
               </div>
             </div>
 

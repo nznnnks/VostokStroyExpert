@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import SiteFooter from "./SiteFooter";
 import SiteHeader from "./SiteHeader";
 import type { NewsPostView } from "../lib/backend-api";
+import { brandLogos as aboutBrandLogos } from "../data/brands";
 
 const BLOG_ENABLED = false;
 
@@ -15,84 +16,6 @@ const aboutHeroStats = [
   { value: "15+", lines: ["лет инженерной", "практики"] },
   { value: "63+", lines: ["брендов в", "ассортименте"] },
 ] as const;
-
-const aboutBrandLogoFiles = [
-  "Chicha.png",
-  "El_Taco.png",
-  "Fish.png",
-  "KFC.png",
-  "The toy.png",
-  "aroundtheworld.png",
-  "artest.png",
-  "atrium.png",
-  "aviapark.png",
-  "belgian-beer-cafe.png",
-  "bijou.png",
-  "botanika.png",
-  "bowl-room.png",
-  "bruder.png",
-  "burger-king.png",
-  "chaichana_evroazia.png",
-  "chefs-table.png",
-  "chestnay_riba.png",
-  "christian-2.png",
-  "co-co-chalet.png",
-  "corner-burgers.png",
-  "dyuzhina.png",
-  "eli-satsibeli.png",
-  "enzo-2.png",
-  "erch.png",
-  "farshing.png",
-  "federationtower.png",
-  "folk.png",
-  "frank-by-basta-2.png",
-  "franklins-burger.png",
-  "gastormatket_balchug.png",
-  "gorilla-by-basta.png",
-  "gorynych.png",
-  "gruzinskie_kanikuli.png",
-  "hamster-2.png",
-  "hand-sign.png",
-  "hmelburg.png",
-  "il_patio.png",
-  "kabuki.png",
-  "kaspiyka.png",
-  "krasota.png",
-  "kvartiranti.png",
-  "moremania.png",
-  "narval.png",
-  "nevatowers.png",
-  "nino.png",
-  "papa-johns.png",
-  "port.png",
-  "red-chinese-logo.png",
-  "regent.png",
-  "restaurant-central-house-of-writers.png",
-  "rico-dom.png",
-  "rostics.png",
-  "sakhalin.png",
-  "sbarro.png",
-  "sber.png",
-  "sesilia.png",
-  "svarnya.png",
-  "syrovarnya.png",
-  "tanuki1.png",
-  "tashir-pizza.png",
-  "tehnikum.png",
-  "tsum.png",
-  "turquoise-circle-logo.png",
-  "ugolek.png",
-  "urok.png",
-  "vanwok.png",
-  "vokrug_sveta.png",
-  "white-rabbit.png",
-  "wilka_lojka.png",
-] as const;
-
-const aboutBrandLogos = aboutBrandLogoFiles.map((file) => ({
-  path: `/image/clear_logo/${encodeURIComponent(file)}`,
-  alt: file.replace(/\.png$/i, "").replace(/[_-]+/g, " "),
-}));
 
 const aboutBlog = [
   {

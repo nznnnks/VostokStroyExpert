@@ -7,6 +7,7 @@ export function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,21 +33,21 @@ export function RegisterPage() {
 
         <section className="border-b border-[#ece8e1]">
           <div className="grid min-h-[calc(100svh-90px)] overflow-hidden xl:min-h-[calc(100svh-112px)] xl:grid-cols-[1.4fr_1fr]">
-          <div className="hidden items-center justify-center border-r border-[#ece8e1] bg-white p-6 xl:flex">
+          <div className="hidden items-center justify-center overflow-hidden border-r border-[#ece8e1] bg-white xl:flex">
             <img
-              src="/register/register-photo.png"
-              alt="Геометрическая композиция"
+              src="/image/complex.jpg"
+              alt="Вентиляционные системы"
               width="1600"
               height="2100"
               loading="eager"
               decoding="async"
               fetchPriority="high"
-              className="max-h-full w-auto max-w-full object-contain"
+              className="h-full w-full object-cover object-center"
             />
           </div>
 
-          <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-start xl:pl-10 xl:pr-16 xl:py-8">
-            <div className="w-full max-w-[560px] xl:mr-auto">
+          <div className="flex items-start px-5 py-7 sm:px-8 md:px-12 md:py-9 xl:items-center xl:justify-center xl:pl-10 xl:pr-16 xl:py-8">
+            <div className="w-full max-w-[560px]">
               <p className="breadcrumb-nav uppercase tracking-[1.5px] text-[#7a7a75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 <a href="/" className="hover:text-[#111]">Главная</a>
                 <span className="mx-2 text-[#b5b2ab]">/</span>
@@ -85,14 +86,23 @@ export function RegisterPage() {
                 <label className="block">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Пароль</span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="••••••••"
-                    className="mt-3 h-12 w-full border-b border-[#d9d4cc] bg-transparent text-[clamp(1rem,1.25vw,1.25rem)] text-[#6d6d67] outline-none placeholder:text-[#c9c9c4]"
+                    className="mt-3 h-12 w-full border-b border-[#d9d4cc] bg-transparent pr-16 text-[clamp(1rem,1.25vw,1.25rem)] text-[#6d6d67] outline-none placeholder:text-[#c9c9c4]"
                     required
                     minLength={6}
+                    autoComplete="new-password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="mt-2 inline-flex w-full justify-end text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] transition hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  >
+                    {showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  </button>
                 </label>
 
                 {error ? <p className="text-[clamp(0.85rem,0.8vw,0.95rem)] leading-7 text-[#b24c47]">{error}</p> : null}

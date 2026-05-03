@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Center, useGLTF } from "@react-three/drei";
+import { Center, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 const HERO_BASE_ROTATION_Y = -Math.PI / 2;
@@ -217,7 +217,8 @@ function HeroModel({
   const readyRef = useRef(false);
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
-  const { scene } = useGLTF("/models/project_glb_1.glb?v=1");
+  // Bump query-string when model asset changes to avoid stale cached GLB on some devices.
+  const { scene } = useGLTF("/models/project_glb_1.glb?v=2");
   const clonedScene = useMemo(() => scene.clone(), [scene]);
   const fittedScale = useMemo(() => {
     const sphere = getRenderableBoundingSphere(clonedScene) ?? (() => {
@@ -368,14 +369,21 @@ export function HeroDesktopModel({ onReady }: { onReady?: () => void }) {
           gl.setClearColor(0x000000, 0);
           gl.setClearAlpha(0);
           gl.domElement.style.background = "transparent";
+          // Stabilize color/brightness across devices.
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 0.88;
+          // @ts-expect-error three.js type mismatch between versions
+          gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={1.5} />
-          <directionalLight position={[4, 6, 6]} intensity={2.8} color="#dfe8ff" />
-          <directionalLight position={[-5, 3, 1]} intensity={1.2} color="#7aa2ff" />
-          <spotLight position={[2, 8, 10]} angle={0.28} penumbra={0.9} intensity={34} color="#ffffff" />
-          <spotLight position={[7, 2, 3]} angle={0.42} penumbra={1} intensity={14} color="#a7c2ff" />
+          {/* Image-based lighting so metallic parts don't look black on some devices */}
+          <Environment preset="city" background={false} resolution={128} environmentIntensity={0.9} />
+          <ambientLight intensity={0.62} />
+          <directionalLight position={[4, 6, 6]} intensity={1.2} color="#dfe8ff" />
+          <directionalLight position={[-5, 3, 1]} intensity={0.85} color="#7aa2ff" />
+          <spotLight position={[2, 8, 10]} angle={0.28} penumbra={0.9} intensity={22} color="#ffffff" />
+          <spotLight position={[7, 2, 3]} angle={0.42} penumbra={1} intensity={9} color="#a7c2ff" />
           <HeroModel
             mouse={mouseRef}
             layout={layout}
