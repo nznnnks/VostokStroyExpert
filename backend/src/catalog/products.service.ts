@@ -112,6 +112,27 @@ type LandingCategoryDefinition = {
 const LANDING_CATEGORY_DEFINITIONS: LandingCategoryDefinition[] = SHOWCASE_CATEGORY_DEFINITIONS;
 export const UNCATEGORIZED_SHOWCASE_SLUG = 'uncategorized';
 export const KNOWN_SHOWCASE_SLUGS = SHOWCASE_CATEGORY_DEFINITIONS.map((item) => item.slug);
+const SHOWCASE_TYPE_PRIORITY: Record<string, Record<string, number>> = {
+  'split-sistemy': {
+    'Бытовые сплит-системы': 100,
+  },
+};
+
+function sortShowcaseTypes(
+  showcaseSlug: string,
+  left: { type: string; count: number },
+  right: { type: string; count: number },
+) {
+  const priorities = SHOWCASE_TYPE_PRIORITY[showcaseSlug];
+  const leftPriority = priorities?.[left.type] ?? 0;
+  const rightPriority = priorities?.[right.type] ?? 0;
+
+  return (
+    rightPriority - leftPriority ||
+    right.count - left.count ||
+    left.type.localeCompare(right.type, 'ru')
+  );
+}
 
 @Injectable()
 export class ProductsService {
@@ -378,8 +399,8 @@ export class ProductsService {
       category: definition.name,
       slug: definition.slug,
       count: categoryCountMap.get(definition.slug)?.count ?? 0,
-      types: (categoryTypeMap.get(definition.slug) ?? []).sort(
-        (left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru'),
+      types: (categoryTypeMap.get(definition.slug) ?? []).sort((left, right) =>
+        sortShowcaseTypes(definition.slug, left, right),
       ),
     }));
 
@@ -403,8 +424,8 @@ export class ProductsService {
         ? findShowcaseCategoryDefinition(selectedCategory.trim())
         : undefined;
     const currentCategoryTypes = selectedDefinition
-      ? (categoryTypeMap.get(selectedDefinition.slug) ?? []).sort(
-          (left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru'),
+      ? (categoryTypeMap.get(selectedDefinition.slug) ?? []).sort((left, right) =>
+          sortShowcaseTypes(selectedDefinition.slug, left, right),
         )
       : [];
 
@@ -981,7 +1002,7 @@ export class ProductsService {
         count: item.count,
         types: Array.from(item.types.entries())
           .map(([type, count]) => ({ type, count }))
-          .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru')),
+          .sort((left, right) => sortShowcaseTypes(item.slug, left, right)),
       }));
 
     const collectDescendantIds = (ids: string[]) => {
@@ -1094,7 +1115,7 @@ export class ProductsService {
         count: item.count,
       }))
       .filter((item) => item.count > 0)
-      .sort((left, right) => right.count - left.count || left.type.localeCompare(right.type, 'ru'));
+      .sort((left, right) => sortShowcaseTypes(selectedDefinition?.slug ?? selectedCategory?.trim() ?? '', left, right));
 
     const filtersMap = new Map<
       string,
