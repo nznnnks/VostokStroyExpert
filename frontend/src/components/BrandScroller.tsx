@@ -9,7 +9,7 @@ export default function BrandScroller({
   logos,
   className = "",
   itemClassName = "",
-  speed = 18,
+  speed = 28,
 }: {
   logos: BrandLogo[];
   className?: string;
@@ -51,6 +51,9 @@ export default function BrandScroller({
       if (!lastTime) lastTime = now;
       const dt = Math.min(48, now - lastTime);
       lastTime = now;
+
+      // Autoscroll only when we have an actual overflow.
+      if (viewport.scrollWidth <= viewport.clientWidth + 8) return;
 
       viewport.scrollLeft += (speed * dt) / 1000;
 

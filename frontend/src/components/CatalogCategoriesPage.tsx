@@ -25,9 +25,13 @@ export function CatalogCategoriesPage({ products }: CatalogCategoriesPageProps) 
       if (!prev) {
         map.set(product.category, { count: 1, image: product.image });
       } else {
+        const candidate = product.image || "";
+        const nextImage =
+          prev.image && candidate ? (candidate.localeCompare(prev.image) < 0 ? candidate : prev.image) : prev.image || candidate;
         map.set(product.category, {
           count: prev.count + 1,
-          image: prev.image || product.image,
+          // Pick a deterministic image so it doesn't change between reloads when product ordering changes.
+          image: nextImage,
         });
       }
     }

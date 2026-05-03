@@ -114,7 +114,7 @@ type ApiCatalogMeta = {
     category: string;
     slug: string;
     count: number;
-    types: Array<{ type: string; count: number }>;
+    types: Array<{ type: string; slug: string; count: number }>;
   }>;
   currentCategoryTypes: Array<{ type: string; slug: string; count: number }>;
   dynamicFilters: Array<{

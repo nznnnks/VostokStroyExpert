@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { formatPrice, type Product } from "../data/products";
 import { loadCatalogListing, type CatalogListingResponse } from "../lib/catalog-api";
 import { slugify } from "../lib/slug";
+import { getStableCategoryImage } from "../lib/category-images";
 import {
   SESSION_CART_UPDATED_EVENT,
   addProductToSessionCart,
@@ -90,7 +91,11 @@ export function CatalogPage({
   const categoryTypeTree = isLanding ? landingCategoryTreeRef.current : catalogMeta.categoryTypeTree;
   const currentCategoryTypeOptions = catalogMeta.currentCategoryTypes;
   const categoryCards = useMemo(
-    () => catalogMeta.categoryCards.map((item) => ({ ...item, image: item.image ?? "/catalog/product-1.png" })),
+    () =>
+      catalogMeta.categoryCards.map((item) => ({
+        ...item,
+        image: getStableCategoryImage(item.slug, item.image),
+      })),
     [catalogMeta.categoryCards],
   );
   const brands = catalogMeta.brands;
@@ -755,9 +760,23 @@ export function CatalogPage({
     }
 
     if (typesFromQuery.length > 0) {
-      const matchedTypes = types.filter((type) => typesFromQuery.some((item) => item.toLowerCase() === type.toLowerCase()));
-      if (matchedTypes.length > 0) {
+      const looksLikeSlug = (value: string) => /^[a-z0-9-]+$/.test(value);
+
+      if (typesFromQuery.every(looksLikeSlug)) {
+        const allowed = new Set(
+          categoryTypeTree.flatMap((entry) => entry.types.map((type) => type.slug.toLowerCase())),
+        );
+        const matched = typesFromQuery.filter((value) => allowed.has(value.toLowerCase()));
+        if (matched.length > 0) {
+          setSelectedTypes(matched);
+        }
+      } else {
+        const matchedTypes = types.filter((type) =>
+          typesFromQuery.some((item) => item.toLowerCase() === type.toLowerCase()),
+        );
+        if (matchedTypes.length > 0) {
           setSelectedTypes(matchedTypes);
+        }
       }
     }
 
@@ -773,7 +792,7 @@ export function CatalogPage({
     setSearchInput(brandFromQuery);
     setQuery(brandFromQuery);
     setPage(1);
-  }, [brands]);
+  }, [brands, categoryTypeTree, types]);
 
   useEffect(() => {
     if (suppressCatalogReloadRef.current) {
@@ -1092,12 +1111,12 @@ export function CatalogPage({
                         aria-hidden={!isExpanded}
                       >
                         <div className="catalog-category-accordion__inner mt-3 space-y-3">
-                          {item.types.map(({ type, count }) => (
-                            <label key={type} className="flex items-center gap-4 text-[16px] text-[#6f6f69]">
+                          {item.types.map(({ type, slug, count }) => (
+                            <label key={slug} className="flex items-center gap-4 text-[16px] text-[#6f6f69]">
                               <input
                                 type="checkbox"
-                                checked={selectedTypes.includes(type)}
-                                onChange={() => toggleValue(type, selectedTypes, setSelectedTypes)}
+                                checked={selectedTypes.includes(slug)}
+                                onChange={() => toggleValue(slug, selectedTypes, setSelectedTypes)}
                                 className="catalog-checkbox h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
                               />
                               <span className="min-w-0">
