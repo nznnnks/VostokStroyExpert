@@ -169,9 +169,6 @@ export function CatalogPage({
 
       if (pendingOverlayScrollRef.current === "results") {
         pendingOverlayScrollRef.current = "restore";
-        window.requestAnimationFrame(() => {
-          resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
       }
     };
   }, [allFiltersOpen, filtersOpen]);
@@ -639,8 +636,6 @@ export function CatalogPage({
       hasMountedQueryEffectRef.current = true;
       return;
     }
-    if (!resultsTopRef.current) return;
-    resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [query]);
 
   useEffect(() => {
@@ -788,9 +783,6 @@ export function CatalogPage({
 
     void loadCatalogPage(1, "replace");
     setPage(1);
-    if (resultsTopRef.current) {
-      resultsTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
   }, [
     query,
     selectedCategory,
@@ -1537,11 +1529,11 @@ export function CatalogPage({
   function renderCategoryTiles() {
     return (
       <section>
-        <div className="flex items-end justify-between gap-6">
-          <h2 className="text-[20px] uppercase tracking-[1.6px] md:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+        <div className="relative flex items-center justify-center gap-6">
+          <h2 className="w-full text-center text-[20px] uppercase tracking-[1.2px] md:text-[22px] [font-family:'TT_Firs_Neue',TT_Firs_Neue,DM_Sans,Manrope,sans-serif]">
             Категории
           </h2>
-          <span className="text-[13px] uppercase tracking-[1.3px] text-[#7a7a75] md:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+          <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[13px] uppercase tracking-[1.3px] text-[#7a7a75] md:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             Выберите раздел
           </span>
         </div>
@@ -1735,7 +1727,7 @@ export function CatalogPage({
             </div>
 
             <div className="flex-1">
-              {isLanding && !hasActiveFilters ? <div className="mb-10">{renderCategoryTiles()}</div> : null}
+              {isLanding && !hasActiveFilters ? <div className="-mt-14 mb-10 md:-mt-18">{renderCategoryTiles()}</div> : null}
 
               {isLanding ? (
                 <div className="mb-6 md:mb-8">
