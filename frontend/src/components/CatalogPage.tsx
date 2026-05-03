@@ -1529,8 +1529,8 @@ export function CatalogPage({
   function renderCategoryTiles() {
     return (
       <section>
-        <div className="flex flex-col items-center gap-1 text-center md:relative md:flex-row md:items-center md:justify-center md:gap-6">
-          <h2 className="w-full text-center text-[18px] uppercase tracking-[1.1px] md:text-[22px] [font-family:'TT_Firs_Neue',TT_Firs_Neue,DM_Sans,Manrope,sans-serif]">
+        <div className="flex flex-col items-start gap-1 text-left md:relative md:flex-row md:items-start md:justify-start md:gap-6">
+          <h2 className="w-full text-left text-[18px] uppercase tracking-[1.6px] md:mt-[18px] md:text-[22px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
             Категории
           </h2>
           <span className="text-[11px] uppercase tracking-[1.2px] text-[#7a7a75] md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2 md:text-[14px] md:tracking-[1.3px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
@@ -1553,15 +1553,15 @@ export function CatalogPage({
                 getCategorySizeClass(category.slug, index),
               ].join(" ")}
             >
-              <div className="flex min-h-0 flex-1 items-center justify-center bg-[#ffffff] px-3 py-3 md:px-4 md:py-4">
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-[#ffffff] px-3 pb-2 pt-3 md:px-4 md:pb-3 md:pt-4">
                 {category.image ? (
-                  <div className="flex h-full w-full items-center justify-center transition-transform duration-300 group-hover:scale-[1.04]">
+                  <div className="flex h-full w-full items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-[1.04]">
                     <img
                       src={category.image}
                       alt={category.name}
                       loading="lazy"
                       className={[
-                        "h-full max-h-full w-full max-w-full object-contain object-center transition-transform duration-300",
+                        "h-auto max-h-full w-auto max-w-full object-contain object-center transition-transform duration-300",
                         getCategoryImageClass(category.slug),
                       ].join(" ")}
                     />
@@ -1571,8 +1571,8 @@ export function CatalogPage({
                 )}
               </div>
 
-              <div className="shrink-0 bg-[#ffffff] px-3 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2">
-                <h3 className="text-[13px] font-medium leading-[1.2] md:text-[14px] [font-family:Manrope,system-ui]">{category.name}</h3>
+              <div className="shrink-0 bg-[#ffffff] px-3 pb-4 pt-2 text-center md:px-4 md:pb-4 md:pt-2">
+                <h3 className="text-[13px] leading-[1.2] md:text-[14px] [font-family:'TT_Firs_Neue',TT_Firs_Neue,DM_Sans,Manrope,sans-serif]">{category.name}</h3>
               </div>
             </a>
           ))}
@@ -1727,7 +1727,7 @@ export function CatalogPage({
             </div>
 
             <div className="flex-1">
-              {isLanding && !hasActiveFilters ? <div className="mb-10 md:-mt-18">{renderCategoryTiles()}</div> : null}
+              {isLanding && !hasActiveFilters ? <div className="mb-10 md:-mt-24">{renderCategoryTiles()}</div> : null}
 
               {isLanding ? (
                 <div className="mb-6 md:mb-8">
