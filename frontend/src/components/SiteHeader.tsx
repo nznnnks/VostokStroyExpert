@@ -345,9 +345,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     <>
       <header
         ref={searchRef}
-        className={`sticky top-0 z-[260] isolate transition-[padding-bottom,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] [overflow-anchor:none] ${
-          light && isScrolled ? "bg-[#f3efe8] pb-4 md:pb-5" : "bg-transparent pb-0"
-        }`}
+        className="sticky top-0 z-[140] isolate [overflow-anchor:none]"
       >
         {/* When `fullBleed` is enabled, keep the static header edge-to-edge. */}
         {/**
@@ -392,7 +390,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
             className={`${fullBleed && !isScrolled ? "w-full max-w-none" : "mx-auto max-w-[1480px] 2xl:max-w-[1860px]"} relative mt-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-3.5 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-8 md:py-4 lg:grid-cols-[minmax(220px,auto)_minmax(0,1fr)_auto] lg:gap-5 xl:gap-6 xl:px-12 2xl:px-16 ${
               isScrolled
                 ? light
-                  ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] border border-[#1b1b1b]/24 bg-[#e1ddd6] shadow-[0_18px_38px_rgba(0,0,0,0.16),0_0_0_1px_rgba(17,17,17,0.06)] md:backdrop-blur-md 2xl:max-w-[1760px]"
+                  ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] bg-[#e1ddd6] shadow-[0_18px_38px_rgba(0,0,0,0.12)] md:backdrop-blur-md 2xl:max-w-[1760px]"
                   : "max-w-[1420px] rounded-[28px] border border-white/14 bg-black/55 shadow-[0_12px_34px_rgba(0,0,0,0.24)] md:backdrop-blur-md 2xl:max-w-[1760px]"
                 : light
                   ? "rounded-none border-b border-[#ece8e1] bg-[#e1ddd6] shadow-[0_0_0_rgba(0,0,0,0)]"
