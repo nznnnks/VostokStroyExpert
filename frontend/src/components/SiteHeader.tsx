@@ -345,7 +345,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     <>
       <header
         ref={searchRef}
-        className="sticky top-0 z-[140] isolate [overflow-anchor:none]"
+        className="sticky top-0 z-[260] isolate [overflow-anchor:none]"
       >
         {/* When `fullBleed` is enabled, keep the static header edge-to-edge. */}
         {/**
