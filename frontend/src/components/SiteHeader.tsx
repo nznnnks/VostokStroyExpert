@@ -12,6 +12,7 @@ type SiteHeaderProps = {
 };
 
 const PAGE_TRANSITION_TEXT = "открываем раздел climatrade";
+const WHATSAPP_URL = "https://wa.me/79895789929";
 
 function isCatalogPath(pathname: string) {
   return pathname === "/catalog" || pathname.startsWith("/catalog/");
@@ -468,6 +469,17 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
             </a>
             <div className="hidden items-center gap-0.5 md:flex xl:gap-1.5 2xl:gap-2">
               <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="WhatsApp"
+                className={`inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
+              >
+                <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[22px] w-[22px] object-contain" />
+              </a>
+              <a
                 href="https://t.me/vostok_support"
                 target="_blank"
                 rel="noreferrer"
@@ -529,6 +541,17 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 </a>
               ) : (
                 <>
+                  <a
+                    href={WHATSAPP_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="WhatsApp"
+                    className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-10 sm:w-10 ${
+                      light ? "text-[#111]" : "text-white"
+                    }`}
+                  >
+                    <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[17px] w-[17px] object-contain" />
+                  </a>
                   <a
                     href="#"
                     aria-label="MAX"
