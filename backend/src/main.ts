@@ -28,7 +28,29 @@ async function bootstrap() {
   // Production deployments often proxy only `/api/*` to the backend. Expose uploads there too.
   app.useStaticAssets(uploadsPath, { prefix: '/api/uploads/' });
   app.enableCors({
-    origin: ['http://localhost:4321', 'http://127.0.0.1:4321'],
+    origin: (origin, callback) => {
+      // Non-browser requests (curl, server-to-server) typically don't send Origin.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const allowedOrigins = new Set([
+        'http://localhost:4321',
+        'http://127.0.0.1:4321',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://climatrade.store',
+        'https://www.climatrade.store',
+      ]);
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS: origin ${origin} is not allowed`), false);
+    },
     credentials: true,
   });
   app.useGlobalPipes(
