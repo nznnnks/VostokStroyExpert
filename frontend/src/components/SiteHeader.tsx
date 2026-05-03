@@ -13,6 +13,8 @@ type SiteHeaderProps = {
 
 const PAGE_TRANSITION_TEXT = "открываем раздел climatrade";
 const WHATSAPP_URL = "https://wa.me/79895789929";
+const TELEGRAM_URL = "https://t.me/climatradestore";
+const MAX_URL = "https://max.ru/u/f9LHodD0cOJo7dLiHlqrUdR0RfIa_Y5BkOtoxhE8EC3A1GGfcX0nGghaKyw";
 
 function isCatalogPath(pathname: string) {
   return pathname === "/catalog" || pathname.startsWith("/catalog/");
@@ -343,7 +345,9 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     <>
       <header
         ref={searchRef}
-        className="sticky top-0 z-[140] isolate [overflow-anchor:none]"
+        className={`sticky top-0 z-[260] isolate transition-[padding-bottom,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] [overflow-anchor:none] ${
+          light && isScrolled ? "bg-[#f3efe8] pb-4 md:pb-5" : "bg-transparent pb-0"
+        }`}
       >
         {/* When `fullBleed` is enabled, keep the static header edge-to-edge. */}
         {/**
@@ -385,10 +389,10 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
         ) : null}
         <div className={`${fullBleed && !isScrolled ? "px-0" : "px-2 md:px-4"} pt-0`}>
           <div
-            className={`${fullBleed && !isScrolled ? "w-full max-w-none" : "mx-auto max-w-[1480px] 2xl:max-w-[1860px]"} relative mt-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-3.5 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-10 md:py-4 xl:gap-6 xl:px-12 2xl:px-16 ${
+            className={`${fullBleed && !isScrolled ? "w-full max-w-none" : "mx-auto max-w-[1480px] 2xl:max-w-[1860px]"} relative mt-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3.5 py-3.5 transition-[max-width,margin-top,border-radius,background-color,border-color,box-shadow,backdrop-filter,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform md:grid-cols-[auto_1fr_auto] md:gap-4 md:px-8 md:py-4 lg:grid-cols-[minmax(220px,auto)_minmax(0,1fr)_auto] lg:gap-5 xl:gap-6 xl:px-12 2xl:px-16 ${
               isScrolled
                 ? light
-                  ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] border border-[#1b1b1b]/24 bg-[#e1ddd6] shadow-[0_10px_28px_rgba(0,0,0,0.14),0_0_0_1px_rgba(17,17,17,0.06)] md:backdrop-blur-md 2xl:max-w-[1760px]"
+                  ? "md:mt-3 max-w-[1420px] translate-y-0 rounded-[22px] md:rounded-[28px] border border-[#1b1b1b]/24 bg-[#e1ddd6] shadow-[0_18px_38px_rgba(0,0,0,0.16),0_0_0_1px_rgba(17,17,17,0.06)] md:backdrop-blur-md 2xl:max-w-[1760px]"
                   : "max-w-[1420px] rounded-[28px] border border-white/14 bg-black/55 shadow-[0_12px_34px_rgba(0,0,0,0.24)] md:backdrop-blur-md 2xl:max-w-[1760px]"
                 : light
                   ? "rounded-none border-b border-[#ece8e1] bg-[#e1ddd6] shadow-[0_0_0_rgba(0,0,0,0)]"
@@ -410,7 +414,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               />
             </a>
           <nav
-            className={`hidden items-center justify-center gap-[clamp(18px,1.8vw,48px)] text-[clamp(14px,0.6vw+12px,21px)] uppercase tracking-[1.4px] lg:absolute lg:left-1/2 lg:top-1/2 lg:flex lg:-translate-x-1/2 lg:-translate-y-1/2 [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+            className={`hidden min-w-0 items-center justify-center justify-self-center gap-4 text-[14px] uppercase tracking-[1px] lg:flex xl:gap-[clamp(18px,1.8vw,38px)] xl:text-[clamp(15px,0.45vw+12px,20px)] xl:tracking-[1.4px] [font-family:Jaldi,'JetBrains_Mono',monospace] ${
               light ? "text-[#6d6d67]" : "text-white/80"
             }`}
           >
@@ -425,7 +429,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               </a>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center justify-end gap-1 md:gap-4 xl:gap-5 2xl:gap-6">
+          <div className="flex shrink-0 items-center justify-end gap-1 md:gap-3 lg:gap-1.5 xl:gap-4 2xl:gap-6">
             <button
               type="button"
               aria-label="Открыть поиск по каталогу"
@@ -488,31 +492,31 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 </span>
               ) : null}
             </a>
-            <div className="hidden items-center gap-0.5 md:flex xl:gap-1.5 2xl:gap-2">
+            <div className="hidden items-center gap-0 md:flex lg:hidden">
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="WhatsApp"
-                className={`inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
+                className={`inline-flex h-8 w-8 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 ${
                   light ? "text-[#111]" : "text-white"
                 }`}
               >
-                <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[22px] w-[22px] object-contain" />
+                <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[15px] w-[15px] object-contain" />
               </a>
               <a
-                href="https://t.me/vostok_support"
+                href={TELEGRAM_URL}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Telegram"
-                className={`inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125 ${
+                className={`inline-flex h-8 w-8 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 ${
                   light ? "text-[#111]" : "text-white"
                 }`}
               >
                 <svg
                   viewBox="0 0 24 24"
-                  width="22"
-                  height="22"
+                  width="15"
+                  height="15"
                   aria-hidden="true"
                   fill="currentColor"
                 >
@@ -520,14 +524,62 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                 </svg>
               </a>
               <a
-                href="#"
+                href={MAX_URL}
+                target="_blank"
+                rel="noreferrer"
                 aria-label="MAX"
-                className="inline-flex h-12 w-12 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 xl:scale-110 2xl:scale-125"
+                className="inline-flex h-8 w-8 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70"
               >
                 <img
                   src="/max-logo.svg"
                   alt="MAX"
-                  className="h-8 w-8 rounded-[8px] object-contain"
+                  className="h-5 w-5 rounded-[5px] object-contain"
+                />
+              </a>
+            </div>
+            <div className="hidden items-center gap-0.5 lg:flex lg:gap-0 xl:gap-1 2xl:gap-2">
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="WhatsApp"
+                className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 lg:h-9 lg:w-9 xl:h-11 xl:w-11 2xl:h-12 2xl:w-12 xl:scale-105 2xl:scale-125 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
+              >
+                <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px] object-contain xl:h-[22px] xl:w-[22px]" />
+              </a>
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Telegram"
+                className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 lg:h-9 lg:w-9 xl:h-11 xl:w-11 2xl:h-12 2xl:w-12 xl:scale-105 2xl:scale-125 ${
+                  light ? "text-[#111]" : "text-white"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  aria-hidden="true"
+                  fill="currentColor"
+                  className="xl:h-[22px] xl:w-[22px]"
+                >
+                  <path d="M21.9 4.6c.2-.8-.7-1.5-1.5-1.1L2.7 10.6c-.9.4-.8 1.7.1 2l4.6 1.5 1.8 5.6c.3.9 1.5 1 2 .2l2.6-4.1 4.9 3.6c.8.6 1.9.1 2.1-.9l2.1-14.9zM8.6 13.4l9.8-6c.2-.1.5.1.3.3l-8 7.3-.3 3.9-1.7-5.3z" />
+                </svg>
+              </a>
+              <a
+                href={MAX_URL}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="MAX"
+                className="inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 lg:h-9 lg:w-9 xl:h-11 xl:w-11 2xl:h-12 2xl:w-12 xl:scale-105 2xl:scale-125"
+              >
+                <img
+                  src="/max-logo.svg"
+                  alt="MAX"
+                  className="h-6 w-6 rounded-[6px] object-contain xl:h-8 xl:w-8 xl:rounded-[8px]"
                 />
               </a>
             </div>
@@ -574,7 +626,9 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     <img src="/whatsapp.svg" alt="" aria-hidden="true" className="h-[17px] w-[17px] object-contain" />
                   </a>
                   <a
-                    href="#"
+                    href={MAX_URL}
+                    target="_blank"
+                    rel="noreferrer"
                     aria-label="MAX"
                     className={`inline-flex h-10 w-10 items-center justify-center transition duration-300 ease-out hover:-translate-y-0.5 hover:opacity-70 sm:h-10 sm:w-10 ${
                       light ? "text-[#111]" : "text-white"
@@ -587,7 +641,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
                     />
                   </a>
                   <a
-                    href="https://t.me/vostok_support"
+                    href={TELEGRAM_URL}
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Telegram"
@@ -616,7 +670,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
               )}
             </div>
             <AuthHeaderButton
-              className={`hidden h-[clamp(40px,3.2vw,60px)] place-items-center px-[clamp(18px,2vw,38px)] text-center text-[clamp(15px,0.6vw+12.5px,20px)] uppercase leading-none tracking-[1.2px] transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,0,0,0.14)] sm:inline-grid [font-family:Jaldi,'JetBrains_Mono',monospace] xl:h-[64px] xl:px-11 2xl:h-[68px] 2xl:px-12 ${
+              className={`hidden h-[40px] place-items-center px-4 text-center text-[14px] uppercase leading-none tracking-[1px] transition duration-300 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,0,0,0.14)] md:inline-grid [font-family:Jaldi,'JetBrains_Mono',monospace] lg:h-[38px] lg:px-3.5 xl:h-[64px] xl:px-11 xl:text-[clamp(14px,0.45vw+12px,20px)] xl:tracking-[1.1px] 2xl:h-[68px] 2xl:px-12 ${
                 light
                   ? "bg-[#050505] text-white"
                   : "border border-white/20 bg-white/10 text-white"
@@ -805,7 +859,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
         </div>
       ) : null}
       {isOpen ? (
-        <div className="fixed inset-0 z-[200] md:hidden">
+        <div className="fixed inset-0 z-[320] lg:hidden">
           <button
             type="button"
             aria-label="Закрыть меню"

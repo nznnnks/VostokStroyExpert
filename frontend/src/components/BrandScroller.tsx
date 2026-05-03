@@ -64,12 +64,10 @@ export default function BrandScroller({
       const dt = Math.min(48, now - lastTime);
       lastTime = now;
 
-      // Autoscroll only when we have an actual overflow.
       if (viewport.scrollWidth <= viewport.clientWidth + 8) return;
 
       viewport.scrollLeft += (speed * dt) / 1000;
 
-      // Seamless loop: list is duplicated twice, so we can wrap at half width.
       const half = track.scrollWidth / 2;
       if (half > 0 && viewport.scrollLeft >= half) {
         viewport.scrollLeft -= half;
@@ -95,9 +93,9 @@ export default function BrandScroller({
 
     const onWheel = (event: WheelEvent) => {
       if (!isPointerInside) return;
-      // Convert vertical wheel to horizontal scroll inside the brands area.
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
       event.preventDefault();
-      viewport.scrollLeft += event.deltaY + event.deltaX;
+      viewport.scrollLeft += event.deltaX;
       bumpInteraction();
     };
 

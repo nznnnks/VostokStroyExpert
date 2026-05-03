@@ -991,6 +991,9 @@ body {
 
 .catalog-checkbox {
   appearance: none;
+  flex: none;
+  flex-shrink: 0;
+  display: inline-block;
   border-radius: 0.35rem;
   background: #fff;
 }

@@ -151,17 +151,19 @@ export class ProductsService {
       },
     });
     const categoryIds = this.resolveCategoryIds(query.category, categories);
-    const landingTypeCategoryIds = this.resolveLandingTypeCategoryIds(query, categories);
+    const requestedTypeSelection = this.resolveTypeSelection(query.types, categories);
+    const landingTypeSelection = this.resolveLandingTypeSelection(query, categories);
     const limit = query.limit;
     const page = query.page;
-    const publicWhere = this.buildPublicCatalogWhere(query, categoryIds, landingTypeCategoryIds);
+    const publicWhere = this.buildPublicCatalogWhere(query, categoryIds, requestedTypeSelection, landingTypeSelection);
     const cachedMetadata = query.includeMeta ? this.getCachedCatalogMetadata(query) : null;
     const metadataSqlWhere =
       query.includeMeta && !cachedMetadata
         ? this.buildPublicCatalogSqlWhere(
             { ...query, minPrice: undefined, maxPrice: undefined },
             categoryIds,
-            landingTypeCategoryIds,
+            requestedTypeSelection,
+            landingTypeSelection,
           )
         : null;
 
@@ -696,7 +698,8 @@ export class ProductsService {
       | 'numericFilters'
     >,
     categoryIds: string[] = [],
-    landingTypeCategoryIds: string[] = [],
+    requestedTypeSelection: { ids: string[]; slugs: string[]; names: string[] } = { ids: [], slugs: [], names: [] },
+    landingTypeSelection: { ids: string[]; slugs: string[]; names: string[] } = { ids: [], slugs: [], names: [] },
   ): Prisma.ProductWhereInput {
     const and: Prisma.ProductWhereInput[] = [{ status: ProductStatus.ACTIVE }];
     const search = query.search?.trim();
@@ -724,8 +727,25 @@ export class ProductsService {
 
     if (landingDefinition) {
       and.push({ showcaseCategorySlug: landingDefinition.slug });
-      if (landingTypeCategoryIds.length > 0) {
-        and.push({ categoryId: { in: landingTypeCategoryIds } });
+      if (
+        landingTypeSelection.ids.length > 0 ||
+        landingTypeSelection.slugs.length > 0 ||
+        landingTypeSelection.names.length > 0
+      ) {
+        and.push({
+          OR: [
+            ...(landingTypeSelection.ids.length > 0 ? [{ categoryId: { in: landingTypeSelection.ids } }] : []),
+            ...(landingTypeSelection.slugs.length > 0
+              ? [{ category: { slug: { in: landingTypeSelection.slugs } } }]
+              : []),
+            ...(landingTypeSelection.names.length > 0
+              ? [
+                  { category: { name: { in: landingTypeSelection.names } } },
+                  { type: { in: landingTypeSelection.names } },
+                ]
+              : []),
+          ],
+        });
       }
     } else if (query.category === UNCATEGORIZED_SHOWCASE_SLUG) {
       and.push({
@@ -749,7 +769,20 @@ export class ProductsService {
     }
 
     if (!landingDefinition && query.types.length > 0) {
-      and.push({ type: { in: query.types } });
+      and.push({
+        OR: [
+          ...(requestedTypeSelection.ids.length > 0 ? [{ categoryId: { in: requestedTypeSelection.ids } }] : []),
+          ...(requestedTypeSelection.slugs.length > 0
+            ? [{ category: { slug: { in: requestedTypeSelection.slugs } } }]
+            : []),
+          ...(requestedTypeSelection.names.length > 0
+            ? [
+                { category: { name: { in: requestedTypeSelection.names } } },
+                { type: { in: requestedTypeSelection.names } },
+              ]
+            : []),
+        ],
+      });
     }
 
     if (typeof query.minPrice === 'number' || typeof query.maxPrice === 'number') {
@@ -828,7 +861,8 @@ export class ProductsService {
       | 'numericFilters'
     >,
     categoryIds: string[] = [],
-    landingTypeCategoryIds: string[] = [],
+    requestedTypeSelection: { ids: string[]; slugs: string[]; names: string[] } = { ids: [], slugs: [], names: [] },
+    landingTypeSelection: { ids: string[]; slugs: string[]; names: string[] } = { ids: [], slugs: [], names: [] },
   ) {
     const isUuidString = (value: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -860,11 +894,32 @@ export class ProductsService {
     const landingDefinition = findShowcaseCategoryDefinition(query.category);
     if (landingDefinition) {
       conditions.push(Prisma.sql`p."showcaseCategorySlug" = ${landingDefinition.slug}`);
-      if (landingTypeCategoryIds.length > 0) {
-        const uuidCategoryIds = landingTypeCategoryIds.filter(isUuidString).map((id) => Prisma.sql`${id}::uuid`);
-        if (uuidCategoryIds.length > 0) {
-          conditions.push(Prisma.sql`p."categoryId" in (${Prisma.join(uuidCategoryIds)})`);
-        }
+      const landingTypeParts: Prisma.Sql[] = [];
+      const uuidCategoryIds = landingTypeSelection.ids.filter(isUuidString).map((id) => Prisma.sql`${id}::uuid`);
+      if (uuidCategoryIds.length > 0) {
+        landingTypeParts.push(Prisma.sql`p."categoryId" in (${Prisma.join(uuidCategoryIds)})`);
+      }
+      if (landingTypeSelection.slugs.length > 0) {
+        landingTypeParts.push(
+          Prisma.sql`exists (
+            select 1 from "Category" c
+            where c.id = p."categoryId"
+              and c.slug in (${Prisma.join(landingTypeSelection.slugs)})
+          )`,
+        );
+      }
+      if (landingTypeSelection.names.length > 0) {
+        landingTypeParts.push(
+          Prisma.sql`exists (
+            select 1 from "Category" c
+            where c.id = p."categoryId"
+              and c.name in (${Prisma.join(landingTypeSelection.names)})
+          )`,
+        );
+        landingTypeParts.push(Prisma.sql`p.type in (${Prisma.join(landingTypeSelection.names)})`);
+      }
+      if (landingTypeParts.length > 0) {
+        conditions.push(Prisma.sql`(${Prisma.join(landingTypeParts, ' or ')})`);
       }
     } else if (query.category === UNCATEGORIZED_SHOWCASE_SLUG) {
       conditions.push(
@@ -886,7 +941,33 @@ export class ProductsService {
     }
 
     if (!landingDefinition && query.types.length > 0) {
-      conditions.push(Prisma.sql`p.type in (${Prisma.join(query.types)})`);
+      const requestedTypeParts: Prisma.Sql[] = [];
+      const uuidCategoryIds = requestedTypeSelection.ids.filter(isUuidString).map((id) => Prisma.sql`${id}::uuid`);
+      if (uuidCategoryIds.length > 0) {
+        requestedTypeParts.push(Prisma.sql`p."categoryId" in (${Prisma.join(uuidCategoryIds)})`);
+      }
+      if (requestedTypeSelection.slugs.length > 0) {
+        requestedTypeParts.push(
+          Prisma.sql`exists (
+            select 1 from "Category" c
+            where c.id = p."categoryId"
+              and c.slug in (${Prisma.join(requestedTypeSelection.slugs)})
+          )`,
+        );
+      }
+      if (requestedTypeSelection.names.length > 0) {
+        requestedTypeParts.push(
+          Prisma.sql`exists (
+            select 1 from "Category" c
+            where c.id = p."categoryId"
+              and c.name in (${Prisma.join(requestedTypeSelection.names)})
+          )`,
+        );
+        requestedTypeParts.push(Prisma.sql`p.type in (${Prisma.join(requestedTypeSelection.names)})`);
+      }
+      if (requestedTypeParts.length > 0) {
+        conditions.push(Prisma.sql`(${Prisma.join(requestedTypeParts, ' or ')})`);
+      }
     }
 
     if (typeof query.minPrice === 'number') {
@@ -1386,18 +1467,18 @@ export class ProductsService {
     return collectWithDescendants(matching);
   }
 
-  private resolveLandingTypeCategoryIds(
+  private resolveLandingTypeSelection(
     query: Pick<CatalogQueryDto, 'category' | 'types'>,
     categories: CategoryTreeNode[],
   ) {
     const landingDefinition = findShowcaseCategoryDefinition(query.category);
     if (!landingDefinition) {
-      return [];
+      return { ids: [], slugs: [], names: [] };
     }
 
     const requested = (query.types ?? []).map((value) => value.trim()).filter(Boolean);
     if (requested.length === 0) {
-      return [];
+      return { ids: [], slugs: [], names: [] };
     }
 
     const collectWithDescendants = (ids: string[]) => {
@@ -1420,11 +1501,48 @@ export class ProductsService {
       return Array.from(resolved);
     };
 
-    const matching = categories
-      .filter((item) => requested.includes(item.slug) || requested.includes(item.name))
-      .map((item) => item.id);
+    const matching = categories.filter((item) => requested.includes(item.slug) || requested.includes(item.name));
 
-    return collectWithDescendants(matching);
+    return {
+      ids: collectWithDescendants(matching.map((item) => item.id)),
+      slugs: matching.map((item) => item.slug),
+      names: matching.map((item) => item.name),
+    };
+  }
+
+  private resolveTypeSelection(requestedTypes: string[] | undefined, categories: CategoryTreeNode[]) {
+    const requested = (requestedTypes ?? []).map((value) => value.trim()).filter(Boolean);
+    if (requested.length === 0) {
+      return { ids: [], slugs: [], names: [] };
+    }
+
+    const collectWithDescendants = (ids: string[]) => {
+      if (ids.length === 0) {
+        return [];
+      }
+
+      const resolved = new Set<string>(ids);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const category of categories) {
+          if (category.parentId && resolved.has(category.parentId) && !resolved.has(category.id)) {
+            resolved.add(category.id);
+            changed = true;
+          }
+        }
+      }
+
+      return Array.from(resolved);
+    };
+
+    const matching = categories.filter((item) => requested.includes(item.slug) || requested.includes(item.name));
+
+    return {
+      ids: collectWithDescendants(matching.map((item) => item.id)),
+      slugs: matching.map((item) => item.slug),
+      names: matching.map((item) => item.name),
+    };
   }
 
   private toCreateProductData(dto: CreateProductDto, showcaseCategorySlug: string | null) {

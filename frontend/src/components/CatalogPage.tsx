@@ -41,6 +41,11 @@ type CatalogDynamicFilter = {
   fallbackKey?: "power" | "volume";
 };
 
+type CategoryTypeFilterItem = {
+  label: string;
+  value: string;
+};
+
 export function CatalogPage({
   initialProducts,
   initialMeta,
@@ -54,6 +59,7 @@ export function CatalogPage({
   const resultsTopRef = useRef<HTMLDivElement>(null);
   const desktopFiltersRef = useRef<HTMLElement | null>(null);
   const landingCategoryTreeRef = useRef(initialMeta.categoryTypeTree);
+  const categoryTypeOptionsRef = useRef(initialMeta.currentCategoryTypes);
   const hasMountedQueryEffectRef = useRef(false);
   const shouldScrollToResultsOnNextReplaceRef = useRef(false);
   const pendingOverlayScrollRef = useRef<"restore" | "results">("restore");
@@ -90,7 +96,11 @@ export function CatalogPage({
     return `${count} фильтров`;
   };
   const categoryTypeTree = isLanding ? landingCategoryTreeRef.current : catalogMeta.categoryTypeTree;
-  const currentCategoryTypeOptions = catalogMeta.currentCategoryTypes;
+  const currentCategoryTypeOptions = isCategoryPage ? categoryTypeOptionsRef.current : catalogMeta.currentCategoryTypes;
+  const currentCategoryTypeFilterItems = useMemo<CategoryTypeFilterItem[]>(
+    () => currentCategoryTypeOptions.map(({ type, slug }) => ({ label: type, value: slug })),
+    [currentCategoryTypeOptions],
+  );
   const categoryCards = useMemo(
     () =>
       catalogMeta.categoryCards.map((item) => ({
@@ -139,6 +149,7 @@ export function CatalogPage({
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedLandingTypeSlugs, setSelectedLandingTypeSlugs] = useState<string[]>([]);
   const [selectedTextFilters, setSelectedTextFilters] = useState<Record<string, string[]>>({});
   const [selectedNumericFilters, setSelectedNumericFilters] = useState<Record<string, [number, number]>>({});
   const [selectedNumericFilterDrafts, setSelectedNumericFilterDrafts] = useState<Record<string, [number, number]>>({});
@@ -396,13 +407,16 @@ export function CatalogPage({
 
   const pageProducts = products;
   const visiblePercent = catalogTotalAll === 0 ? 0 : Math.round((catalogTotal / catalogTotalAll) * 100);
+  const activeCatalogTypeFilters = isLanding ? selectedLandingTypeSlugs : selectedTypes;
+  const effectiveCategoryFilter =
+    isCategoryPage && selectedTypes.length > 0 ? undefined : selectedCategory !== "all" ? selectedCategory : undefined;
   const resultsAnimationKey = [
     query,
-    selectedCategory,
+    effectiveCategoryFilter ?? "all",
     priceRange.join("-"),
     selectedBrands.join("-"),
     selectedCountries.join("-"),
-    selectedTypes.join("-"),
+    activeCatalogTypeFilters.join("-"),
     JSON.stringify(selectedNumericFilters),
     JSON.stringify(selectedTextFilters),
   ].join("|");
@@ -423,12 +437,12 @@ export function CatalogPage({
     );
     const signature = JSON.stringify({
       search: query.trim(),
-      category: selectedCategory !== "all" ? selectedCategory : "",
+      category: effectiveCategoryFilter ?? "",
       minPrice: priceRange[0] > 0 ? priceRange[0] : null,
       maxPrice: priceRange[1] < maxProductPrice ? priceRange[1] : null,
       brands: [...selectedBrands].sort(),
       countries: [...selectedCountries].sort(),
-      types: [...selectedTypes].sort(),
+      types: [...activeCatalogTypeFilters].sort(),
       sort: sortMode,
       textFilters: selectedTextFiltersPayload,
       numericFilters: selectedNumericFiltersPayload,
@@ -439,12 +453,12 @@ export function CatalogPage({
       queryPayload: {
         limit: itemsPerPage,
         search: query.trim() || undefined,
-        category: selectedCategory !== "all" ? selectedCategory : undefined,
+        category: effectiveCategoryFilter,
         minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
         maxPrice: priceRange[1] < maxProductPrice ? priceRange[1] : undefined,
         brands: selectedBrands,
         countries: selectedCountries,
-        types: selectedTypes,
+        types: activeCatalogTypeFilters,
         sort: sortMode,
         textFilters: selectedTextFiltersPayload,
         numericFilters: selectedNumericFiltersPayload,
@@ -492,12 +506,12 @@ export function CatalogPage({
     } = buildCatalogRequestPayload();
     const metaRequestKey = JSON.stringify({
       search: query.trim(),
-      category: selectedCategory !== "all" ? selectedCategory : "",
+      category: effectiveCategoryFilter ?? "",
       minPrice: priceRange[0] > 0 ? priceRange[0] : null,
       maxPrice: priceRange[1] < maxProductPrice ? priceRange[1] : null,
       brands: [...selectedBrands].sort(),
       countries: [...selectedCountries].sort(),
-      types: [...selectedTypes].sort(),
+      types: [...activeCatalogTypeFilters].sort(),
       textFilters: selectedTextFiltersPayload,
       numericFilters: selectedNumericFiltersPayload,
     });
@@ -536,6 +550,8 @@ export function CatalogPage({
           ...response.meta,
           brands: selectedBrands.length > 0 ? current.brands : response.meta.brands,
           countries: selectedCountries.length > 0 ? current.countries : response.meta.countries,
+          currentCategoryTypes:
+            isCategoryPage && selectedTypes.length > 0 ? current.currentCategoryTypes : response.meta.currentCategoryTypes,
           dynamicFilters: response.meta.dynamicFilters.map((nextFilter) => {
             const currentFilter = current.dynamicFilters.find((item) => item.id === nextFilter.id);
             if (!currentFilter) return nextFilter;
@@ -610,6 +626,7 @@ export function CatalogPage({
     if (selectedBrands.length > 0) return true;
     if (selectedCountries.length > 0) return true;
     if (selectedTypes.length > 0) return true;
+    if (selectedLandingTypeSlugs.length > 0) return true;
     if (priceRange[0] !== 0 || priceRange[1] !== maxProductPrice) return true;
 
     for (const filter of dynamicFilters) {
@@ -629,6 +646,7 @@ export function CatalogPage({
     selectedBrands,
     selectedCountries,
     selectedTypes,
+    selectedLandingTypeSlugs,
     priceRange,
     maxProductPrice,
     dynamicFilters,
@@ -642,6 +660,7 @@ export function CatalogPage({
     if (selectedBrands.length > 0) count += selectedBrands.length;
     if (selectedCountries.length > 0) count += selectedCountries.length;
     if (selectedTypes.length > 0) count += selectedTypes.length;
+    if (selectedLandingTypeSlugs.length > 0) count += selectedLandingTypeSlugs.length;
     if (priceRange[0] !== 0 || priceRange[1] !== maxProductPrice) count += 1;
 
     for (const filter of dynamicFilters) {
@@ -654,7 +673,7 @@ export function CatalogPage({
     }
 
     return count;
-  }, [dynamicFilters, isCategoryPage, maxProductPrice, priceRange, selectedBrands, selectedCategory, selectedCountries, selectedNumericFilters, selectedTextFilters, selectedTypes]);
+  }, [dynamicFilters, isCategoryPage, maxProductPrice, priceRange, selectedBrands, selectedCategory, selectedCountries, selectedLandingTypeSlugs, selectedNumericFilters, selectedTextFilters, selectedTypes]);
 
   useEffect(() => {
     if (!hasMountedQueryEffectRef.current) {
@@ -706,6 +725,7 @@ export function CatalogPage({
       selectedBrands.length === 0 &&
       selectedCountries.length === 0 &&
       selectedTypes.length === 0 &&
+      selectedLandingTypeSlugs.length === 0 &&
       sortMode === "popular" &&
       priceRange[0] === 0 &&
       priceRange[1] === maxProductPrice &&
@@ -748,9 +768,10 @@ export function CatalogPage({
 
   useEffect(() => {
     if (!initialCategory) return;
+    categoryTypeOptionsRef.current = initialMeta.currentCategoryTypes;
     setSelectedCategory(initialCategory);
     setPage(1);
-  }, [initialCategory]);
+  }, [initialCategory, initialMeta.currentCategoryTypes]);
 
   useEffect(() => {
     lastMetaRequestKeyRef.current = JSON.stringify({
@@ -780,22 +801,51 @@ export function CatalogPage({
     }
 
     if (typesFromQuery.length > 0) {
-      const looksLikeSlug = (value: string) => /^[a-z0-9-]+$/.test(value);
+      if (isCategoryPage) {
+        const matchedCategoryTypes = currentCategoryTypeOptions.filter(
+          (item) =>
+            typesFromQuery.some((value) => value.toLowerCase() === item.slug.toLowerCase()) ||
+            typesFromQuery.some((value) => value.toLowerCase() === item.type.toLowerCase()),
+        );
 
-      if (typesFromQuery.every(looksLikeSlug)) {
+        if (matchedCategoryTypes.length > 0) {
+          setSelectedCategory(initialCategory ?? "all");
+          setSelectedTypes(matchedCategoryTypes.map((item) => item.slug));
+          setPage(1);
+        }
+      } else if (isLanding) {
         const allowed = new Set(
           categoryTypeTree.flatMap((entry) => entry.types.map((type) => type.slug.toLowerCase())),
         );
         const matched = typesFromQuery.filter((value) => allowed.has(value.toLowerCase()));
         if (matched.length > 0) {
-          setSelectedTypes(matched);
+          setSelectedLandingTypeSlugs(matched);
+          const parent = categoryTypeTree.find((entry) =>
+            entry.types.some((type) => matched.some((value) => value.toLowerCase() === type.slug.toLowerCase())),
+          );
+          if (parent) {
+            setSelectedCategory(parent.slug);
+            setExpandedCategory(parent.slug);
+          }
         }
       } else {
-        const matchedTypes = types.filter((type) =>
-          typesFromQuery.some((item) => item.toLowerCase() === type.toLowerCase()),
-        );
-        if (matchedTypes.length > 0) {
-          setSelectedTypes(matchedTypes);
+        const looksLikeSlug = (value: string) => /^[a-z0-9-]+$/.test(value);
+
+        if (typesFromQuery.every(looksLikeSlug)) {
+          const allowed = new Set(
+            categoryTypeTree.flatMap((entry) => entry.types.map((type) => type.slug.toLowerCase())),
+          );
+          const matched = typesFromQuery.filter((value) => allowed.has(value.toLowerCase()));
+          if (matched.length > 0) {
+            setSelectedTypes(matched);
+          }
+        } else {
+          const matchedTypes = types.filter((type) =>
+            typesFromQuery.some((item) => item.toLowerCase() === type.toLowerCase()),
+          );
+          if (matchedTypes.length > 0) {
+            setSelectedTypes(matchedTypes);
+          }
         }
       }
     }
@@ -812,7 +862,7 @@ export function CatalogPage({
     setSearchInput(brandFromQuery);
     setQuery(brandFromQuery);
     setPage(1);
-  }, [brands, categoryTypeTree, types]);
+  }, [brands, categoryTypeTree, currentCategoryTypeOptions, initialCategory, isCategoryPage, isLanding, types]);
 
   useEffect(() => {
     if (suppressCatalogReloadRef.current) {
@@ -828,6 +878,7 @@ export function CatalogPage({
     selectedBrands,
     selectedCountries,
     selectedTypes,
+    selectedLandingTypeSlugs,
     selectedTextFilters,
     selectedNumericFilters,
     priceRange,
@@ -839,7 +890,7 @@ export function CatalogPage({
 
     if (isLanding && selectedCategory !== "all") {
       const params = new URLSearchParams();
-      for (const type of selectedTypes) {
+      for (const type of selectedLandingTypeSlugs) {
         params.append("type", type);
       }
       const queryString = params.toString();
@@ -935,6 +986,7 @@ export function CatalogPage({
     setSelectedBrands([]);
     setSelectedCountries([]);
     setSelectedTypes([]);
+    setSelectedLandingTypeSlugs([]);
     setSelectedTextFilters({});
     setSelectedNumericFilters({});
     setSelectedNumericFilterDrafts({});
@@ -962,12 +1014,23 @@ export function CatalogPage({
     setExpandedCategory(categorySlug);
     setSelectedTypes([]);
     markScrollToResults();
+    setSelectedLandingTypeSlugs([]);
+    setPage(1);
+  }
+
+  function handleLandingCategoryTypeToggle(categorySlug: string, typeSlug: string) {
+    setSelectedCategory(categorySlug);
+    setExpandedCategory(categorySlug);
+    setSelectedLandingTypeSlugs((current) =>
+      current.includes(typeSlug) ? current.filter((item) => item !== typeSlug) : [...current, typeSlug],
+    );
+    markScrollToResults();
     setPage(1);
   }
 
   function handleLandingCategoryReset() {
     setSelectedCategory("all");
-    setSelectedTypes([]);
+    setSelectedLandingTypeSlugs([]);
     setExpandedCategory(null);
     markScrollToResults();
     setPage(1);
@@ -990,15 +1053,19 @@ export function CatalogPage({
     return [selectedTypes, setSelectedTypes] as const;
   }
 
-  function handleCategoryTypeSelect(categorySlug: string) {
-    setSelectedCategory(categorySlug);
-    setExpandedCategory(categorySlug);
+  function handleCategoryTypeSelect(typeSlug: string) {
+    setSelectedCategory(initialCategory ?? "all");
+    setSelectedTypes((current) =>
+      current.includes(typeSlug) ? current.filter((item) => item !== typeSlug) : [...current, typeSlug],
+    );
+    setExpandedCategory(initialCategory ?? null);
     markScrollToResults();
     setPage(1);
   }
 
   function handleCategoryTypeReset() {
     setSelectedCategory(initialCategory ?? "all");
+    setSelectedTypes([]);
     markScrollToResults();
     setPage(1);
   }
@@ -1017,9 +1084,8 @@ export function CatalogPage({
             <div className="mt-3 border-t border-[#e7e1d9] pt-5 space-y-4">
               <label className="flex items-center gap-4 text-[18px] text-[#6f6f69] 2xl:text-[20px]">
                 <input
-                  type="radio"
-                  name={`${idPrefix}-category-children`}
-                  checked={selectedCategory === (initialCategory ?? "all")}
+                  type="checkbox"
+                  checked={selectedTypes.length === 0}
                   onChange={handleCategoryTypeReset}
                   className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
                 />
@@ -1030,9 +1096,8 @@ export function CatalogPage({
               {currentCategoryTypeOptions.map(({ type, slug, count }) => (
                 <label key={slug} className="flex items-center gap-4 text-[18px] text-[#6f6f69] 2xl:text-[20px]">
                   <input
-                    type="radio"
-                    name={`${idPrefix}-category-children`}
-                    checked={selectedCategory === slug}
+                    type="checkbox"
+                    checked={selectedTypes.includes(slug)}
                     onChange={() => handleCategoryTypeSelect(slug)}
                     className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
                   />
@@ -1139,12 +1204,12 @@ export function CatalogPage({
                       >
                         <div className="catalog-category-accordion__inner mt-3 space-y-3">
                           {item.types.map(({ type, slug, count }) => (
-                            <label key={slug} className="flex items-center gap-4 text-[16px] text-[#6f6f69]">
+                            <label key={slug} className="flex items-start gap-4 text-[16px] text-[#6f6f69]">
                               <input
                                 type="checkbox"
-                                checked={selectedTypes.includes(slug)}
-                                onChange={() => toggleValue(slug, selectedTypes, setSelectedTypes)}
-                                className="catalog-checkbox h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
+                                checked={selectedLandingTypeSlugs.includes(slug)}
+                                onChange={() => handleLandingCategoryTypeToggle(item.slug, slug)}
+                                className="catalog-checkbox mt-1 h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
                               />
                               <span className="min-w-0">
                                 <span className="block">{type}</span>
@@ -1204,12 +1269,13 @@ export function CatalogPage({
 
         {(() => {
           const showCompactDesktopCategoryFilters = mode === "compact" && !isOverlay && isCategoryPage;
+          const compactTypeItems = showCompactDesktopCategoryFilters ? currentCategoryTypeFilterItems : types;
           const filterGroups = [
             ...((mode === "full" || (mode === "compact" && !isOverlay && (isLanding || isCategoryPage))) ? ([["Бренд", brands]] as const) : ([] as const)),
             ...(mode === "full" ? ([["Страна производства", countries]] as const) : ([] as const)),
             ...(
               (!isLandingCategoryFilters && !isCategoryPage && mode === "full" && !isOverlay) || showCompactDesktopCategoryFilters
-                ? ([["Тип", types]] as const)
+                ? ([["Тип", compactTypeItems]] as const)
                 : ([] as const)
             ),
           ] as const;
@@ -1249,23 +1315,25 @@ export function CatalogPage({
                     <div className="mt-2 border-t border-[#e7e1d9] pt-3 2xl:pt-4 [column-gap:22px] 2xl:[column-gap:30px] xl:columns-2">
                       {(title === "Бренд"
                         ? items
-                            .filter((item) => item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
+                            .filter((item) => typeof item === "string" && item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
                             .sort((a, b) => a.localeCompare(b, "ru"))
                         : items
                       ).map((item, index) => {
                         const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                         const [selected, setSelected] = getFilterState(String(title));
+                        const value = typeof item === "string" ? item : item.value;
+                        const label = typeof item === "string" ? item : item.label;
 
                         return (
-                          <label key={item} htmlFor={id} className="mb-3 flex break-inside-avoid items-center gap-3 2xl:gap-4 min-[2200px]:gap-5 text-[14px] text-[#6f6f69] 2xl:text-[18px] min-[2200px]:text-[21px]">
+                          <label key={value} htmlFor={id} className="mb-3 flex break-inside-avoid items-center gap-3 2xl:gap-4 min-[2200px]:gap-5 text-[14px] text-[#6f6f69] 2xl:text-[18px] min-[2200px]:text-[21px]">
                             <input
                               id={id}
                               type="checkbox"
-                              checked={selected.includes(item)}
-                              onChange={() => toggleValue(item, selected, setSelected)}
+                              checked={selected.includes(value)}
+                              onChange={() => toggleValue(value, selected, setSelected)}
                               className="catalog-checkbox h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7 border border-[#e1dbd2] transition-all duration-200"
                             />
-                            <span>{item}</span>
+                            <span>{label}</span>
                           </label>
                         );
                       })}
@@ -1356,16 +1424,18 @@ export function CatalogPage({
                       ? items
                       : items.slice(0, 20)
                     )
-                      .filter((item) => item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
+                      .filter((item) => typeof item === "string" && item.toLowerCase().includes(brandSearchQuery.trim().toLowerCase()))
                       .sort((a, b) => a.localeCompare(b, "ru"))
                   : items
                 ).map((item, index) => {
                   const id = `${idPrefix}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${index}`;
                   const [selected, setSelected] = getFilterState(String(title));
+                  const value = typeof item === "string" ? item : item.value;
+                  const label = typeof item === "string" ? item : item.label;
 
                   return (
                     <label
-                      key={item}
+                      key={value}
                       htmlFor={id}
                       className={[
                         "flex items-center gap-4 text-[#6f6f69]",
@@ -1379,14 +1449,14 @@ export function CatalogPage({
                       <input
                         id={id}
                         type="checkbox"
-                        checked={selected.includes(item)}
-                        onChange={() => toggleValue(item, selected, setSelected)}
+                        checked={selected.includes(value)}
+                        onChange={() => toggleValue(value, selected, setSelected)}
                         className={[
                           "catalog-checkbox border border-[#e1dbd2] transition-all duration-200",
                           isOverlay ? "h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7" : "h-6 w-6",
                         ].join(" ")}
                       />
-                      <span>{item}</span>
+                      <span>{label}</span>
                     </label>
                   );
                 })}
