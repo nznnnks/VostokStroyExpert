@@ -55,6 +55,7 @@ export function CatalogPage({
   const desktopFiltersRef = useRef<HTMLElement | null>(null);
   const landingCategoryTreeRef = useRef(initialMeta.categoryTypeTree);
   const hasMountedQueryEffectRef = useRef(false);
+  const shouldScrollToResultsOnNextReplaceRef = useRef(false);
   const pendingOverlayScrollRef = useRef<"restore" | "results">("restore");
   const isLanding = variant === "landing";
   const isCategoryPage = Boolean(initialCategory && initialCategory !== "all");
@@ -94,7 +95,7 @@ export function CatalogPage({
     () =>
       catalogMeta.categoryCards.map((item) => ({
         ...item,
-        image: getStableCategoryImage(item.slug, item.image),
+        image: getStableCategoryImage(item.slug, item.image, item.name),
       })),
     [catalogMeta.categoryCards],
   );
@@ -125,6 +126,10 @@ export function CatalogPage({
 
   const globalMaxProductPrice = Math.max(100000, catalogMeta.maxPrice || 0);
   const itemsPerPage = initialLimit;
+
+  const markScrollToResults = () => {
+    shouldScrollToResultsOnNextReplaceRef.current = true;
+  };
 
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -573,6 +578,21 @@ export function CatalogPage({
       }
       setHasMore(response.hasMore);
 
+      if (
+        mode === "replace" &&
+        typeof window !== "undefined" &&
+        shouldScrollToResultsOnNextReplaceRef.current
+      ) {
+        shouldScrollToResultsOnNextReplaceRef.current = false;
+
+        // Wait for the next paint so the results grid exists with its final height.
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        });
+      }
+
       if (response.hasMore) {
         void prefetchCatalogPage(nextPage + 1, signature, queryPayload);
       }
@@ -905,6 +925,7 @@ export function CatalogPage({
 
   function toggleValue(value: string, selected: string[], setter: (values: string[]) => void) {
     setter(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
+    markScrollToResults();
     setPage(1);
   }
 
@@ -922,6 +943,7 @@ export function CatalogPage({
     setPage(1);
     setSortMode("popular");
     setExpandedCategory(null);
+    markScrollToResults();
   }
 
   const quickSortOptions = [
@@ -939,6 +961,7 @@ export function CatalogPage({
     setSelectedCategory(categorySlug);
     setExpandedCategory(categorySlug);
     setSelectedTypes([]);
+    markScrollToResults();
     setPage(1);
   }
 
@@ -946,11 +969,13 @@ export function CatalogPage({
     setSelectedCategory("all");
     setSelectedTypes([]);
     setExpandedCategory(null);
+    markScrollToResults();
     setPage(1);
   }
 
   function resetSortMode() {
     setSortMode("popular");
+    markScrollToResults();
     setPage(1);
     setShowAdvanced(false);
   }
@@ -968,11 +993,13 @@ export function CatalogPage({
   function handleCategoryTypeSelect(categorySlug: string) {
     setSelectedCategory(categorySlug);
     setExpandedCategory(categorySlug);
+    markScrollToResults();
     setPage(1);
   }
 
   function handleCategoryTypeReset() {
     setSelectedCategory(initialCategory ?? "all");
+    markScrollToResults();
     setPage(1);
   }
 
@@ -1167,6 +1194,7 @@ export function CatalogPage({
               onCommit={(value) => {
                 if (priceRange[0] === value[0] && priceRange[1] === value[1]) return;
                 setPriceRange(value);
+                markScrollToResults();
                 setPage(1);
               }}
             />
@@ -1409,6 +1437,7 @@ export function CatalogPage({
                             const current = selectedNumericFilters[filter.id] ?? [filter.min, filter.max];
                             if (current[0] === value[0] && current[1] === value[1]) return;
                             setSelectedNumericFilters((prev) => ({ ...prev, [filter.id]: value }));
+                            markScrollToResults();
                             setPage(1);
                           }}
                         />
@@ -1472,6 +1501,7 @@ export function CatalogPage({
                       const current = selectedNumericFilters[filter.id] ?? [filter.min, filter.max];
                       if (current[0] === value[0] && current[1] === value[1]) return;
                       setSelectedNumericFilters((prev) => ({ ...prev, [filter.id]: value }));
+                      markScrollToResults();
                       setPage(1);
                     }}
                   />
@@ -1886,6 +1916,7 @@ export function CatalogPage({
                               key={option.id}
                               type="button"
                               onClick={() => {
+                                markScrollToResults();
                                 setSortMode(option.id);
                                 setPage(1);
                                 setShowAdvanced(false);
@@ -1995,18 +2026,19 @@ export function CatalogPage({
                         </div>
 
                         <div className="mt-4 flex flex-wrap gap-3">
-                          {quickSortOptions.map((option) => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => {
-                                setSortMode(option.id);
-                                setPage(1);
-                                setShowAdvanced(false);
-                              }}
-                              className={`flex h-14 items-center justify-center rounded-[20px] border px-4 text-[14px] uppercase tracking-[1.4px] transition-colors [font-family:Jaldi,'JetBrains_Mono',monospace] ${
-                                sortMode === option.id
-                                  ? "border-[#111] bg-[#111] text-white"
+                        {quickSortOptions.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              markScrollToResults();
+                              setSortMode(option.id);
+                              setPage(1);
+                              setShowAdvanced(false);
+                            }}
+                            className={`flex h-14 items-center justify-center rounded-[20px] border px-4 text-[14px] uppercase tracking-[1.4px] transition-colors [font-family:Jaldi,'JetBrains_Mono',monospace] ${
+                              sortMode === option.id
+                                ? "border-[#111] bg-[#111] text-white"
                                   : "border-[#e7e1d9] bg-white text-[#111] hover:border-[#d3b46a]"
                               }`}
                             >

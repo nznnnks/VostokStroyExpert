@@ -36,6 +36,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const searchRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollLockUntilRef = useRef(0);
+  const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const searchDebounceTimeoutRef = useRef<number | null>(null);
 
   const openMobileMenu = () => {
@@ -117,43 +118,63 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (lockScrolledState) return;
-    let rafId: number | null = null;
-    let lastScrollY = 0;
-    let lastIsScrolled = false;
 
-    const computeNext = (scrollY: number) => {
-      const nextScrollY = Math.max(0, scrollY);
-      // Hysteresis to avoid rapid toggles near the top.
-      if (lastIsScrolled) return nextScrollY > 10;
-      return nextScrollY > 32;
-    };
+    // Async "top bar" toggle driven by viewport intersection instead of scroll listeners.
+    // Observe a 1px sentinel positioned below the top; when it scrolls out of view we consider the page "scrolled".
+    // We move the sentinel between two offsets to emulate hysteresis (enter at 32px, leave at 10px).
+    const enterThresholdPx = 32;
+    const leaveThresholdPx = 10;
 
-    const commit = () => {
-      rafId = null;
-      const next = computeNext(lastScrollY);
-      if (next === lastIsScrolled) return;
-      const now = window.performance?.now?.() ?? Date.now();
-      if (now < scrollLockUntilRef.current) return;
-      lastIsScrolled = next;
-      setIsScrolled(next);
-      // Protect from scroll anchoring/layout shifts when header height changes.
-      scrollLockUntilRef.current = now + 300;
-    };
+    if (!("IntersectionObserver" in window)) {
+      setIsScrolled((window.scrollY || 0) > enterThresholdPx);
+      return;
+    }
 
-    const onScroll = () => {
-      lastScrollY = window.scrollY || 0;
-      if (rafId !== null) return;
-      rafId = window.requestAnimationFrame(commit);
-    };
+    if (!topSentinelRef.current) {
+      const node = document.createElement("div");
+      node.setAttribute("data-header-top-sentinel", "1");
+      node.style.position = "absolute";
+      node.style.top = `${enterThresholdPx}px`;
+      node.style.left = "0";
+      node.style.width = "1px";
+      node.style.height = "1px";
+      node.style.pointerEvents = "none";
+      node.style.opacity = "0";
+      document.body.prepend(node);
+      topSentinelRef.current = node;
+    }
 
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    // Update the sentinel offset to provide hysteresis without scroll listeners.
+    topSentinelRef.current.style.top = `${isScrolled ? leaveThresholdPx : enterThresholdPx}px`;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        const next = !entry.isIntersecting;
+        if (next === isScrolled) return;
+
+        const now = window.performance?.now?.() ?? Date.now();
+        if (now < scrollLockUntilRef.current) return;
+        setIsScrolled(next);
+        // Protect from scroll anchoring/layout shifts when header height changes.
+        scrollLockUntilRef.current = now + 300;
+      },
+      {
+        threshold: 0,
+        root: null,
+      },
+    );
+
+    observer.observe(topSentinelRef.current);
+
     return () => {
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
+      observer.disconnect();
     };
-  }, [lockScrolledState]);
+  }, [lockScrolledState, isScrolled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
