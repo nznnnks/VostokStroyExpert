@@ -15,15 +15,15 @@ const supportChannels: SupportChannel[] = [
   {
     title: "Персональный менеджер",
     label: "Ответ в рабочее время",
-    value: "+7 999 200-40-00",
-    href: "tel:+79992004000",
+    value: "+7 989 578-99-29",
+    href: "tel:+79895789929",
     action: "позвонить",
   },
   {
     title: "Почта поддержки",
     label: "Документы и сервисные запросы",
-    value: "support@vostokstroyexpert.ru",
-    href: "mailto:support@vostokstroyexpert.ru",
+    value: "climatrade@mail.ru",
+    href: "mailto:climatrade@mail.ru",
     action: "написать",
   },
   {
@@ -81,14 +81,20 @@ export function AccountInfoContent({ variant = "page", showOrdersCta = true }: P
                 <div className="mt-4 flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h2 className="text-[22px] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{channel.title}</h2>
+                    {(() => {
+                      const isEmail = channel.value.includes("@");
+                      return (
                     <a
                       href={channel.href}
                       target={isExternal ? "_blank" : undefined}
                       rel={isExternal ? "noreferrer" : undefined}
-                      className="mt-2 block break-all text-[16px] text-[#111] underline-offset-4 hover:underline"
+                      className={`mt-2 block text-[16px] text-[#111] underline-offset-4 hover:underline ${isEmail ? "truncate whitespace-nowrap" : "break-all"}`}
+                      title={isEmail ? channel.value : undefined}
                     >
                       {channel.value}
                     </a>
+                      );
+                    })()}
                   </div>
                   <div className="shrink-0">
                     <ChannelAction channel={channel} />
@@ -136,7 +142,14 @@ export function AccountInfoContent({ variant = "page", showOrdersCta = true }: P
           <article key={channel.title} className="border border-[#ece8e1] bg-white p-6 md:p-8">
             <p className="text-[15px] uppercase tracking-[2px] text-[#8b8b86] [font-family:Jaldi,'JetBrains_Mono',monospace]">{channel.label}</p>
             <h2 className="mt-5 text-[clamp(1.7rem,3.5vw,2.2rem)] leading-[1.05] [font-family:'Cormorant_Garamond',serif]">{channel.title}</h2>
-            <p className="mt-6 break-all text-[clamp(1.2rem,3vw,1.7rem)] leading-[1.2] text-[#111] [font-family:'Cormorant_Garamond',serif]">{channel.value}</p>
+            <p
+              className={`mt-6 text-[clamp(1.2rem,3vw,1.7rem)] leading-[1.2] text-[#111] [font-family:'Cormorant_Garamond',serif] ${
+                channel.value.includes("@") ? "truncate whitespace-nowrap" : "break-all"
+              }`}
+              title={channel.value.includes("@") ? channel.value : undefined}
+            >
+              {channel.value}
+            </p>
             <div className="mt-10">
               <ChannelAction channel={channel} />
             </div>

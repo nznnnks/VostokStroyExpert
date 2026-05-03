@@ -64,7 +64,7 @@ const stats = [
   },
   {
     value: "15+",
-    mobileLines: ["лет", "практики"],
+    mobileLines: ["лет", "опыта"],
     desktopLabel: "лет на рынке инженерных решений",
   },
   {
@@ -85,7 +85,7 @@ const trustHighlights = [
   },
   {
     value: "15+",
-    lines: ["лет инженерной", "практики"],
+    lines: ["лет инженерной", "опыта"],
   },
   {
     value: "62+",

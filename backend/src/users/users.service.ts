@@ -154,16 +154,6 @@ export class UsersService {
   async remove(id: string) {
     await this.ensureRegularUserExists(id);
 
-    const ordersCount = await this.prisma.order.count({
-      where: { userId: id },
-    });
-
-    if (ordersCount > 0) {
-      throw new BadRequestException(
-        'Cannot delete a user with existing orders. Block the user instead to preserve order history.',
-      );
-    }
-
     await this.prisma.user.delete({ where: { id } });
     return { deleted: true, id };
   }

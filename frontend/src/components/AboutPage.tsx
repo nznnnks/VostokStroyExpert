@@ -307,14 +307,18 @@ export function AboutPage({ newsPosts: _newsPosts = [] }: AboutPageProps) {
         <section className="relative overflow-hidden bg-[#050505] text-white">
           <div className="absolute inset-0">
             <div className="absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
-              <img
-                src="/image/about-trust-mobile.png"
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
+              <video
                 className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.03] md:hidden"
-              />
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                poster="/image/about-trust-mobile.png"
+                aria-hidden="true"
+              >
+                <source src="/video/ventilator.mp4" type="video/mp4" />
+              </video>
               <img
                 src="/image/hero-desktop-bg.jpeg"
                 alt=""

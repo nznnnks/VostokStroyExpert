@@ -172,16 +172,64 @@ export async function validateStoredAuthSession() {
 
   try {
     if (session.type === "admin") {
-      await apiRequest("/api/auth/admin/me", {
+      const admin = await apiRequest<{
+        id: string;
+        email: string;
+        role?: string;
+        firstName?: string | null;
+        lastName?: string | null;
+      }>("/api/auth/admin/me", {
         authToken: session.accessToken,
       });
-    } else {
-      await apiRequest("/api/users/me", {
-        authToken: session.accessToken,
-      });
-    }
 
-    return session;
+      const nextSession: StoredAuthSession = {
+        ...session,
+        admin: session.admin
+          ? {
+              ...session.admin,
+              id: admin.id ?? session.admin.id,
+              email: admin.email ?? session.admin.email,
+              role: admin.role ?? session.admin.role,
+              firstName: admin.firstName ?? session.admin.firstName ?? null,
+              lastName: admin.lastName ?? session.admin.lastName ?? null,
+            }
+          : session.admin,
+      };
+
+      setStoredAuthSession(nextSession);
+      return nextSession;
+    } else {
+      const user = await apiRequest<{
+        id: string;
+        email: string;
+        role?: string;
+        firstName?: string | null;
+        lastName?: string | null;
+        clientProfile?: { firstName?: string | null; lastName?: string | null } | null;
+      }>("/api/users/me", {
+        authToken: session.accessToken,
+      });
+
+      const firstName = user.firstName ?? user.clientProfile?.firstName ?? session.user?.firstName ?? null;
+      const lastName = user.lastName ?? user.clientProfile?.lastName ?? session.user?.lastName ?? null;
+
+      const nextSession: StoredAuthSession = {
+        ...session,
+        user: session.user
+          ? {
+              ...session.user,
+              id: user.id ?? session.user.id,
+              email: user.email ?? session.user.email,
+              role: user.role ?? session.user.role,
+              firstName,
+              lastName,
+            }
+          : session.user,
+      };
+
+      setStoredAuthSession(nextSession);
+      return nextSession;
+    }
   } catch {
     clearStoredAuthSession();
     return null;

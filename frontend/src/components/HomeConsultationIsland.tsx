@@ -48,16 +48,16 @@ export default function HomeConsultationIsland() {
       <section id="contact" className="bg-white px-3 pt-18 pb-8 sm:px-5 md:px-10 md:py-28">
         <div className="mx-auto grid max-w-[1480px] gap-14 border-b border-[#e8e3db] pb-8 md:pb-16 xl:grid-cols-[minmax(460px,560px)_minmax(0,1fr)] xl:gap-20 2xl:max-w-[1860px]">
           <div className="grid gap-8 md:gap-10">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(132px,164px)] items-start gap-5 md:block">
+            <div className="flex flex-col items-start gap-5">
               <h2 className="max-w-[6.2ch] text-[clamp(40px,3.6vw,96px)] leading-[0.92] [font-family:'Cormorant_Garamond',serif] md:max-w-[10ch] xl:max-w-[11ch]">Бесплатная консультация</h2>
-              <div className="justify-self-end pt-3 text-right md:mt-8 md:justify-self-auto md:pt-0 md:text-left">
+              <div className="text-left">
                 <p className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Офис</p>
                 <p className="mt-3 text-[clamp(15px,0.75vw+11px,22px)] leading-[1.45] text-[#111] md:leading-8">г. Москва, Калужская, 12</p>
               </div>
             </div>
             <div>
               <p className="text-[clamp(10px,0.38vw+9px,14px)] uppercase tracking-[1.4px] text-[#7a7a75] [font-family:'JetBrains_Mono',monospace]">Запросы</p>
-              <address className="mt-3 not-italic text-[clamp(16px,0.9vw+12px,22px)] leading-[1.65] text-[#111] md:leading-8">concierge@aeris-climate.com<br />+7 999 200 40 00</address>
+              <address className="mt-3 not-italic text-[clamp(16px,0.9vw+12px,22px)] leading-[1.65] text-[#111] md:leading-8">climatrade@mail.ru<br />+7 999 200 40 00</address>
             </div>
           </div>
           <form

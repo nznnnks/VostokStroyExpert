@@ -337,7 +337,7 @@ model Order {
   placedAt          DateTime?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
-  user              User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   template          OrderTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   appliedDiscount   Discount?   @relation(fields: [appliedDiscountId], references: [id], onDelete: SetNull)
   items             OrderItem[]

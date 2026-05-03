@@ -10,6 +10,15 @@ const navLinksAll = [
 
 export const navLinks = (BLOG_ENABLED ? navLinksAll : navLinksAll.filter((link) => link.href !== "/news")) as typeof navLinksAll;
 
+const footerServiceLinks = [
+  { href: "/services/restaurant", label: "Проект вентиляции в ресторане" },
+  { href: "/services/country-house", label: "Проект вентиляции в загородном доме" },
+  { href: "/services/apartment", label: "Проект вентиляции в квартире" },
+  { href: "/services/warehouse", label: "Проект вентиляции на складе" },
+  { href: "/services/mall", label: "Проект вентиляции в торговом центре" },
+  { href: "/services/business-center", label: "Проект вентиляции в бизнес-центре" },
+] as const;
+
 const footerColumnsAll = [
   [
     { href: "/", label: "Главная" },
@@ -32,9 +41,9 @@ const footerColumnsAll = [
   ],
 ] as const;
 
-export const footerColumns = (BLOG_ENABLED
-  ? footerColumnsAll
-  : footerColumnsAll.map((column) => column.filter((link) => link.href !== "/news"))) as typeof footerColumnsAll;
+export const footerColumns = (
+  (BLOG_ENABLED ? footerColumnsAll : footerColumnsAll.map((column) => column.filter((link) => link.href !== "/news"))) as typeof footerColumnsAll
+).map((column, index) => (index === 2 ? footerServiceLinks : column)) as typeof footerColumnsAll;
 
 export const services = [
   {
