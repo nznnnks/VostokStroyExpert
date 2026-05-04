@@ -46,6 +46,13 @@ type CategoryTypeFilterItem = {
   value: string;
 };
 
+const LANDING_DEFAULT_TYPE_BY_CATEGORY: Record<string, string> = {
+  "osushiteli-vozdukha": "Бытовые осушители воздуха",
+  "vodonagrevateli": "Водонагреватели накопительные",
+  "split-sistemy": "Бытовые сплит-системы",
+  "umnyy-dom": "Комплекты Умного дома",
+};
+
 export function CatalogPage({
   initialProducts,
   initialMeta,
@@ -58,6 +65,10 @@ export function CatalogPage({
 }: CatalogPageProps) {
   const resultsTopRef = useRef<HTMLDivElement>(null);
   const desktopFiltersRef = useRef<HTMLElement | null>(null);
+  const mobileFiltersRef = useRef<HTMLElement | null>(null);
+  const allFiltersScrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingFilterScrollAnchorRef = useRef<string | null>(null);
+  const pendingFilterScrollAttemptsRef = useRef(0);
   const landingCategoryTreeRef = useRef(initialMeta.categoryTypeTree);
   const categoryTypeOptionsRef = useRef(initialMeta.currentCategoryTypes);
   const hasMountedQueryEffectRef = useRef(false);
@@ -166,6 +177,13 @@ export function CatalogPage({
   const [pendingCartSlug, setPendingCartSlug] = useState<string | null>(null);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [animatedCartSlug, setAnimatedCartSlug] = useState<string | null>(null);
+
+  const normalizeFilterLabel = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
+
+  const scheduleScrollToFilterAnchor = (anchor: string) => {
+    pendingFilterScrollAnchorRef.current = anchor;
+    pendingFilterScrollAttemptsRef.current = 0;
+  };
 
   useEffect(() => {
     if (!allFiltersOpen && !filtersOpen) return;
@@ -303,6 +321,44 @@ export function CatalogPage({
     isCategoryPage,
     products.length,
     showAdvanced,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const anchor = pendingFilterScrollAnchorRef.current;
+    if (!anchor) return;
+
+    if (pendingFilterScrollAttemptsRef.current > 12) {
+      pendingFilterScrollAnchorRef.current = null;
+      pendingFilterScrollAttemptsRef.current = 0;
+      return;
+    }
+
+    pendingFilterScrollAttemptsRef.current += 1;
+
+    const handle = window.setTimeout(() => {
+      const scope = allFiltersOpen
+        ? allFiltersScrollRef.current
+        : filtersOpen
+          ? mobileFiltersRef.current
+          : desktopFiltersRef.current;
+      const element = scope?.querySelector(`[data-filter-anchor="${anchor}"]`) ?? null;
+      if (!(element instanceof HTMLElement)) return;
+
+      pendingFilterScrollAnchorRef.current = null;
+      pendingFilterScrollAttemptsRef.current = 0;
+
+      element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }, 320);
+
+    return () => window.clearTimeout(handle);
+  }, [
+    allFiltersOpen,
+    categoriesCollapsed,
+    expandedCategory,
+    filtersOpen,
+    selectedCategory,
+    selectedLandingTypeSlugs.join("|"),
   ]);
 
   useEffect(() => {
@@ -1010,12 +1066,26 @@ export function CatalogPage({
   }
 
   function handleLandingCategorySelect(categorySlug: string) {
+    const preferredTypeLabel = LANDING_DEFAULT_TYPE_BY_CATEGORY[categorySlug];
+    const preferredTypeSlug = preferredTypeLabel ? slugify(preferredTypeLabel) : "";
+    const categoryEntry = categoryTypeTree.find((item) => item.slug === categorySlug);
+    const defaultTypeSlug =
+      preferredTypeLabel && categoryEntry
+        ? (categoryEntry.types.find((typeEntry) => normalizeFilterLabel(typeEntry.type) === normalizeFilterLabel(preferredTypeLabel))?.slug ??
+            categoryEntry.types.find((typeEntry) => normalizeFilterLabel(typeEntry.slug) === normalizeFilterLabel(preferredTypeSlug))?.slug ??
+            null)
+        : null;
+
     setSelectedCategory(categorySlug);
     setExpandedCategory(categorySlug);
     setSelectedTypes([]);
     markScrollToResults();
-    setSelectedLandingTypeSlugs([]);
+    setSelectedLandingTypeSlugs(defaultTypeSlug ? [defaultTypeSlug] : []);
     setPage(1);
+
+    if (defaultTypeSlug) {
+      scheduleScrollToFilterAnchor(`landing-type:${defaultTypeSlug}`);
+    }
   }
 
   function handleLandingCategoryTypeToggle(categorySlug: string, typeSlug: string) {
@@ -1160,6 +1230,7 @@ export function CatalogPage({
                       <div className="flex items-start justify-between gap-3">
                         <label
                           className="flex min-w-0 flex-1 cursor-pointer items-start gap-4 text-left text-[18px] text-[#111] 2xl:text-[20px]"
+                          data-filter-anchor={`landing-category:${item.slug}`}
                           onClick={() => handleLandingCategorySelect(item.slug)}
                         >
                           <input
@@ -1204,7 +1275,11 @@ export function CatalogPage({
                       >
                         <div className="catalog-category-accordion__inner mt-3 space-y-3">
                           {item.types.map(({ type, slug, count }) => (
-                            <label key={slug} className="flex items-start gap-4 text-[16px] text-[#6f6f69]">
+                            <label
+                              key={slug}
+                              className="flex items-start gap-4 text-[16px] text-[#6f6f69]"
+                              data-filter-anchor={`landing-type:${slug}`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={selectedLandingTypeSlugs.includes(slug)}
@@ -1770,7 +1845,10 @@ export function CatalogPage({
                         </button>
                       </div>
 
-                      <div className="min-h-0 overflow-y-auto px-5 py-5 md:px-7 md:py-6 2xl:px-12 2xl:py-9 min-[2200px]:px-14 min-[2200px]:py-11">
+                      <div
+                        ref={allFiltersScrollRef}
+                        className="min-h-0 overflow-y-auto px-5 py-5 md:px-7 md:py-6 2xl:px-12 2xl:py-9 min-[2200px]:px-14 min-[2200px]:py-11"
+                      >
                         {renderFilters("desktop-all", "full", "overlay")}
                       </div>
 
@@ -1808,6 +1886,7 @@ export function CatalogPage({
                 className={`absolute inset-0 bg-black/35 transition-opacity duration-300 ${filtersOpen ? "opacity-100" : "opacity-0"}`}
               />
               <aside
+                ref={mobileFiltersRef}
                 className={`absolute left-0 top-0 h-full w-[min(92vw,420px)] overflow-y-auto bg-white px-5 py-6 shadow-2xl transition-transform duration-300 ease-out ${
                   filtersOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
@@ -1846,7 +1925,7 @@ export function CatalogPage({
             </div>
 
             <div className="flex-1">
-              {isLanding && !hasActiveFilters ? <div className="mb-10 md:-mt-24">{renderCategoryTiles()}</div> : null}
+              {isLanding && !hasActiveFilters ? <div className="mb-10 2xl:-mt-24">{renderCategoryTiles()}</div> : null}
 
               {isLanding ? (
                 <div className="mb-6 md:mb-8">

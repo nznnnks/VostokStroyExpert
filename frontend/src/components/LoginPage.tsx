@@ -6,6 +6,7 @@ import SiteHeader from "./SiteHeader";
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,13 +83,22 @@ export function LoginPage() {
                   <label className="block">
                     <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[2px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">Пароль</span>
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="••••••••"
-                      className="mt-3 h-12 w-full border-b border-[#d9d4cc] bg-transparent text-[clamp(1rem,1.25vw,1.25rem)] text-[#6d6d67] outline-none placeholder:text-[#c9c9c4]"
+                      className="mt-3 h-12 w-full border-b border-[#d9d4cc] bg-transparent pr-16 text-[clamp(1rem,1.25vw,1.25rem)] text-[#6d6d67] outline-none placeholder:text-[#c9c9c4]"
                       required
+                      autoComplete="current-password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((value) => !value)}
+                      className="mt-2 inline-flex w-full justify-end text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] transition hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                      aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    >
+                      {showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    </button>
                   </label>
 
                   {error ? <p className="text-[clamp(0.85rem,0.8vw,0.95rem)] leading-7 text-[#b24c47]">{error}</p> : null}
