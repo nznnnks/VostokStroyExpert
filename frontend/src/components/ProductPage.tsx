@@ -74,6 +74,50 @@ function dedupeProducts(items: Product[]) {
   return items.filter((item, index, list) => list.findIndex((entry) => entry.slug === item.slug) === index);
 }
 
+function formatNumber(value: number, digits = 0) {
+  const safe = Number.isFinite(value) ? value : 0;
+  const rounded = digits > 0 ? Number(safe.toFixed(digits)) : Math.round(safe);
+  return new Intl.NumberFormat("ru-RU").format(rounded);
+}
+
+function buildTopSpecs(product: Product) {
+  const power =
+    Number.isFinite(product.power) && product.power > 0
+      ? `${formatNumber(product.power, product.power % 1 === 0 ? 0 : 1)} кВт`
+      : null;
+  const volume =
+    Number.isFinite(product.volume) && product.volume > 0
+      ? `${formatNumber(product.volume, product.volume % 1 === 0 ? 0 : 1)} м³`
+      : null;
+
+  const candidates: Array<[string, string | null | undefined]> = [
+    ["Класс эффективности", product.efficiencyClass],
+    ["Площадь покрытия", product.coverage],
+    ["Акустика (тихий режим)", product.acoustics],
+    ["Фильтрация", product.filtration],
+    ["Мощность", power],
+    ["Объём", volume],
+    ["Тип", product.type],
+    ["Страна", product.country],
+    ["Бренд", product.brandLabel || product.brand],
+  ];
+
+  const result: Array<[string, string]> = [];
+  for (const [label, value] of candidates) {
+    const normalized = typeof value === "string" ? value.trim() : value;
+    if (!normalized) continue;
+    if (result.some(([existingLabel]) => existingLabel === label)) continue;
+    result.push([label, String(normalized)]);
+    if (result.length >= 4) break;
+  }
+
+  while (result.length < 4) {
+    result.push(["Характеристика", "—"]);
+  }
+
+  return result;
+}
+
 export function ProductPage({ product, relatedProducts, allProducts }: ProductPageProps) {
   const gallery = product.gallery ?? [product.image];
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -100,12 +144,8 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     initialRelatedPool.length > 6 || Boolean(product.categorySlug || product.brand),
   );
   const countryFlag = toFlagEmoji(product.country);
-  const topSpecs = [
-    ["Класс эффективности", product.efficiencyClass ?? "A Premium"],
-    ["Площадь покрытия", product.coverage ?? "До 100 м²"],
-    ["Акустика (тихий режим)", product.acoustics ?? "20 дБ"],
-    ["Фильтрация", product.filtration ?? "HEPA 13"],
-  ];
+  const hasPrice = Number.isFinite(product.price) && product.price > 0;
+  const topSpecs = buildTopSpecs(product);
   const detailsSpecs =
     product.filters && product.filters.length > 0
       ? product.filters
@@ -341,9 +381,9 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
             <a href={categoryHref} className="hover:text-[#111]">{product.category}</a>
           </div>
 
-          <div className="mt-7 grid gap-8 md:mt-9 md:gap-10 xl:grid-cols-[1.15fr_0.85fr]">
-            <div>
-              <div className="relative aspect-[4/5] overflow-hidden bg-[#f7f7f4]">
+          <div className="mt-7 grid gap-8 md:mt-9 md:gap-10 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="justify-self-center w-full max-w-[520px] sm:max-w-[560px] md:max-w-[600px] xl:max-w-[640px] 2xl:max-w-[680px]">
+              <div className="relative aspect-[1/1] max-h-[62svh] overflow-hidden bg-[#f7f7f4] md:aspect-[5/4] md:max-h-[640px]">
                 {previousImage && isImageTransitioning ? (
                   <img
                     src={previousImage}
@@ -372,9 +412,9 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                   disabled={!canGoPrevImage}
                   hidden={!canGoPrevImage}
                   aria-label="Предыдущее фото"
-                  className="absolute left-3 top-1/2 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-[#e7e1d9] bg-white/90 text-[#2b2a27] shadow-[0_18px_40px_rgba(38,35,31,0.10)] backdrop-blur transition-transform hover:scale-[1.03] md:left-6"
+                  className="absolute left-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#e7e1d9] bg-white/90 text-[#2b2a27] shadow-[0_16px_34px_rgba(38,35,31,0.10)] backdrop-blur transition-transform hover:scale-[1.03] md:left-6 md:h-12 md:w-12"
                 >
-                  <svg className="rotate-180" width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <svg className="rotate-180" width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -384,9 +424,9 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                   disabled={!canGoNextImage}
                   hidden={!canGoNextImage}
                   aria-label="Следующее фото"
-                  className="absolute right-3 top-1/2 inline-flex h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-[#e7e1d9] bg-white/90 text-[#2b2a27] shadow-[0_18px_40px_rgba(38,35,31,0.10)] backdrop-blur transition-transform hover:scale-[1.03] md:right-6"
+                  className="absolute right-3 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#e7e1d9] bg-white/90 text-[#2b2a27] shadow-[0_16px_34px_rgba(38,35,31,0.10)] backdrop-blur transition-transform hover:scale-[1.03] md:right-6 md:h-12 md:w-12"
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -415,15 +455,23 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
             </div>
 
             <aside className="xl:pt-6">
-              <p className="text-[clamp(0.68rem,0.5vw,0.85rem)] uppercase tracking-[1.8px] text-[#7e7e79] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+              <p className="text-[clamp(0.66rem,0.48vw,0.82rem)] uppercase tracking-[1.6px] text-[#7e7e79] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                 артикул: {product.article} / бренд: {product.brandLabel}
               </p>
-              <h1 className="mt-4 max-w-[560px] text-[clamp(2rem,5vw,5.4rem)] leading-[0.98] tracking-[-0.04em] text-[#111] [font-family:'Cormorant_Garamond',serif] md:mt-6">
+              <h1 className="mt-4 max-w-[560px] text-[clamp(1.8rem,4.2vw,4.4rem)] leading-[0.98] tracking-[-0.04em] text-[#111] [font-family:'Cormorant_Garamond',serif] md:mt-6">
                 {product.title}
               </h1>
-              <p className="mt-6 text-[clamp(1.7rem,2.6vw,2.6rem)] leading-none text-[#111] [font-family:DM_Sans,Manrope,sans-serif] md:mt-8">{formatPrice(product.price)}</p>
+              {hasPrice ? (
+                <p className="mt-5 text-[clamp(1.35rem,2.2vw,2.1rem)] leading-none text-[#111] [font-family:DM_Sans,Manrope,sans-serif] md:mt-7">
+                  {formatPrice(product.price)}
+                </p>
+              ) : (
+                <p className="mt-5 text-[clamp(1.05rem,1.5vw,1.35rem)] uppercase tracking-[1.6px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace] md:mt-7">
+                  Цена по запросу
+                </p>
+              )}
 
-              <dl className="mt-8 divide-y divide-[#e8e3db] border-y border-[#e8e3db] md:mt-14">
+              <dl className="mt-7 divide-y divide-[#e8e3db] border-y border-[#e8e3db] md:mt-10">
                 {topSpecs.map(([label, value]) => (
                   <div key={label} className="grid gap-1 py-4 md:grid-cols-[1fr_auto] md:gap-6 md:py-5">
                     <dt className="text-[clamp(0.75rem,0.6vw,0.95rem)] uppercase tracking-[1.5px] text-[#6f6f69] [font-family:Jaldi,'JetBrains_Mono',monospace]">{label}</dt>
@@ -432,17 +480,21 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                 ))}
               </dl>
 
-              <div className="mt-8 grid gap-4 md:mt-12 md:gap-5">
-                {cartQty > 0 ? (
+              <div className="mt-7 grid gap-4 md:mt-10 md:gap-4">
+                {!hasPrice ? (
+                  <div className="border border-[#e8e3db] bg-white px-5 py-5 text-[14px] leading-6 text-[#6f6f69] md:px-6">
+                    У этого товара нет цены. Свяжитесь с менеджером, чтобы уточнить стоимость и срок поставки.
+                  </div>
+                ) : cartQty > 0 ? (
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
                     <div
-                      className={`grid h-[52px] min-w-0 grid-cols-[52px_minmax(0,1fr)_52px] overflow-hidden bg-[#111] text-white transition-all duration-300 md:h-18 md:grid-cols-[60px_minmax(0,1fr)_60px] ${cartAnimated ? "scale-[1.012] shadow-[0_18px_36px_rgba(17,17,17,0.16)]" : ""}`}
+                      className={`grid h-12 min-w-0 grid-cols-[48px_minmax(0,1fr)_48px] overflow-hidden bg-[#111] text-white transition-all duration-300 md:h-16 md:grid-cols-[56px_minmax(0,1fr)_56px] ${cartAnimated ? "scale-[1.012] shadow-[0_18px_36px_rgba(17,17,17,0.16)]" : ""}`}
                     >
                       <button
                         type="button"
                         onClick={() => void handleCartQuantityChange(Math.max(0, cartQty - 1))}
                         disabled={cartPending}
-                        className="flex items-center justify-center border-r border-white/12 text-[24px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
                         aria-label="Уменьшить количество"
                       >
                         −
@@ -450,9 +502,9 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                       <div className="flex items-center justify-center px-3">
                         <span
                           key={`${product.slug}-${cartQty}`}
-                          className="inline-flex items-baseline gap-2 animate-[cartQtyPop_380ms_cubic-bezier(0.22,1,0.36,1)] text-[14px] uppercase tracking-[1.6px] md:text-[16px] md:tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                          className="inline-flex items-baseline gap-2 animate-[cartQtyPop_380ms_cubic-bezier(0.22,1,0.36,1)] text-[13px] uppercase tracking-[1.4px] md:text-[14px] md:tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                         >
-                          <span className="text-[22px] leading-none tabular-nums md:text-[26px]">{cartQty}</span>
+                          <span className="text-[20px] leading-none tabular-nums md:text-[22px]">{cartQty}</span>
                           <span>в корзине</span>
                         </span>
                       </div>
@@ -460,7 +512,7 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                         type="button"
                         onClick={() => void handleAddToCart()}
                         disabled={cartPending}
-                        className="flex items-center justify-center border-l border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
                         aria-label="Увеличить количество"
                       >
                         +
@@ -468,7 +520,7 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                     </div>
                     <a
                       href="/cart"
-                      className="group inline-flex h-[52px] items-center justify-between gap-4 border border-[#d9d0c3] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe8de_100%)] px-5 text-[clamp(0.82rem,0.82vw,0.96rem)] uppercase tracking-[1.8px] text-[#111] shadow-[0_10px_24px_rgba(17,17,17,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3b46a] hover:shadow-[0_16px_34px_rgba(17,17,17,0.10)] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:px-6 md:tracking-[2.3px]"
+                      className="group inline-flex h-12 items-center justify-between gap-4 border border-[#d9d0c3] bg-[linear-gradient(180deg,#f8f4ee_0%,#efe8de_100%)] px-4 text-[clamp(0.78rem,0.78vw,0.92rem)] uppercase tracking-[1.6px] text-[#111] shadow-[0_10px_24px_rgba(17,17,17,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#d3b46a] hover:shadow-[0_16px_34px_rgba(17,17,17,0.10)] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:px-5 md:tracking-[1.9px]"
                     >
                       <span className="text-left leading-[1.05]">перейти в корзину</span>
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#d7ccbd] bg-white/70 text-[#111] transition-all duration-300 group-hover:border-[#d3b46a] group-hover:bg-white group-hover:translate-x-0.5">
@@ -484,14 +536,16 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                     type="button"
                     onClick={() => void handleAddToCart()}
                     disabled={cartPending}
-                    className="inline-flex h-[52px] items-center justify-center bg-[#111] px-8 text-[clamp(0.9rem,0.9vw,1.15rem)] uppercase tracking-[2.2px] text-white transition-colors hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:tracking-[3px]"
+                    className="inline-flex h-12 items-center justify-center bg-[#111] px-7 text-[clamp(0.82rem,0.82vw,1.05rem)] uppercase tracking-[1.8px] text-white transition-colors hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:tracking-[2.3px]"
                   >
                     {cartPending ? "добавляем" : "в корзину"}
                   </button>
                 )}
-                <a href={`/checkout?product=${product.slug}`} className="inline-flex h-[52px] items-center justify-center border border-[#111] px-8 text-[clamp(0.9rem,0.9vw,1.15rem)] uppercase tracking-[2.2px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-18 md:tracking-[3px]">
-                  купить в 1 клик
-                </a>
+                {hasPrice ? (
+                  <a href={`/checkout?product=${product.slug}`} className="inline-flex h-12 items-center justify-center border border-[#111] px-7 text-[clamp(0.82rem,0.82vw,1.05rem)] uppercase tracking-[1.8px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:tracking-[2.3px]">
+                    купить в 1 клик
+                  </a>
+                ) : null}
               </div>
 
               <div className="mt-10 grid gap-6 border-t border-[#e8e3db] pt-6 md:mt-14 md:gap-8 md:pt-8 md:grid-cols-2">
@@ -535,13 +589,19 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                 Характеристики
               </button>
             </div>
-            <div className="hidden xl:block pb-2 pt-5 text-right text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              Отзывы
-            </div>
+            {activeDetailsTab === "description" ? (
+              <div className="hidden xl:block pb-2 pt-5 text-right text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[1.5px] text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                Отзывы
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-10 md:mt-16">
-            <div className="grid gap-10 md:gap-12 xl:grid-cols-[1fr_530px]">
+            <div
+              className={`grid gap-10 md:gap-12 ${
+                activeDetailsTab === "description" ? "xl:grid-cols-[1fr_530px]" : "xl:grid-cols-1"
+              }`}
+            >
               <div className="relative min-h-[420px]">
                 <div
                   aria-hidden={activeDetailsTab !== "description"}
@@ -592,42 +652,44 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                 </div>
               </div>
 
-              <aside className="border border-[#e8e3db] bg-[#fff]">
-                <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
-                  Отзывы
-                </div>
-                <div className="px-5 py-6 md:px-8 md:py-10">
-                  <div className="space-y-6">
-                    {reviews.map((review) => (
-                      <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={review.avatar}
-                            alt=""
-                            aria-hidden="true"
-                            width="44"
-                            height="44"
-                            loading="lazy"
-                            decoding="async"
-                            className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
-                              {review.name}
-                            </p>
-                            <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-                              {review.rating}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
-                          {review.text}
-                        </p>
-                      </article>
-                    ))}
+              {activeDetailsTab === "description" ? (
+                <aside className="border border-[#e8e3db] bg-[#fff]">
+                  <div className="border-b border-[#e8e3db] px-5 py-7 text-[clamp(1rem,0.95vw,1.25rem)] uppercase tracking-[2px] text-[#7b7b76] [font-family:Jaldi,'JetBrains_Mono',monospace] xl:hidden md:px-8 md:py-10">
+                    Отзывы
                   </div>
-                </div>
-              </aside>
+                  <div className="px-5 py-6 md:px-8 md:py-10">
+                    <div className="space-y-6">
+                      {reviews.map((review) => (
+                        <article key={review.name} className="border-b border-[#e8e3db] pb-6 last:border-b-0 last:pb-0">
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={review.avatar}
+                              alt=""
+                              aria-hidden="true"
+                              width="44"
+                              height="44"
+                              loading="lazy"
+                              decoding="async"
+                              className="h-11 w-11 rounded-full border border-[#e6ded4] bg-white object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-[clamp(1.05rem,1vw,1.2rem)] leading-none text-[#111] [font-family:'Cormorant_Garamond',serif]">
+                                {review.name}
+                              </p>
+                              <p className="mt-2 text-[0.95rem] leading-none tracking-[1px] text-[#d2ad58] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                                {review.rating}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="mt-4 text-[clamp(0.95rem,1vw,1.12rem)] leading-[1.6] text-[#676761] [font-family:DM_Sans,Manrope,sans-serif]">
+                            {review.text}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </aside>
+              ) : null}
             </div>
           </div>
         </div>

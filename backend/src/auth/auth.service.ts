@@ -11,7 +11,9 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { buildAuthCodeEmailTemplate } from '../mail/templates/auth-code-email.template';
+import { buildPasswordChangedEmailTemplate } from '../mail/templates/password-changed-email.template';
 import { isAdminUserRole } from './constants/auth.constants';
+import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -363,6 +365,90 @@ export class AuthService {
     return { ok: true };
   }
 
+  async requestUserPasswordReset(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return { ok: true };
+    }
+
+    if (user.passwordResetSentAt) {
+      const elapsed = Date.now() - user.passwordResetSentAt.getTime();
+      if (elapsed < 60_000) {
+        throw new BadRequestException('Password reset code was sent recently. Please wait a bit.');
+      }
+    }
+
+    await this.issueUserPasswordResetCode(user.id);
+    return { ok: true };
+  }
+
+  async confirmUserPasswordReset(dto: ConfirmPasswordResetDto) {
+    if (dto.password !== dto.passwordRepeat) {
+      throw new BadRequestException('Passwords do not match.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        passwordResetCodeHash: true,
+        passwordResetExpiresAt: true,
+      },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('Invalid reset code.');
+    }
+
+    if (!user.passwordResetCodeHash || !user.passwordResetExpiresAt) {
+      throw new BadRequestException('Invalid reset code.');
+    }
+
+    if (user.passwordResetExpiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException('Reset code has expired.');
+    }
+
+    const expectedHash = this.hashPasswordResetCode(user.email, dto.code);
+    if (expectedHash !== user.passwordResetCodeHash) {
+      throw new BadRequestException('Invalid reset code.');
+    }
+
+    const passwordHash = await this.passwordService.preparePasswordHash(dto.password);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetCodeHash: null,
+        passwordResetExpiresAt: null,
+        passwordResetSentAt: null,
+      },
+    });
+
+    // Email notification is sent as a best-effort: password is already updated.
+    try {
+      const template = buildPasswordChangedEmailTemplate({
+        brandName: this.brandName,
+        publicUrl: this.publicUrl,
+      });
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+      });
+    } catch {
+      // ignore
+    }
+
+    return { ok: true };
+  }
+
   verifyAccessToken(token: string): AuthPrincipal {
     try {
       const payload = jwt.verify(token, this.getJwtSecret()) as AuthTokenPayload;
@@ -437,6 +523,16 @@ export class AuthService {
   private hashLoginCode(email: string, code: string) {
     return createHash('sha256')
       .update(`${email.toLowerCase()}|${code}|${this.loginCodeSecret}`)
+      .digest('hex');
+  }
+
+  private get passwordResetSecret() {
+    return process.env.PASSWORD_RESET_SECRET ?? this.getJwtSecret();
+  }
+
+  private hashPasswordResetCode(email: string, code: string) {
+    return createHash('sha256')
+      .update(`${email.toLowerCase()}|${code}|${this.passwordResetSecret}`)
       .digest('hex');
   }
 
@@ -587,6 +683,48 @@ export class AuthService {
       });
     } catch {
       throw new ServiceUnavailableException('Failed to send login code email.');
+    }
+  }
+
+  private async issueUserPasswordResetCode(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      return;
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + 10 * 60_000);
+    const sentAt = new Date();
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordResetCodeHash: this.hashPasswordResetCode(user.email, code),
+        passwordResetExpiresAt: expiresAt,
+        passwordResetSentAt: sentAt,
+      },
+    });
+
+    try {
+      const template = buildAuthCodeEmailTemplate({
+        purpose: 'password_reset',
+        code,
+        expiresMinutes: 10,
+        brandName: this.brandName,
+        publicUrl: this.publicUrl,
+      });
+
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+      });
+    } catch {
+      throw new ServiceUnavailableException('Failed to send password reset email.');
     }
   }
 

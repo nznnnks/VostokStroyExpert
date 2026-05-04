@@ -1,9 +1,4 @@
-type AuthCodePurpose = 'email_verification' | 'login_code' | 'password_reset';
-
-export type AuthCodeEmailTemplateParams = {
-  purpose: AuthCodePurpose;
-  code: string;
-  expiresMinutes: number;
+export type PasswordChangedEmailTemplateParams = {
   brandName: string;
   publicUrl?: string;
 };
@@ -17,31 +12,20 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;');
 }
 
-export function buildAuthCodeEmailTemplate(params: AuthCodeEmailTemplateParams) {
+export function buildPasswordChangedEmailTemplate(params: PasswordChangedEmailTemplateParams) {
   const brandName = params.brandName.trim() || 'Climatrade';
-  const code = params.code.trim();
-  const expiresMinutes = params.expiresMinutes;
   const publicUrl = params.publicUrl?.trim() || null;
-
-  const purposeText =
-    params.purpose === 'email_verification'
-      ? 'подтверждения email'
-      : params.purpose === 'login_code'
-        ? 'входа'
-        : 'восстановления пароля';
-  const subject = `Код для ${purposeText}`;
+  const subject = 'Пароль успешно обновлён';
 
   const textLines = [
     `${brandName}`,
     '',
-    `Ваш код для ${purposeText}: ${code}`,
-    `Код действует ${expiresMinutes} минут.`,
+    'Ваш пароль был успешно обновлён.',
+    'Если вы не выполняли это действие — пожалуйста, срочно смените пароль и обратитесь в поддержку.',
   ];
-
   if (publicUrl) {
     textLines.push('', `Сайт: ${publicUrl}`);
   }
-
   const text = textLines.join('\n');
 
   const html = `<!doctype html>
@@ -63,11 +47,13 @@ export function buildAuthCodeEmailTemplate(params: AuthCodeEmailTemplateParams) 
             </tr>
             <tr>
               <td style="padding:22px;">
-                <div style="font-size:14px;color:#111827;margin-bottom:10px;">Ваш код для ${escapeHtml(purposeText)}:</div>
-                <div style="font-size:32px;letter-spacing:6px;font-weight:800;color:#111827;background:#f3f4f6;border-radius:10px;padding:14px 16px;display:inline-block;">
-                  ${escapeHtml(code)}
+                <div style="font-size:16px;font-weight:700;color:#111827;">Пароль успешно обновлён</div>
+                <div style="font-size:14px;color:#111827;margin-top:10px;line-height:1.6;">
+                  Ваш пароль был успешно обновлён.
                 </div>
-                <div style="font-size:13px;color:#6b7280;margin-top:12px;">Код действует ${escapeHtml(String(expiresMinutes))} минут.</div>
+                <div style="font-size:13px;color:#6b7280;margin-top:12px;line-height:1.6;">
+                  Если вы не выполняли это действие — пожалуйста, срочно смените пароль и обратитесь в поддержку.
+                </div>
                 ${
                   publicUrl
                     ? `<div style="font-size:13px;color:#6b7280;margin-top:16px;">Сайт: <a href="${escapeHtml(
@@ -75,11 +61,6 @@ export function buildAuthCodeEmailTemplate(params: AuthCodeEmailTemplateParams) 
                       )}" style="color:#2563eb;text-decoration:none;">${escapeHtml(publicUrl)}</a></div>`
                     : ''
                 }
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 22px;background:#fafafa;border-top:1px solid #f0f1f6;">
-                <div style="font-size:12px;color:#9ca3af;">Если вы не запрашивали этот код, просто игнорируйте письмо.</div>
               </td>
             </tr>
           </table>

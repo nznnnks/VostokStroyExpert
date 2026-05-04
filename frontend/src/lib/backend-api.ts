@@ -585,7 +585,7 @@ function splitDescription(description?: string | null) {
 }
 
 function resolveImage(product: ApiProduct) {
-  return product.images?.[0] ?? "";
+  return product.images?.[0] ?? "/image/product-placeholder.svg";
 }
 
 function formatDate(value?: string | null) {

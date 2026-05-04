@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { loginUser } from "../lib/auth";
+import PasswordRecoveryModal from "./PasswordRecoveryModal";
 import SiteHeader from "./SiteHeader";
 
 export function LoginPage() {
@@ -100,6 +101,15 @@ export function LoginPage() {
                       {showPassword ? "Скрыть пароль" : "Показать пароль"}
                     </button>
                   </label>
+
+                  <PasswordRecoveryModal
+                    initialEmail={email}
+                    onRecovered={(nextEmail) => {
+                      setEmail(nextEmail);
+                      setPassword("");
+                      setError(null);
+                    }}
+                  />
 
                   {error ? <p className="text-[clamp(0.85rem,0.8vw,0.95rem)] leading-7 text-[#b24c47]">{error}</p> : null}
 

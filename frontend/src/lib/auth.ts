@@ -383,3 +383,17 @@ export async function resendUserLoginCode(email: string) {
     body: { email },
   });
 }
+
+export async function requestPasswordReset(email: string) {
+  return apiRequest<{ ok: true }>("/api/auth/user/request-password-reset", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function confirmPasswordReset(email: string, code: string, password: string, passwordRepeat: string) {
+  return apiRequest<{ ok: true }>("/api/auth/user/confirm-password-reset", {
+    method: "POST",
+    body: { email, code, password, passwordRepeat },
+  });
+}
