@@ -378,25 +378,38 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
       normalizeInlineAutoplay(video);
       try {
         await video.play();
+        if (fallbackVideoSet.has(video)) {
+          fallbackVideoSet.delete(video);
+        }
         return true;
       } catch {
         return false;
       }
     };
 
-    const bindFallbackGesture = (video) => {
-      if (video.dataset.autoplayFallbackBound === "1") return;
-      video.dataset.autoplayFallbackBound = "1";
+    const fallbackVideoSet = new Set();
+    let fallbackListenersBound = false;
 
-      const retry = () => {
+    const runFallbackRetries = () => {
+      fallbackVideoSet.forEach((video) => {
+        if (!(video instanceof HTMLVideoElement)) return;
         void tryPlayInline(video);
-      };
-
-      window.addEventListener("touchstart", retry, { once: true, passive: true });
-      window.addEventListener("click", retry, { once: true });
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) retry();
       });
+    };
+
+    const bindGlobalFallbackListeners = () => {
+      if (fallbackListenersBound) return;
+      fallbackListenersBound = true;
+      window.addEventListener("touchstart", runFallbackRetries, { once: true, passive: true });
+      window.addEventListener("click", runFallbackRetries, { once: true });
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) runFallbackRetries();
+      });
+    };
+
+    const bindFallbackGesture = (video) => {
+      fallbackVideoSet.add(video);
+      bindGlobalFallbackListeners();
     };
 
     const startAboutVideo = (video) => {
@@ -426,7 +439,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
       observer.observe(node);
     });
 
-    desktopMedia.addEventListener("change", () => {
+    const handleDesktopMediaChange = () => {
       aboutVideos.forEach((node) => {
         if (!(node instanceof HTMLVideoElement)) return;
         if (shouldPlayAboutVideo(node)) {
@@ -435,7 +448,8 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
           stopVideo(node);
         }
       });
-    });
+    };
+    desktopMedia.addEventListener("change", handleDesktopMediaChange);
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const serviceRevealBlocks = document.querySelectorAll("[data-home-services-reveal]");

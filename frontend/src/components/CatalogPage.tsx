@@ -64,6 +64,7 @@ export function CatalogPage({
   variant = "default",
 }: CatalogPageProps) {
   const resultsTopRef = useRef<HTMLDivElement>(null);
+  const resultsGridRef = useRef<HTMLDivElement>(null);
   const desktopFiltersRef = useRef<HTMLElement | null>(null);
   const mobileFiltersRef = useRef<HTMLElement | null>(null);
   const allFiltersScrollRef = useRef<HTMLDivElement | null>(null);
@@ -177,6 +178,11 @@ export function CatalogPage({
   const [pendingCartSlug, setPendingCartSlug] = useState<string | null>(null);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [animatedCartSlug, setAnimatedCartSlug] = useState<string | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 1440 : window.innerWidth));
+  const [virtualWindow, setVirtualWindow] = useState<{ start: number; end: number }>({
+    start: 0,
+    end: initialProducts.length,
+  });
 
   const normalizeFilterLabel = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -462,6 +468,20 @@ export function CatalogPage({
   }, [maxProductPrice]);
 
   const pageProducts = products;
+  const virtualColumns = useMemo(() => {
+    if (viewportWidth >= 1280) return isLanding ? 4 : 3;
+    return 2;
+  }, [isLanding, viewportWidth]);
+  const estimatedCardHeight = viewportWidth >= 1536 ? 690 : viewportWidth >= 1280 ? 620 : viewportWidth >= 768 ? 520 : 430;
+  const virtualizationEnabled = pageProducts.length > 100;
+  const virtualStartIndex = virtualizationEnabled ? Math.max(0, Math.min(virtualWindow.start, pageProducts.length)) : 0;
+  const virtualEndIndex = virtualizationEnabled ? Math.max(virtualStartIndex, Math.min(virtualWindow.end, pageProducts.length)) : pageProducts.length;
+  const visibleProducts = virtualizationEnabled ? pageProducts.slice(virtualStartIndex, virtualEndIndex) : pageProducts;
+  const totalRows = Math.ceil(pageProducts.length / virtualColumns);
+  const startRow = Math.floor(virtualStartIndex / virtualColumns);
+  const endRow = Math.ceil(virtualEndIndex / virtualColumns);
+  const topSpacerHeight = virtualizationEnabled ? startRow * estimatedCardHeight : 0;
+  const bottomSpacerHeight = virtualizationEnabled ? Math.max(0, (totalRows - endRow) * estimatedCardHeight) : 0;
   const visiblePercent = catalogTotalAll === 0 ? 0 : Math.round((catalogTotal / catalogTotalAll) * 100);
   const activeCatalogTypeFilters = isLanding ? selectedLandingTypeSlugs : selectedTypes;
   const effectiveCategoryFilter =
@@ -846,6 +866,7 @@ export function CatalogPage({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const categoryFromQuery = params.get("cat")?.trim();
     const searchFromQuery = params.get("search")?.trim();
     const brandFromQuery = params.get("brand")?.trim();
     const typesFromQuery = params.getAll("type").map((value) => value.trim()).filter(Boolean);
@@ -854,6 +875,17 @@ export function CatalogPage({
       setSearchInput(searchFromQuery);
       setQuery(searchFromQuery);
       setPage(1);
+    }
+
+    if (categoryFromQuery && !isCategoryPage) {
+      const matchedCategory = categoryTypeTree.find(
+        (entry) => entry.slug.toLowerCase() === categoryFromQuery.toLowerCase(),
+      );
+      if (matchedCategory) {
+        setSelectedCategory(matchedCategory.slug);
+        setExpandedCategory(matchedCategory.slug);
+        setPage(1);
+      }
     }
 
     if (typesFromQuery.length > 0) {
@@ -921,6 +953,94 @@ export function CatalogPage({
   }, [brands, categoryTypeTree, currentCategoryTypeOptions, initialCategory, isCategoryPage, isLanding, types]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let rafId: number | null = null;
+    const overscanRows = 2;
+
+    const recalc = () => {
+      const nextWidth = window.innerWidth;
+      setViewportWidth((current) => (current === nextWidth ? current : nextWidth));
+
+      if (!virtualizationEnabled) {
+        setVirtualWindow((current) => {
+          const next = { start: 0, end: pageProducts.length };
+          return current.start === next.start && current.end === next.end ? current : next;
+        });
+        return;
+      }
+
+      const grid = resultsGridRef.current;
+      if (!grid) return;
+      const rect = grid.getBoundingClientRect();
+      const gridTop = rect.top + window.scrollY;
+      const relativeScrollTop = Math.max(0, window.scrollY - gridTop);
+      const viewportBottom = relativeScrollTop + window.innerHeight;
+      const rowStart = Math.max(0, Math.floor(relativeScrollTop / estimatedCardHeight) - overscanRows);
+      const rowEnd = Math.min(
+        Math.ceil(pageProducts.length / Math.max(1, virtualColumns)),
+        Math.ceil(viewportBottom / estimatedCardHeight) + overscanRows,
+      );
+      const nextStart = rowStart * virtualColumns;
+      const nextEnd = Math.min(pageProducts.length, rowEnd * virtualColumns);
+
+      setVirtualWindow((current) =>
+        current.start === nextStart && current.end === nextEnd ? current : { start: nextStart, end: nextEnd },
+      );
+    };
+
+    const scheduleRecalc = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        recalc();
+      });
+    };
+
+    recalc();
+    window.addEventListener("scroll", scheduleRecalc, { passive: true });
+    window.addEventListener("resize", scheduleRecalc, { passive: true });
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", scheduleRecalc);
+      window.removeEventListener("resize", scheduleRecalc);
+    };
+  }, [estimatedCardHeight, pageProducts.length, virtualColumns, virtualizationEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isLanding || isCategoryPage) return;
+
+    const url = new URL(window.location.href);
+    const nextCategory = selectedCategory !== "all" ? selectedCategory : null;
+    const currentCategory = url.searchParams.get("cat");
+
+    if (nextCategory) {
+      if (currentCategory !== nextCategory) {
+        url.searchParams.set("cat", nextCategory);
+      }
+    } else if (currentCategory) {
+      url.searchParams.delete("cat");
+    }
+
+    const currentTypes = url.searchParams.getAll("type").sort();
+    const nextTypes = [...selectedLandingTypeSlugs].sort();
+    const sameTypes =
+      currentTypes.length === nextTypes.length &&
+      currentTypes.every((value, index) => value === nextTypes[index]);
+
+    if (!sameTypes) {
+      url.searchParams.delete("type");
+      for (const type of nextTypes) {
+        url.searchParams.append("type", type);
+      }
+    }
+
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [isCategoryPage, isLanding, selectedCategory, selectedLandingTypeSlugs]);
+
+  useEffect(() => {
     if (suppressCatalogReloadRef.current) {
       suppressCatalogReloadRef.current = false;
       return;
@@ -945,13 +1065,13 @@ export function CatalogPage({
     if (typeof window === "undefined") return;
 
     if (isLanding && selectedCategory !== "all") {
-      const params = new URLSearchParams();
+      const url = new URL(window.location.href);
+      url.searchParams.set("cat", selectedCategory);
+      url.searchParams.delete("type");
       for (const type of selectedLandingTypeSlugs) {
-        params.append("type", type);
+        url.searchParams.append("type", type);
       }
-      const queryString = params.toString();
-      const href = `/catalog/category/${selectedCategory}${queryString ? `?${queryString}` : ""}`;
-      window.location.href = href;
+      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
       return;
     }
 
@@ -1157,7 +1277,7 @@ export function CatalogPage({
                   type="checkbox"
                   checked={selectedTypes.length === 0}
                   onChange={handleCategoryTypeReset}
-                  className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                  className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-colors duration-200"
                 />
                 <span className="min-w-0">
                   <span className="block">Все товары раздела</span>
@@ -1169,7 +1289,7 @@ export function CatalogPage({
                     type="checkbox"
                     checked={selectedTypes.includes(slug)}
                     onChange={() => handleCategoryTypeSelect(slug)}
-                    className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                    className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-colors duration-200"
                   />
                   <span className="min-w-0">
                     <span className="block">{type}</span>
@@ -1216,7 +1336,7 @@ export function CatalogPage({
                     name={`${idPrefix}-landing-category`}
                     checked={selectedCategory === "all"}
                     onChange={handleLandingCategoryReset}
-                    className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                    className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-colors duration-200"
                   />
                   <span>Все категории</span>
                 </label>
@@ -1238,7 +1358,7 @@ export function CatalogPage({
                             name={`${idPrefix}-landing-category`}
                             checked={isActiveCategory}
                             onChange={() => handleLandingCategorySelect(item.slug)}
-                            className="catalog-checkbox mt-1 h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                            className="catalog-checkbox mt-1 h-6 w-6 border border-[#e1dbd2] transition-colors duration-200"
                           />
                           <span className="min-w-0">
                             <span className="block">{item.category}</span>
@@ -1274,7 +1394,7 @@ export function CatalogPage({
                         aria-hidden={!isExpanded}
                       >
                         <div className="catalog-category-accordion__inner mt-3 space-y-3">
-                          {item.types.map(({ type, slug, count }) => (
+                          {(isExpanded ? item.types : []).map(({ type, slug, count }) => (
                             <label
                               key={slug}
                               className="flex items-start gap-4 text-[16px] text-[#6f6f69]"
@@ -1284,7 +1404,7 @@ export function CatalogPage({
                                 type="checkbox"
                                 checked={selectedLandingTypeSlugs.includes(slug)}
                                 onChange={() => handleLandingCategoryTypeToggle(item.slug, slug)}
-                                className="catalog-checkbox mt-1 h-5 w-5 border border-[#e1dbd2] transition-all duration-200"
+                                className="catalog-checkbox mt-1 h-5 w-5 border border-[#e1dbd2] transition-colors duration-200"
                               />
                               <span className="min-w-0">
                                 <span className="block">{type}</span>
@@ -1406,7 +1526,7 @@ export function CatalogPage({
                               type="checkbox"
                               checked={selected.includes(value)}
                               onChange={() => toggleValue(value, selected, setSelected)}
-                              className="catalog-checkbox h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7 border border-[#e1dbd2] transition-all duration-200"
+                              className="catalog-checkbox h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7 border border-[#e1dbd2] transition-colors duration-200"
                             />
                             <span>{label}</span>
                           </label>
@@ -1527,7 +1647,7 @@ export function CatalogPage({
                         checked={selected.includes(value)}
                         onChange={() => toggleValue(value, selected, setSelected)}
                         className={[
-                          "catalog-checkbox border border-[#e1dbd2] transition-all duration-200",
+                          "catalog-checkbox border border-[#e1dbd2] transition-colors duration-200",
                           isOverlay ? "h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7" : "h-6 w-6",
                         ].join(" ")}
                       />
@@ -1619,7 +1739,7 @@ export function CatalogPage({
                                   });
                                   setPage(1);
                                 }}
-                                className="catalog-checkbox h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7 border border-[#e1dbd2] transition-all duration-200"
+                                className="catalog-checkbox h-5 w-5 2xl:h-6 2xl:w-6 min-[2200px]:h-7 min-[2200px]:w-7 border border-[#e1dbd2] transition-colors duration-200"
                               />
                               <span>{item}</span>
                             </label>
@@ -1676,7 +1796,7 @@ export function CatalogPage({
                                 });
                                 setPage(1);
                               }}
-                              className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-all duration-200"
+                              className="catalog-checkbox h-6 w-6 border border-[#e1dbd2] transition-colors duration-200"
                             />
                             <span>{item}</span>
                           </label>
@@ -1706,7 +1826,7 @@ export function CatalogPage({
               onClick={resetAllFilters}
               aria-pressed={hasActiveFilters}
               className={[
-                "h-12 w-full border text-[13px] uppercase tracking-[1.4px] transition-all md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]",
+                "h-12 w-full border text-[13px] uppercase tracking-[1.4px] transition-[background-color,color,border-color,letter-spacing] md:h-14 md:text-[15px] 2xl:h-16 2xl:text-[16px] [font-family:Jaldi,'JetBrains_Mono',monospace]",
                 hasActiveFilters
                   ? "border-[#111] bg-[#111] text-white shadow-[0_14px_28px_rgba(17,17,17,0.16)] ring-1 ring-[#111]/20 hover:bg-[#2a2a26] hover:shadow-[0_18px_34px_rgba(17,17,17,0.22)]"
                   : "border-[#111] bg-[#111] text-white opacity-72 hover:bg-[#2a2a26] hover:opacity-100",
@@ -1810,7 +1930,8 @@ export function CatalogPage({
               {renderFilters("desktop", "compact")}
             </aside>
 
-            <div className={`fixed inset-0 z-[240] ${allFiltersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!allFiltersOpen}>
+            {allFiltersOpen ? (
+            <div className="fixed inset-0 z-[240] pointer-events-auto" aria-hidden={!allFiltersOpen}>
               <button
                 type="button"
                 aria-label="Закрыть фильтры"
@@ -1877,8 +1998,10 @@ export function CatalogPage({
                 </div>
               </div>
             </div>
+            ) : null}
 
-            <div className={`fixed inset-0 z-[240] xl:hidden ${filtersOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!filtersOpen}>
+            {filtersOpen ? (
+            <div className="fixed inset-0 z-[240] xl:hidden pointer-events-auto" aria-hidden={!filtersOpen}>
               <button
                 type="button"
                 aria-label="Закрыть фильтры"
@@ -1923,6 +2046,7 @@ export function CatalogPage({
                 ) : null}
               </aside>
             </div>
+            ) : null}
 
             <div className="flex-1">
               {isLanding && !hasActiveFilters ? <div className="mb-10 2xl:-mt-24">{renderCategoryTiles()}</div> : null}
@@ -2201,7 +2325,10 @@ export function CatalogPage({
                 </div>
 
                 <div
-                  ref={resultsTopRef}
+                  ref={(node) => {
+                    resultsTopRef.current = node;
+                    resultsGridRef.current = node;
+                  }}
                   id="catalog-results-top"
                   key={resultsAnimationKey}
                   className={`catalog-results mt-10 scroll-mt-[220px] grid grid-cols-2 gap-4 md:scroll-mt-[240px] md:gap-8 lg:grid-cols-2 xl:scroll-mt-[250px] [overflow-anchor:none] ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
@@ -2211,11 +2338,14 @@ export function CatalogPage({
                         <CatalogCardSkeleton key={`catalog-skeleton-${index}`} />
                       ))
                     : null}
-                  {pageProducts.map((product, index) => (
+                  {virtualizationEnabled && topSpacerHeight > 0 ? (
+                    <div aria-hidden="true" style={{ gridColumn: "1 / -1", height: `${topSpacerHeight}px` }} />
+                  ) : null}
+                  {visibleProducts.map((product, index) => (
                     <article
                       key={product.slug}
-                      style={{ animationDelay: `${index * 60}ms` }}
-                      className="catalog-card group flex h-full flex-col border border-[#ebe5de] bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] md:p-6 2xl:p-8"
+                      style={{ animationDelay: `${(virtualStartIndex + index) * 60}ms` }}
+                      className="catalog-card group flex h-full flex-col border border-[#ebe5de] bg-white p-4 transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:-translate-y-1 hover:border-[#d8ccb8] hover:shadow-[0_16px_40px_rgba(17,17,17,0.06)] md:p-6 2xl:p-8"
                     >
                       <a href={`/catalog/${product.slug}`}>
                         <img
@@ -2248,7 +2378,7 @@ export function CatalogPage({
                         <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
                           {(cartQuantities[product.slug] ?? 0) > 0 ? (
                             <div
-                              className={`grid h-11 min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] overflow-hidden bg-[#111] text-white transition-all duration-300 md:h-14 md:grid-cols-[52px_minmax(0,1fr)_52px] 2xl:h-16 ${animatedCartSlug === product.slug ? "scale-[1.015] shadow-[0_16px_34px_rgba(17,17,17,0.18)]" : ""}`}
+                              className={`grid h-11 min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] overflow-hidden bg-[#111] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 md:h-14 md:grid-cols-[52px_minmax(0,1fr)_52px] 2xl:h-16 ${animatedCartSlug === product.slug ? "scale-[1.015] shadow-[0_16px_34px_rgba(17,17,17,0.18)]" : ""}`}
                             >
                               <button
                                 type="button"
@@ -2285,14 +2415,14 @@ export function CatalogPage({
                               type="button"
                               onClick={() => void handleAddToCart(product)}
                               disabled={pendingCartSlug === product.slug}
-                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-all duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                             >
                               {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
                             </button>
                           )}
                           <a
                             href={`/checkout?product=${product.slug}`}
-                            className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-all duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                            className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                           >
                             купить в 1 клик
                           </a>
@@ -2300,6 +2430,9 @@ export function CatalogPage({
                       </div>
                     </article>
                   ))}
+                  {virtualizationEnabled && bottomSpacerHeight > 0 ? (
+                    <div aria-hidden="true" style={{ gridColumn: "1 / -1", height: `${bottomSpacerHeight}px` }} />
+                  ) : null}
                   {isFetchingMore
                     ? Array.from({ length: Math.min(itemsPerPage, 6) }).map((_, index) => (
                         <CatalogCardSkeleton key={`catalog-append-skeleton-${index}`} />

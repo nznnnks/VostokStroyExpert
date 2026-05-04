@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
+import { getStoredAccessToken } from "../lib/auth";
 import { createOrder, createYooKassaPayment, getYooKassaPaymentStatus, type CartView } from "../lib/backend-api";
 import { addProductToSessionCartBySlug, clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
@@ -121,6 +122,7 @@ export function CheckoutPage() {
   const collapsedItemsLimit = 1;
   const orderSummaryRef = useRef<HTMLElement | null>(null);
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
+  const [isAuthenticatedUser, setIsAuthenticatedUser] = useState(false);
   const [showAllItems, setShowAllItems] = useState(false);
   const [cart, setCart] = useState<CartView | null>(null);
   const [cartLoading, setCartLoading] = useState(true);
@@ -132,6 +134,7 @@ export function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState<PaymentBannerState>(null);
   const [phone, setPhone] = useState("+7");
+  const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [addressLine, setAddressLine] = useState("");
@@ -217,6 +220,11 @@ export function CheckoutPage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsAuthenticatedUser(Boolean(getStoredAccessToken("user")));
   }, []);
 
   useEffect(() => {
@@ -502,7 +510,7 @@ export function CheckoutPage() {
     const formData = new FormData(event.currentTarget);
     const contactName = `${formData.get("first_name") ?? ""} ${formData.get("last_name") ?? ""}`.trim();
     const contactPhone = normalizePhoneForSubmit(String(formData.get("phone") ?? "").trim());
-    const contactEmail = String(formData.get("email") ?? "").trim();
+    const contactEmail = String(formData.get("email") ?? email).trim();
     const deliveryAddress = addressLine.trim() || addressVerification.formattedAddress;
     const deliveryCommentParts = [
       entrance.trim() ? `Подъезд: ${entrance.trim()}` : "",
@@ -510,8 +518,8 @@ export function CheckoutPage() {
       courierComment.trim() ? `Комментарий курьеру: ${courierComment.trim()}` : "",
     ].filter(Boolean);
 
-    if (isQuickCheckout && !contactEmail) {
-      setSubmitError("Укажите email для быстрого оформления.");
+    if (!isAuthenticatedUser && !contactEmail) {
+      setSubmitError("Укажите email для оформления заказа.");
       return;
     }
 
@@ -531,7 +539,7 @@ export function CheckoutPage() {
       const order = await createOrder({
         contactName: contactName || undefined,
         contactPhone: contactPhone || undefined,
-        email: isQuickCheckout ? contactEmail || undefined : undefined,
+        email: !isAuthenticatedUser ? contactEmail || undefined : undefined,
         deliveryAddress: deliveryAddress || undefined,
         deliveryMethod: addressVerification.coords
           ? `Курьерская доставка (${addressVerification.coords})`
@@ -654,7 +662,7 @@ export function CheckoutPage() {
                   className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
                 />
               </label>
-              {isQuickCheckout ? (
+              {!isAuthenticatedUser ? (
                 <label className="mt-8 block md:mt-10">
                   <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">Email</span>
                   <input
@@ -662,6 +670,8 @@ export function CheckoutPage() {
                     type="email"
                     autoComplete="email"
                     placeholder="name@example.com"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     className="mt-3 h-14 w-full border-b border-[#e8e3db] bg-transparent outline-none placeholder:text-[#b4b0a8]"
                   />
                 </label>
