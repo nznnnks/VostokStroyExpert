@@ -62,7 +62,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
 
         <section id="about" class="relative overflow-hidden bg-[#050505] px-3 pt-12 pb-0 text-white sm:px-5 md:pt-18 md:pb-0">
           <div class="absolute inset-0">
-            <div class="absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
+            <div class="absolute inset-0 overflow-hidden">
               <video
                 class="absolute inset-0 h-full w-full object-cover object-center brightness-[1.03] md:hidden"
                 data-about-video="mobile"
@@ -95,7 +95,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
               <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,15,0.08)_0%,rgba(8,11,16,0.08)_18%,rgba(8,11,16,0.14)_46%,rgba(8,11,16,0.24)_100%)] md:bg-[linear-gradient(180deg,rgba(7,10,15,0.56)_0%,rgba(8,11,16,0.52)_16%,rgba(8,11,16,0.62)_42%,rgba(8,11,16,0.72)_72%,rgba(8,11,16,0.84)_100%)]" />
             </div>
           </div>
-          <div class="relative z-10 left-1/2 w-screen -translate-x-1/2">
+          <div class="relative z-10 w-full">
             <div class="px-3 sm:px-5 md:px-10 xl:px-12 2xl:px-20">
               <div class="grid gap-4 xl:grid-cols-4 xl:items-stretch xl:gap-6 2xl:gap-8">
                 <div class="flex h-[118px] flex-col justify-start overflow-hidden rounded-[18px] bg-white px-6 py-3 text-[#12120f] md:h-[124px] md:px-8 md:py-4 xl:h-[132px] xl:justify-between xl:px-10 xl:py-5">
@@ -112,7 +112,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
               </div>
             </div>
 
-            <div class="relative z-10 left-1/2 mt-8 w-screen -translate-x-1/2">
+            <div class="relative z-10 mt-8 w-full">
               <div class="px-3 py-10 sm:px-5 md:px-10 xl:px-12 xl:py-12 2xl:px-20">
                 <div class="grid grid-cols-2 gap-4 xl:grid-cols-4 xl:gap-6 2xl:gap-8">
                   {trustHighlights.map(({ value, lines }) => (
@@ -124,7 +124,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
                 </div>
               </div>
 
-              <div class="relative left-1/2 mt-8 w-screen -translate-x-1/2 sm:mt-10 2xl:mt-12">
+              <div class="relative mt-8 w-full sm:mt-10 2xl:mt-12">
                 <div class="hidden flex-col gap-4 px-3 sm:flex sm:flex-row sm:items-end sm:justify-between sm:px-4 md:px-6 2xl:px-8">
                   <div class="space-y-4 sm:self-end">
                     <div class="inline-flex min-h-[92px] w-fit items-center rounded-[18px] border border-[#e7e2d9] bg-[linear-gradient(180deg,#ffffff_0%,#f6f3ee_100%)] px-6 py-4 text-[clamp(18px,1vw+14px,28px)] font-semibold text-[#12120f] shadow-[0_10px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] xl:px-7">
@@ -142,26 +142,25 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
                 </div>
               </div>
 
-                <div class="mt-5 bg-white/98 px-0 py-3 xl:py-4 2xl:mt-12">
-                  <BrandScroller client:load logos={brandLogos} className="w-full" />
-                </div>
+              <div class="relative left-1/2 mt-5 w-screen -translate-x-1/2 bg-white/98 py-3 xl:py-4 2xl:mt-12">
+                <BrandScroller client:load logos={brandLogos} className="w-full" />
               </div>
+            </div>
 
-              <div class="mt-6 mb-8 px-3 sm:hidden">
-                <a href="/about" class="group relative flex min-h-[108px] w-full items-center justify-center overflow-hidden rounded-[18px] border border-[#e3dbcf] bg-[linear-gradient(180deg,#fbf8f3_0%,#f0e9e0_100%)] px-6 py-5 text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#d7c9b3] hover:shadow-[0_24px_38px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.92)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cdb06a]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]">
-                  <div class="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/75 blur-[28px]" />
-                  <div class="relative flex min-w-0 flex-col items-center text-center">
-                    <span class="text-[10px] uppercase tracking-[0.28em] text-[#8f8578] [font-family:'JetBrains_Mono',monospace]">о компании</span>
-                    <span class="mt-2 inline-flex items-center gap-3 text-[clamp(30px,8vw,38px)] leading-[0.92] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif]">
-                      Больше о нас
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="mt-1 text-[#12120f]/70 transition duration-300 ease-out group-hover:translate-x-0.5 group-hover:text-[#12120f]">
-                        <path d="M5 12h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-                        <path d="M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </span>
-                  </div>
-                </a>
-              </div>
+            <div class="mt-6 mb-8 px-3 sm:hidden">
+              <a href="/about" class="group relative flex min-h-[108px] w-full items-center justify-center overflow-hidden rounded-[18px] border border-[#e3dbcf] bg-[linear-gradient(180deg,#fbf8f3_0%,#f0e9e0_100%)] px-6 py-5 text-[#12120f] shadow-[0_18px_32px_rgba(0,0,0,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] transition duration-300 ease-out hover:-translate-y-0.5 hover:border-[#d7c9b3] hover:shadow-[0_24px_38px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.92)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cdb06a]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]">
+                <div class="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/75 blur-[28px]" />
+                <div class="relative flex min-w-0 flex-col items-center text-center">
+                  <span class="text-[10px] uppercase tracking-[0.28em] text-[#8f8578] [font-family:'JetBrains_Mono',monospace]">о компании</span>
+                  <span class="mt-2 inline-flex items-center gap-3 text-[clamp(30px,8vw,38px)] leading-[0.92] tracking-[-0.03em] [font-family:'Cormorant_Garamond',serif]">
+                    Больше о нас
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="mt-1 text-[#12120f]/70 transition duration-300 ease-out group-hover:translate-x-0.5 group-hover:text-[#12120f]">
+                      <path d="M5 12h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                      <path d="M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                </div>
+              </a>
             </div>
           </div>
         </section>

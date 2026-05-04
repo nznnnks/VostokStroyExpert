@@ -8,6 +8,14 @@ const HERO_FIT_MARGIN = 0.995;
 const HERO_FILL_RATIO_MIN = 0.98;
 const HERO_FILL_RATIO_MAX = 1.12;
 
+function getNarrowDesktopScaleBoost(viewportWidth: number) {
+  if (viewportWidth < 1280) return 1;
+  if (viewportWidth > 1760) return 1;
+
+  const progress = THREE.MathUtils.clamp((viewportWidth - 1280) / (1760 - 1280), 0, 1);
+  return THREE.MathUtils.lerp(1.16, 1, progress);
+}
+
 function getHeroViewportScaleFactor(viewportWidth: number) {
   if (viewportWidth <= 1536) return 1;
   if (viewportWidth >= 2560) return 0.94;
@@ -204,12 +212,14 @@ function HeroModel({
   layout,
   reducedMotion,
   viewportWidth,
+  zoomScale,
   onReady,
 }: {
   mouse: React.MutableRefObject<{ x: number; y: number }>;
   layout: HeroModelLayout;
   reducedMotion: boolean;
   viewportWidth: number;
+  zoomScale: number;
   onReady?: () => void;
 }) {
   const groupRef = useRef<THREE.Group | null>(null);
@@ -247,8 +257,10 @@ function HeroModel({
     const minScale = layout.scale * 0.92;
     const maxScale = layout.scale * 1.14;
     const viewportScaleFactor = getHeroViewportScaleFactor(viewportWidth);
+    const narrowDesktopBoost = getNarrowDesktopScaleBoost(viewportWidth);
+    const zoomBoost = THREE.MathUtils.clamp(zoomScale, 1, 1.5);
 
-    return THREE.MathUtils.clamp(targetScale, minScale, maxScale) * viewportScaleFactor;
+    return THREE.MathUtils.clamp(targetScale, minScale, maxScale) * viewportScaleFactor * narrowDesktopBoost * zoomBoost;
   }, [
     clonedScene,
     layout.camera.fov,
@@ -336,20 +348,78 @@ function HeroModel({
 
 export function HeroDesktopModel({ onReady }: { onReady?: () => void }) {
   const mouseRef = useRef({ x: 0, y: 0 });
+  const baseDprRef = useRef(typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
   const reducedMotion =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 1280 : window.innerWidth));
+  const [viewportHeight, setViewportHeight] = useState(() => (typeof window === "undefined" ? 800 : window.innerHeight));
+  const [zoomScale, setZoomScale] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const viewportScale = window.visualViewport?.scale ?? 0;
+    if (viewportScale > 0) return viewportScale;
+
+    const baseDpr = window.devicePixelRatio || 1;
+    baseDprRef.current = baseDpr;
+    return 1;
+  });
   const wrapperClassName = HERO_MODEL_LAYOUTS[getHeroModelLayoutKey(viewportWidth)].wrapperClassName;
-  const layout = useMemo(() => getInterpolatedHeroLayout(viewportWidth), [viewportWidth]);
+  const layout = useMemo(() => {
+    const base = getInterpolatedHeroLayout(viewportWidth);
+    const isNarrowDesktop = viewportWidth >= 1200 && viewportWidth <= 1800;
+    const needsZoomCompensation = zoomScale >= 1.08;
+    const isLowDesktopHeight = viewportWidth >= 1200 && viewportHeight <= 720;
+
+    if (isLowDesktopHeight && !needsZoomCompensation) {
+      return {
+        ...base,
+        scale: base.scale * 1.14,
+        camera: {
+          ...base.camera,
+          position: [base.camera.position[0], base.camera.position[1], base.camera.position[2] * 0.84] as [number, number, number],
+        },
+      };
+    }
+
+    if (!isNarrowDesktop || !needsZoomCompensation) return base;
+
+    const isHighZoom = zoomScale >= 1.2;
+    const scaleBoost = isHighZoom ? 2.05 : 1.56;
+    const cameraZFactor = isHighZoom ? 0.56 : 0.72;
+
+    return {
+      ...base,
+      scale: base.scale * scaleBoost,
+      camera: {
+        ...base.camera,
+        position: [base.camera.position[0], base.camera.position[1], base.camera.position[2] * cameraZFactor] as [number, number, number],
+      },
+    };
+  }, [viewportWidth, viewportHeight, zoomScale]);
 
   useEffect(() => {
+    const readZoomScale = () => {
+      const viewportScale = window.visualViewport?.scale ?? 0;
+      if (viewportScale > 0) return viewportScale;
+
+      const baseDpr = baseDprRef.current || 1;
+      const currentDpr = window.devicePixelRatio || baseDpr;
+      return THREE.MathUtils.clamp(currentDpr / baseDpr, 1, 1.6);
+    };
+
     const handleResize = () => {
       setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+      setZoomScale(readZoomScale());
     };
+    const viewport = window.visualViewport;
 
     handleResize();
     window.addEventListener("resize", handleResize, { passive: true });
-    return () => window.removeEventListener("resize", handleResize);
+    viewport?.addEventListener("resize", handleResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      viewport?.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   return (
@@ -389,6 +459,7 @@ export function HeroDesktopModel({ onReady }: { onReady?: () => void }) {
             layout={layout}
             reducedMotion={reducedMotion}
             viewportWidth={viewportWidth}
+            zoomScale={zoomScale}
             onReady={onReady}
           />
         </Suspense>

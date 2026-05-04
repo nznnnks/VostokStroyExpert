@@ -38,8 +38,8 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const searchRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollLockUntilRef = useRef(0);
-  const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const searchDebounceTimeoutRef = useRef<number | null>(null);
+  const headerRootRef = useRef<HTMLElement | null>(null);
 
   const openMobileMenu = () => {
     setIsOpen(true);
@@ -123,58 +123,57 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     if (typeof window === "undefined") return;
     if (lockScrolledState) return;
 
-    // Async "top bar" toggle driven by viewport intersection instead of scroll listeners.
-    // Observe a 1px sentinel positioned below the top; when it scrolls out of view we consider the page "scrolled".
-    // We move the sentinel between two offsets to emulate hysteresis (enter at 32px, leave at 10px).
     const enterThresholdPx = 32;
     const leaveThresholdPx = 10;
+    const rootNode = headerRootRef.current;
 
-    if (!("IntersectionObserver" in window)) {
-      setIsScrolled((window.scrollY || 0) > enterThresholdPx);
-      return;
+    const isScrollable = (node: Element) => {
+      const style = window.getComputedStyle(node);
+      const overflowY = style.overflowY;
+      const allowsScroll = overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+      return allowsScroll && node.scrollHeight > node.clientHeight + 1;
+    };
+
+    const getScrollContainer = () => {
+      let current: Element | null = rootNode?.parentElement ?? null;
+      while (current) {
+        if (isScrollable(current)) return current as HTMLElement;
+        current = current.parentElement;
+      }
+      return null;
+    };
+
+    const scrollContainer = getScrollContainer();
+
+    const syncScrolledState = () => {
+      const y = scrollContainer
+        ? scrollContainer.scrollTop
+        : (window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0);
+      const threshold = isScrolled ? leaveThresholdPx : enterThresholdPx;
+      const next = y > threshold;
+      if (next === isScrolled) return;
+
+      const now = window.performance?.now?.() ?? Date.now();
+      if (now < scrollLockUntilRef.current) return;
+      setIsScrolled(next);
+      scrollLockUntilRef.current = now + 180;
+    };
+
+    syncScrolledState();
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", syncScrolledState, { passive: true });
+    } else {
+      window.addEventListener("scroll", syncScrolledState, { passive: true });
     }
-
-    if (!topSentinelRef.current) {
-      const node = document.createElement("div");
-      node.setAttribute("data-header-top-sentinel", "1");
-      node.style.position = "absolute";
-      node.style.top = `${enterThresholdPx}px`;
-      node.style.left = "0";
-      node.style.width = "1px";
-      node.style.height = "1px";
-      node.style.pointerEvents = "none";
-      node.style.opacity = "0";
-      document.body.prepend(node);
-      topSentinelRef.current = node;
-    }
-
-    // Update the sentinel offset to provide hysteresis without scroll listeners.
-    topSentinelRef.current.style.top = `${isScrolled ? leaveThresholdPx : enterThresholdPx}px`;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-
-        const next = !entry.isIntersecting;
-        if (next === isScrolled) return;
-
-        const now = window.performance?.now?.() ?? Date.now();
-        if (now < scrollLockUntilRef.current) return;
-        setIsScrolled(next);
-        // Protect from scroll anchoring/layout shifts when header height changes.
-        scrollLockUntilRef.current = now + 300;
-      },
-      {
-        threshold: 0,
-        root: null,
-      },
-    );
-
-    observer.observe(topSentinelRef.current);
+    window.addEventListener("resize", syncScrolledState, { passive: true });
 
     return () => {
-      observer.disconnect();
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", syncScrolledState);
+      } else {
+        window.removeEventListener("scroll", syncScrolledState);
+      }
+      window.removeEventListener("resize", syncScrolledState);
     };
   }, [lockScrolledState, isScrolled]);
 
@@ -344,7 +343,10 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   return (
     <>
       <header
-        ref={searchRef}
+        ref={(node) => {
+          headerRootRef.current = node;
+          searchRef.current = node;
+        }}
         className="sticky top-0 z-[260] isolate [overflow-anchor:none]"
       >
         {/* When `fullBleed` is enabled, keep the static header edge-to-edge. */}

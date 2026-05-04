@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { brandLogos as defaultBrandLogos } from "../data/brands";
 
 type BrandLogo = {
   path: string;
@@ -6,12 +7,12 @@ type BrandLogo = {
 };
 
 export default function BrandScroller({
-  logos,
+  logos = defaultBrandLogos,
   className = "",
   itemClassName = "",
   speed = 28,
 }: {
-  logos: BrandLogo[];
+  logos?: BrandLogo[];
   className?: string;
   itemClassName?: string;
   speed?: number;
@@ -19,8 +20,6 @@ export default function BrandScroller({
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-  const [isPointerInside, setIsPointerInside] = useState(false);
-  const interactionTimeoutRef = useRef<number | null>(null);
 
   const { topRow, bottomRow } = useMemo(() => {
     const sourceTop = logos.filter((_, index) => index % 2 === 0);
@@ -28,10 +27,11 @@ export default function BrandScroller({
     const topBase = sourceTop.length > 0 ? sourceTop : logos;
     const bottomBase = sourceBottom.length > 0 ? sourceBottom : logos;
 
-    // Keep enough cards so autoscroll stays alive on wide screens.
-    const repeat = Math.max(3, Math.ceil(28 / Math.max(1, Math.min(topBase.length, bottomBase.length))));
-
     const buildRow = (rowLogos: BrandLogo[]) => {
+      // Keep a reasonable amount of cards: enough for seamless autoscroll,
+      // but avoid huge DOM lists that can degrade scroll performance.
+      const minCardsPerRow = 18;
+      const repeat = Math.max(1, Math.ceil(minCardsPerRow / Math.max(1, rowLogos.length)));
       const result: BrandLogo[] = [];
       for (let i = 0; i < repeat; i += 1) result.push(...rowLogos);
       return [...result, ...result];
@@ -78,45 +78,10 @@ export default function BrandScroller({
     return () => window.cancelAnimationFrame(rafId);
   }, [isInteracting, speed]);
 
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const bumpInteraction = () => {
-      setIsInteracting(true);
-      if (interactionTimeoutRef.current !== null) window.clearTimeout(interactionTimeoutRef.current);
-      interactionTimeoutRef.current = window.setTimeout(() => {
-        interactionTimeoutRef.current = null;
-        setIsInteracting(false);
-      }, 1400);
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (!isPointerInside) return;
-      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      viewport.scrollLeft += event.deltaX;
-      bumpInteraction();
-    };
-
-    viewport.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      viewport.removeEventListener("wheel", onWheel);
-      if (interactionTimeoutRef.current !== null) {
-        window.clearTimeout(interactionTimeoutRef.current);
-        interactionTimeoutRef.current = null;
-      }
-    };
-  }, [isPointerInside]);
-
   return (
     <div
       ref={viewportRef}
       className={`brand-scroller ${className}`}
-      onPointerEnter={() => setIsPointerInside(true)}
-      onPointerLeave={() => setIsPointerInside(false)}
-      onMouseEnter={() => setIsPointerInside(true)}
-      onMouseLeave={() => setIsPointerInside(false)}
       onPointerDown={() => setIsInteracting(true)}
       onPointerUp={() => setIsInteracting(false)}
       onPointerCancel={() => setIsInteracting(false)}
