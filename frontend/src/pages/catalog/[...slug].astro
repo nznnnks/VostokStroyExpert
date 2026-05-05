@@ -1,7 +1,9 @@
 ---
 import { ProductPage } from "../../components/ProductPage";
+import SeoMeta from "../../components/SeoMeta.astro";
 import { loadCatalogProductBySlug } from "../../lib/backend-api";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
+import { truncateSeoDescription } from "../../lib/seo";
 import "../../styles/global.css";
 
 export const prerender = false;
@@ -54,8 +56,9 @@ function buildAutoKeywords() {
 }
 
 const pageTitle = normalizeText(product.metaTitle ?? product.title);
-const pageDescription = normalizeText(product.metaDescription ?? buildAutoDescription());
+const pageDescription = truncateSeoDescription(product.metaDescription ?? buildAutoDescription());
 const pageKeywords = normalizeText(buildAutoKeywords());
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 ---
 
 <!doctype html>
@@ -68,10 +71,13 @@ const pageKeywords = normalizeText(buildAutoKeywords());
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content={pageDescription} />
-    <meta name="keywords" content={pageKeywords} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={pageDescription} />
+    <SeoMeta
+      title={pageTitle}
+      description={pageDescription}
+      keywords={pageKeywords}
+      canonicalUrl={canonicalUrl}
+      ogType="product"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

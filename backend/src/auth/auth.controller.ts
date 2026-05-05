@@ -6,8 +6,10 @@ import { AdminAccess } from './decorators/admin-access.decorator';
 import { CurrentAdmin } from './decorators/current-admin.decorator';
 import { LoginAdminDto } from './dto/login-admin.dto';
 import { LoginUserDto } from './dto/login-user.dto';
+import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { RequestEmailVerificationDto } from './dto/request-email-verification.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { AuthenticatedAdmin } from './interfaces/auth-principal.interface';
 
@@ -43,6 +45,16 @@ export class AuthController {
   @Post('user/resend-login-code')
   resendLoginCode(@Body() dto: RequestEmailVerificationDto) {
     return this.authService.resendUserLoginCode(dto.email);
+  }
+
+  @Post('user/request-password-reset')
+  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestUserPasswordReset(dto.email);
+  }
+
+  @Post('user/confirm-password-reset')
+  confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
+    return this.authService.confirmUserPasswordReset(dto);
   }
 
   @Post('admin/login')

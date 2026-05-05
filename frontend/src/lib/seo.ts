@@ -11,7 +11,13 @@ export function buildKeywordsFromTitleAndDescription(title?: string | null, desc
 
 export function truncateSeoDescription(value: string, maxLength = 170) {
   const normalized = normalizeSeoText(value);
-  if (normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
-}
+  const minLength = 120;
 
+  const padded =
+    normalized.length >= minLength
+      ? normalized
+      : `${normalized}${normalized ? " " : ""}Уточняйте цены, характеристики и условия доставки на сайте.`;
+
+  if (padded.length <= maxLength) return padded;
+  return `${padded.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}

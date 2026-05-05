@@ -2371,12 +2371,18 @@ export function CatalogPage({
                             {sanitizeCardMetaLine(product.efficiency) ? <p>{sanitizeCardMetaLine(product.efficiency)}</p> : null}
                           </div>
                         ) : null}
-                        <p className="mt-auto flex max-w-full items-baseline gap-1 pt-5 text-[clamp(1.05rem,3.2vw,1.45rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.75rem,3.4vw,2.35rem)] lg:text-[clamp(1.7rem,2.2vw,2.1rem)] 2xl:text-[clamp(1.95rem,1.8vw,2.4rem)] [font-family:DM_Sans,Manrope,sans-serif]">
-                          <span className="min-w-0 truncate">{new Intl.NumberFormat("ru-RU").format(product.price)}</span>
-                          <span className="shrink-0">₽</span>
-                        </p>
+                        {Number.isFinite(product.price) && product.price > 0 ? (
+                          <p className="mt-auto flex max-w-full items-baseline gap-1 pt-5 text-[clamp(1.05rem,3.2vw,1.45rem)] leading-none tabular-nums whitespace-nowrap md:pt-8 md:text-[clamp(1.75rem,3.4vw,2.35rem)] lg:text-[clamp(1.7rem,2.2vw,2.1rem)] 2xl:text-[clamp(1.95rem,1.8vw,2.4rem)] [font-family:DM_Sans,Manrope,sans-serif]">
+                            <span className="min-w-0 truncate">{new Intl.NumberFormat("ru-RU").format(product.price)}</span>
+                            <span className="shrink-0">₽</span>
+                          </p>
+                        ) : (
+                          <p className="mt-auto pt-5 text-[clamp(1.05rem,3.2vw,1.25rem)] leading-none uppercase tracking-[1.6px] text-[#111] md:pt-8 md:text-[clamp(1.2rem,1.1vw,1.45rem)] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            Цена по запросу
+                          </p>
+                        )}
                         <div className="mt-4 grid gap-2 md:mt-8 md:gap-3">
-                          {(cartQuantities[product.slug] ?? 0) > 0 ? (
+                          {Number.isFinite(product.price) && product.price > 0 && (cartQuantities[product.slug] ?? 0) > 0 ? (
                             <div
                               className={`grid h-11 min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] overflow-hidden bg-[#111] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 md:h-14 md:grid-cols-[52px_minmax(0,1fr)_52px] 2xl:h-16 ${animatedCartSlug === product.slug ? "scale-[1.015] shadow-[0_16px_34px_rgba(17,17,17,0.18)]" : ""}`}
                             >
@@ -2414,18 +2420,24 @@ export function CatalogPage({
                             <button
                               type="button"
                               onClick={() => void handleAddToCart(product)}
-                              disabled={pendingCartSlug === product.slug}
-                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                              disabled={pendingCartSlug === product.slug || !(Number.isFinite(product.price) && product.price > 0)}
+                              className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:bg-[#2a2a26] disabled:cursor-not-allowed disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                             >
-                              {pendingCartSlug === product.slug ? "добавляем" : "в корзину"}
+                              {pendingCartSlug === product.slug
+                                ? "добавляем"
+                                : Number.isFinite(product.price) && product.price > 0
+                                  ? "в корзину"
+                                  : "нет цены"}
                             </button>
                           )}
-                          <a
-                            href={`/checkout?product=${product.slug}`}
-                            className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                          >
-                            купить в 1 клик
-                          </a>
+                          {Number.isFinite(product.price) && product.price > 0 ? (
+                            <a
+                              href={`/checkout?product=${product.slug}`}
+                              className="inline-flex min-h-[44px] items-center justify-center border border-[#111] px-2 py-2 text-center text-[10px] uppercase tracking-[1.1px] text-[#111] transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:border-[#d3b46a] hover:text-[#7f6522] md:h-14 md:min-h-0 md:text-[16px] md:tracking-[2px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                            >
+                              купить в 1 клик
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     </article>

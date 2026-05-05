@@ -1,11 +1,16 @@
 ---
 import { AccountOrdersPage } from "../../components/AccountOrdersPage";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
+import SeoMeta from "../../components/SeoMeta.astro";
 import "../../styles/global.css";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../lib/seo";
+
+export const prerender = false;
+
 const pageTitle = normalizeSeoText("Личный кабинет");
 const pageDescription = truncateSeoDescription("Раздел личного кабинета.");
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 ---
 
 <!doctype html>
@@ -18,8 +23,13 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content={pageDescription} />
-    <meta name="keywords" content={pageKeywords} />
+    <SeoMeta
+      title={pageTitle}
+      description={pageDescription}
+      keywords={pageKeywords}
+      canonicalUrl={canonicalUrl}
+      noIndex
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@400;500&family=Jaldi:wght@400;700&family=JetBrains+Mono:wght@400&family=Manrope:wght@200;400;500&display=swap" rel="stylesheet" />

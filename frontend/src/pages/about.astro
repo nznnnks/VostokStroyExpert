@@ -1,7 +1,10 @@
 ---
 import { AboutPage } from "../components/AboutPage";
-import GlobalPreloader from "../components/GlobalPreloader.astro";import { loadSeoPage } from "../lib/backend-api";
-import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";import "../styles/global.css";
+import GlobalPreloader from "../components/GlobalPreloader.astro";
+import SeoMeta from "../components/SeoMeta.astro";
+import { loadSeoPage } from "../lib/backend-api";
+import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
+import "../styles/global.css";
 
 export const prerender = false;
 // Blog/news blocks are currently hidden; avoid loading posts to save resources.
@@ -10,6 +13,7 @@ const seo = await loadSeoPage("about").catch(() => null);
 const pageTitle = normalizeSeoText(seo?.metaTitle ?? "О компании");
 const pageDescription = truncateSeoDescription(seo?.metaDescription ?? "Информация о компании, подходе и опыте.");
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 ---
 
 <!doctype html>
@@ -22,10 +26,7 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content={pageDescription} />
-    <meta name="keywords" content={pageKeywords} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={pageDescription} />
+    <SeoMeta title={pageTitle} description={pageDescription} keywords={pageKeywords} canonicalUrl={canonicalUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
