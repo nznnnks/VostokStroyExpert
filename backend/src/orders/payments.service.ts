@@ -114,6 +114,19 @@ export class PaymentsService {
 
     const creds = this.getYooKassaCredentials();
     const amountValue = order.total.toFixed(2);
+    const receiptCustomer = this.buildYooKassaReceiptCustomer(order.contactPhone, order.user?.email ?? null);
+    const receiptItems = order.items.map((item) => ({
+      description: item.title.slice(0, 128),
+      quantity: item.quantity.toString(),
+      amount: {
+        value: item.unitPrice.toFixed(2),
+        currency: 'RUB',
+      },
+      vat_code: this.getYooKassaVatCode(),
+      payment_mode: 'full_payment',
+      payment_subject: item.kind === 'SERVICE' ? 'service' : 'commodity',
+    }));
+    const receiptTaxSystemCode = this.getYooKassaTaxSystemCode();
     const returnUrl =
       dto.returnUrl?.trim() ||
       process.env.YOOKASSA_RETURN_URL?.trim() ||
@@ -141,6 +154,11 @@ export class PaymentsService {
         metadata: {
           order_id: order.id,
           order_number: order.orderNumber,
+        },
+        receipt: {
+          customer: receiptCustomer,
+          items: receiptItems,
+          ...(receiptTaxSystemCode ? { tax_system_code: receiptTaxSystemCode } : {}),
         },
       }),
     });
@@ -326,6 +344,43 @@ export class PaymentsService {
     }
 
     return { shopId, secretKey };
+  }
+
+  private getYooKassaVatCode() {
+    const raw = process.env.YOOKASSA_VAT_CODE?.trim();
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 6) {
+      return parsed;
+    }
+
+    return 1;
+  }
+
+  private getYooKassaTaxSystemCode() {
+    const raw = process.env.YOOKASSA_TAX_SYSTEM_CODE?.trim();
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 6) {
+      return parsed;
+    }
+
+    return undefined;
+  }
+
+  private buildYooKassaReceiptCustomer(phone: string | null | undefined, email: string | null | undefined) {
+    const normalizedPhone = phone?.replace(/[^\d+]/g, '') ?? '';
+    const normalizedEmail = email?.trim() ?? '';
+
+    if (normalizedEmail) {
+      return normalizedPhone
+        ? { email: normalizedEmail, phone: normalizedPhone }
+        : { email: normalizedEmail };
+    }
+
+    if (normalizedPhone) {
+      return { phone: normalizedPhone };
+    }
+
+    throw new BadRequestException('Для оплаты картой требуется email или телефон покупателя для чека YooKassa.');
   }
 
   private async fetchYooKassaPayment(paymentId: string) {
