@@ -8,7 +8,7 @@ import { getStableCategoryImage } from "../lib/category-images";
 import {
   SESSION_CART_UPDATED_EVENT,
   addProductToSessionCart,
-  loadSessionCart,
+  getSessionCartQuantities,
   updateSessionCartItem,
 } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
@@ -78,6 +78,7 @@ export function CatalogPage({
   const isLanding = variant === "landing";
   const isCategoryPage = Boolean(initialCategory && initialCategory !== "all");
   const [desktopFiltersTop, setDesktopFiltersTop] = useState(24);
+  const [catalogTopbarProgress, setCatalogTopbarProgress] = useState(0);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [catalogMeta, setCatalogMeta] = useState<CatalogListingResponse["meta"]>(initialMeta);
   const [catalogTotal, setCatalogTotal] = useState(initialTotal);
@@ -153,6 +154,57 @@ export function CatalogPage({
     shouldScrollToResultsOnNextReplaceRef.current = true;
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let rafId: number | null = null;
+
+    const update = () => {
+      const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      const startPx = 40;
+      const rangePx = 200;
+      const progress = Math.max(0, Math.min(1, (y - startPx) / rangePx));
+
+      setCatalogTopbarProgress((current) => {
+        if (Math.abs(current - progress) < 0.01) return current;
+        return progress;
+      });
+    };
+
+    const schedule = () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        update();
+      });
+    };
+
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+
+  const catalogTopbarStyle = useMemo(() => {
+    const maxHidePx = 140;
+    const hiddenPx = Math.round(catalogTopbarProgress * maxHidePx);
+    const opacity = 1 - Math.min(1, catalogTopbarProgress * 1.2);
+
+    return {
+      opacity,
+      transform: `translateY(-${hiddenPx}px)`,
+      marginBottom: `-${hiddenPx}px`,
+      transition: "transform 220ms ease-out, opacity 220ms ease-out, margin-bottom 220ms ease-out",
+      willChange: "transform, opacity, margin-bottom",
+      pointerEvents: catalogTopbarProgress >= 0.98 ? "none" : "auto",
+    } as const;
+  }, [catalogTopbarProgress]);
+
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory ?? "all");
@@ -221,21 +273,16 @@ export function CatalogPage({
   useEffect(() => {
     let active = true;
 
-    const syncCartQuantities = async () => {
+    const syncCartQuantities = () => {
       const requestId = ++cartSyncRequestIdRef.current;
-      try {
-        const cart = await loadSessionCart();
-        if (!active || requestId !== cartSyncRequestIdRef.current) return;
-        setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
-      } catch {
-        if (!active || requestId !== cartSyncRequestIdRef.current) return;
-      }
+      if (!active || requestId !== cartSyncRequestIdRef.current) return;
+      setCartQuantities(getSessionCartQuantities());
     };
 
-    void syncCartQuantities();
+    syncCartQuantities();
 
     const handleCartUpdated = () => {
-      void syncCartQuantities();
+      syncCartQuantities();
     };
 
     if (typeof window !== "undefined") {
@@ -1091,8 +1138,8 @@ export function CatalogPage({
 
     setPendingCartSlug(product.slug);
     try {
-      const cart = await addProductToSessionCart(product);
-      setCartQuantities(Object.fromEntries(cart.items.map((item) => [item.slug, item.qty])));
+      await addProductToSessionCart(product);
+      setCartQuantities(getSessionCartQuantities());
       setAnimatedCartSlug(product.slug);
     } finally {
       setPendingCartSlug((current) => (current === product.slug ? null : current));
@@ -1112,8 +1159,8 @@ export function CatalogPage({
     try {
       while (true) {
         const quantity = pendingCartQuantityRef.current[slug];
-        const cart = await updateSessionCartItem(slug, quantity);
-        const nextQuantities = Object.fromEntries(cart.items.map((item) => [item.slug, item.qty]));
+        await updateSessionCartItem(slug, quantity);
+        const nextQuantities = getSessionCartQuantities();
         const currentPending = pendingCartQuantityRef.current[slug];
 
         if (currentPending === quantity) {
@@ -2068,6 +2115,7 @@ export function CatalogPage({
                   className={`sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-2 md:hidden ${
                     isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
                   }`}
+                  style={catalogTopbarStyle as CSSProperties}
                 >
                   <div className="ml-auto w-full">
                     <div className="flex flex-col gap-2 rounded-[28px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-2 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px]">
@@ -2213,6 +2261,7 @@ export function CatalogPage({
                   className={`hidden md:block sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-4 ${
                     isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
                   }`}
+                  style={catalogTopbarStyle as CSSProperties}
                 >
                   <div className="flex items-center gap-2 rounded-[32px] border border-white/70 bg-[rgba(255,253,250,0.82)] p-3 shadow-[0_16px_40px_rgba(17,17,17,0.08)] backdrop-blur-[18px] 2xl:gap-3">
                     <div className="min-w-0 flex-1 px-3 text-[16px] uppercase tracking-[1.6px] text-[#8a8a85] 2xl:px-4 2xl:text-[18px] [font-family:Jaldi,'JetBrains_Mono',monospace]">

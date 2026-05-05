@@ -92,24 +92,26 @@ export function LoginPage() {
                       required
                       autoComplete="current-password"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                      className="mt-2 inline-flex w-full justify-end text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] transition hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
-                      aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                    >
-                      {showPassword ? "Скрыть пароль" : "Показать пароль"}
-                    </button>
+                    <div className="mt-2 flex items-center justify-between gap-4 text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <PasswordRecoveryModal
+                        initialEmail={email}
+                        onRecovered={(nextEmail) => {
+                          setEmail(nextEmail);
+                          setPassword("");
+                          setError(null);
+                        }}
+                        triggerClassName="inline-flex transition hover:text-[#111]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        className="inline-flex transition hover:text-[#111]"
+                        aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      >
+                        {showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      </button>
+                    </div>
                   </label>
-
-                  <PasswordRecoveryModal
-                    initialEmail={email}
-                    onRecovered={(nextEmail) => {
-                      setEmail(nextEmail);
-                      setPassword("");
-                      setError(null);
-                    }}
-                  />
 
                   {error ? <p className="text-[clamp(0.85rem,0.8vw,0.95rem)] leading-7 text-[#b24c47]">{error}</p> : null}
 

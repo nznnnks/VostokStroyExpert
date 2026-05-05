@@ -92,6 +92,14 @@ export function SiteFooter() {
               <a href="/about#terms" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
                 Условия
               </a>
+              <a
+                href="https://alpha-development.ru/"
+                target="_blank"
+                rel="noreferrer"
+                className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a] hover:underline hover:underline-offset-4"
+              >
+                Made by Alpha
+              </a>
             </div>
           </div>
         </div>
@@ -123,6 +131,14 @@ export function SiteFooter() {
             </a>
             <a href="/about#terms" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
               Условия
+            </a>
+            <a
+              href="https://alpha-development.ru/"
+              target="_blank"
+              rel="noreferrer"
+              className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a] hover:underline hover:underline-offset-4"
+            >
+              Made by Alpha
             </a>
           </div>
         </div>

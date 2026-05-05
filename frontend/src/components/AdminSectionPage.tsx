@@ -70,10 +70,38 @@ type AdminSectionPageProps = {
 const CATALOG_PAGE_SIZE = 12;
 
 const seoPagesDirectory = [
-  { key: "home", label: "Главная (/)" },
-  { key: "about", label: "О компании (/about)" },
-  { key: "catalog", label: "Каталог (/catalog)" },
-  { key: "services", label: "Услуги (/services)" },
+  {
+    key: "home",
+    label: "Главная (/)",
+    defaults: {
+      metaTitle: "Stayse Engineering",
+      metaDescription: "Премиальная инженерия и подбор оборудования для комфортного микроклимата.",
+    },
+  },
+  {
+    key: "about",
+    label: "О компании (/about)",
+    defaults: {
+      metaTitle: "О компании",
+      metaDescription: "Информация о компании, подходе и опыте.",
+    },
+  },
+  {
+    key: "catalog",
+    label: "Каталог (/catalog)",
+    defaults: {
+      metaTitle: "Каталог",
+      metaDescription: "Каталог товаров и оборудования.",
+    },
+  },
+  {
+    key: "services",
+    label: "Услуги (/services)",
+    defaults: {
+      metaTitle: "Услуги",
+      metaDescription: "Услуги и сервисные решения.",
+    },
+  },
 ] as const;
 
 function AdminTable({
@@ -539,9 +567,10 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
 
   useEffect(() => {
     const page = seoPages[seoPageKey];
+    const directory = seoPagesDirectory.find((item) => item.key === seoPageKey);
     setSeoPageForm({
-      metaTitle: page?.metaTitle ?? "",
-      metaDescription: page?.metaDescription ?? "",
+      metaTitle: page?.metaTitle ?? directory?.defaults.metaTitle ?? "",
+      metaDescription: page?.metaDescription ?? directory?.defaults.metaDescription ?? "",
     });
   }, [seoPageKey, seoPages]);
 

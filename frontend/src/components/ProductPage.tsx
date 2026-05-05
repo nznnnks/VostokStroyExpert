@@ -4,15 +4,15 @@ import { loadCatalogListing } from "../lib/catalog-api";
 import {
   SESSION_CART_UPDATED_EVENT,
   addProductToSessionCart,
-  loadSessionCart,
+  getSessionCartItemQuantity,
   updateSessionCartItem,
 } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
 const perks = [
-  ["/product/check.svg", "10 лет гарантии", "Полная поддержка производителя"],
-  ["/product/delivery.svg", "Премиальная доставка", "Установка включена"],
+  ["/product/check.svg", "Гарантия от производителя", "Полная поддержка производителя"],
+  ["/product/delivery.svg", "Премиальная доставка", "По всей России"],
 ];
 
 const reviews = [
@@ -285,14 +285,8 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     let active = true;
 
     const syncCartQty = async () => {
-      try {
-        const cart = await loadSessionCart();
-        if (!active) return;
-        const nextQty = cart.items.find((item) => item.slug === product.slug)?.qty ?? 0;
-        setCartQty(nextQty);
-      } catch {
-        if (!active) return;
-      }
+      if (!active) return;
+      setCartQty(getSessionCartItemQuantity(product.slug));
     };
 
     void syncCartQty();
@@ -343,8 +337,8 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     if (cartPending) return;
     setCartPending(true);
     try {
-      const cart = await addProductToSessionCart(product);
-      setCartQty(cart.items.find((item) => item.slug === product.slug)?.qty ?? 0);
+      setCartQty((current) => current + 1);
+      await addProductToSessionCart(product);
       setCartAnimated(true);
     } finally {
       setCartPending(false);
@@ -356,8 +350,9 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     if (cartPending) return;
     setCartPending(true);
     try {
-      const cart = await updateSessionCartItem(product.slug, quantity);
-      setCartQty(cart.items.find((item) => item.slug === product.slug)?.qty ?? 0);
+      const nextQty = Math.max(0, Math.floor(quantity));
+      setCartQty(nextQty);
+      await updateSessionCartItem(product.slug, nextQty);
       setCartAnimated(true);
     } finally {
       setCartPending(false);

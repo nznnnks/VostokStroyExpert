@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
 import { getStoredAccessToken } from "../lib/auth";
-import { createOrder, createYooKassaPayment, getYooKassaPaymentStatus, type CartView } from "../lib/backend-api";
-import { addProductToSessionCartBySlug, clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
+import { createOrder, createYooKassaPayment, getYooKassaPaymentStatus, loadCatalogProductBySlug, type CartView } from "../lib/backend-api";
+import { clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 
@@ -190,7 +190,32 @@ export function CheckoutPage() {
         const url = new URL(window.location.href);
         const quickProduct = url.searchParams.get("product");
         setIsQuickCheckout(Boolean(quickProduct));
-        const nextCart = quickProduct ? await addProductToSessionCartBySlug(quickProduct) : await loadSessionCart();
+        const nextCart = quickProduct
+          ? await (async () => {
+              const { product } = await loadCatalogProductBySlug(quickProduct);
+              const items: CartView["items"] = [
+                {
+                  id: product.slug,
+                  slug: product.slug,
+                  title: product.title,
+                  article: product.article,
+                  image: product.image,
+                  qty: 1,
+                  totalPrice: product.price,
+                  kind: "product" as const,
+                  brandLabel: product.brandLabel,
+                },
+              ];
+
+              return {
+                id: "quick-checkout",
+                items,
+                subtotal: product.price,
+                discountTotal: 0,
+                total: product.price,
+              } satisfies CartView;
+            })()
+          : await loadSessionCart();
 
         if (quickProduct) {
           window.history.replaceState({}, "", "/checkout");
@@ -244,9 +269,9 @@ export function CheckoutPage() {
       return;
     }
 
-    let pendingPayment: { paymentId: string; orderId: string } | null = null;
+    let pendingPayment: { paymentId: string; orderId: string; quickCheckout?: boolean } | null = null;
     try {
-      pendingPayment = JSON.parse(rawPending) as { paymentId: string; orderId: string };
+      pendingPayment = JSON.parse(rawPending) as { paymentId: string; orderId: string; quickCheckout?: boolean };
     } catch {
       window.sessionStorage.removeItem(YOOKASSA_PENDING_PAYMENT_KEY);
       return;
@@ -264,7 +289,11 @@ export function CheckoutPage() {
         if (!active) return;
 
         if (status.status === "succeeded" || status.paid) {
-          clearSessionCart();
+          if (!pendingPayment?.quickCheckout) {
+            clearSessionCart();
+          } else {
+            setIsQuickCheckout(true);
+          }
           setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
           window.sessionStorage.removeItem(YOOKASSA_PENDING_PAYMENT_KEY);
           setPaymentBanner({
@@ -566,6 +595,7 @@ export function CheckoutPage() {
           JSON.stringify({
             paymentId: payment.paymentId,
             orderId: order.id,
+            quickCheckout: isQuickCheckout,
           }),
         );
 
@@ -573,7 +603,9 @@ export function CheckoutPage() {
         return;
       }
 
-      clearSessionCart();
+      if (!isQuickCheckout) {
+        clearSessionCart();
+      }
       setCart((prev) => (prev ? { ...prev, items: [], subtotal: 0, discountTotal: 0, total: 0 } : prev));
       setSubmitSuccess("Заказ отправлен. Мы свяжемся с вами для подтверждения.");
     } catch (error) {

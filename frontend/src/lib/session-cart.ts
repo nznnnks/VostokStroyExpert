@@ -1,4 +1,5 @@
 import type { Product } from "../data/products";
+import { ApiError } from "./api-client";
 import { loadCatalogProductBySlug, resolveProductIdsBySlugs, type CartView } from "./backend-api";
 
 type StoredCartItem = {
@@ -107,6 +108,34 @@ function notifySessionCartUpdated() {
   window.dispatchEvent(new CustomEvent(SESSION_CART_UPDATED_EVENT));
 }
 
+export function getSessionCartItemQuantity(slug: string) {
+  if (!slug) return 0;
+  const items = readStoredCartItems();
+  return items.find((item) => item.slug === slug)?.quantity ?? 0;
+}
+
+export function getSessionCartQuantities(): Record<string, number> {
+  const items = readStoredCartItems();
+  return Object.fromEntries(items.map((item) => [item.slug, item.quantity])) as Record<string, number>;
+}
+
+function setSessionCartItemQuantity(slug: string, quantity: number) {
+  const nextQuantity = Math.max(0, Math.floor(quantity));
+  const items = readStoredCartItems();
+  const nextItems =
+    nextQuantity <= 0
+      ? items.filter((item) => item.slug !== slug)
+      : (() => {
+          const existing = items.find((item) => item.slug === slug);
+          if (existing) {
+            return items.map((item) => (item.slug === slug ? { ...item, quantity: nextQuantity } : item));
+          }
+          return [...items, { slug, quantity: nextQuantity }];
+        })();
+
+  writeStoredCartItems(nextItems);
+}
+
 async function buildCartFromCookie() {
   const storedItems = readStoredCartItems();
   const slugs = storedItems.map((item) => item.slug);
@@ -146,8 +175,39 @@ async function buildCartFromCookie() {
     total: subtotal,
   };
 
-  // Drop missing products from storage.
-  if (items.length !== storedItems.length) {
+  // Drop missing products from storage only if the product was actually removed (404).
+  // Network errors should not mutate the user's cart.
+  const rejected = resolved
+    .map((entry, index) => ({ entry, slug: slugs[index] }))
+    .filter((row): row is { slug: string; entry: PromiseRejectedResult } => row.entry.status === "rejected");
+
+  const temporaryFailureSlugs = new Set(
+    rejected
+      .filter((row) => {
+        const reason = row.entry.reason;
+        if (!(reason instanceof ApiError)) return true;
+        return reason.status === 0 || reason.status >= 500;
+      })
+      .map((row) => row.slug),
+  );
+
+  const notFoundSlugs = new Set(
+    rejected
+      .filter((row) => row.entry.reason instanceof ApiError && row.entry.reason.status === 404)
+      .map((row) => row.slug),
+  );
+
+  const missingSlugs = storedItems
+    .filter((item) => !productMap.has(item.slug))
+    .map((item) => item.slug);
+
+  // Keep storage untouched if we hit temporary/network errors (prevents flicker / accidental deletion).
+  if (missingSlugs.some((slug) => temporaryFailureSlugs.has(slug))) {
+    return cart;
+  }
+
+  // Drop items only when we are confident the product is gone (404), or we successfully fetched everything else.
+  if (missingSlugs.length > 0 && missingSlugs.every((slug) => notFoundSlugs.has(slug))) {
     writeStoredCartItems(items.map((item) => ({ slug: item.slug, quantity: item.qty })));
   }
 
@@ -159,45 +219,19 @@ export async function loadSessionCart() {
 }
 
 export async function addProductToSessionCartBySlug(slug: string) {
-  const items = readStoredCartItems();
-  const nextItems = [...items];
-  const existing = nextItems.find((item) => item.slug === slug);
-
-  if (existing) {
-    existing.quantity += 1;
-    writeStoredCartItems(nextItems);
-    return buildCartFromCookie();
-  } else {
-    nextItems.push({ slug, quantity: 1 });
-  }
-
-  writeStoredCartItems(nextItems);
+  const current = getSessionCartItemQuantity(slug);
+  setSessionCartItemQuantity(slug, current + 1);
   return buildCartFromCookie();
 }
 
 export async function addProductToSessionCart(product: Product) {
-  const items = readStoredCartItems();
-  const nextItems = [...items];
-  const existing = nextItems.find((item) => item.slug === product.slug);
-
-  if (existing) {
-    existing.quantity += 1;
-  } else {
-    nextItems.push({ slug: product.slug, quantity: 1 });
-  }
-
-  writeStoredCartItems(nextItems);
+  const current = getSessionCartItemQuantity(product.slug);
+  setSessionCartItemQuantity(product.slug, current + 1);
   return buildCartFromCookie();
 }
 
 export async function updateSessionCartItem(itemId: string, quantity: number) {
-  const items = readStoredCartItems();
-  const nextItems =
-    quantity <= 0
-      ? items.filter((item) => item.slug !== itemId)
-      : items.map((item) => (item.slug === itemId ? { ...item, quantity } : item));
-
-  writeStoredCartItems(nextItems);
+  setSessionCartItemQuantity(itemId, quantity);
   return buildCartFromCookie();
 }
 

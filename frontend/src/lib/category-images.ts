@@ -79,14 +79,28 @@ export function getStableCategoryImage(categorySlug: string, candidateImage?: st
   // Client-side only helper (CatalogPage is mounted via client:load).
   const slug = categorySlug || "category";
   const cache = safeReadCache();
-  const existing = cache[slug];
-  if (existing) return existing;
 
   const key = normalizeCategoryImageKey(categoryName || slug);
   const mappedFile = CATEGORY_IMAGE_FILES[key];
-  const nextImage = mappedFile ? `/catalog/categories/${mappedFile}` : candidateImage || getCategoryFallbackImage(slug);
-  cache[slug] = nextImage;
-  safeWriteCache(cache);
+  const normalizeCandidate = (value: string | null | undefined) => {
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith("/")) return trimmed;
+    return `/${trimmed}`;
+  };
+
+  const resolvedCandidate = normalizeCandidate(candidateImage);
+  const nextImage = mappedFile
+    ? `/catalog/categories/${mappedFile}`
+    : resolvedCandidate || getCategoryFallbackImage(slug);
+
+  const existing = cache[slug];
+  if (existing !== nextImage) {
+    cache[slug] = nextImage;
+    safeWriteCache(cache);
+  }
+
   return nextImage;
 }
 

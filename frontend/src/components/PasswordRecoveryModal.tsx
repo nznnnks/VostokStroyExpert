@@ -6,9 +6,10 @@ import { confirmPasswordReset, requestPasswordReset } from "../lib/auth";
 type PasswordRecoveryModalProps = {
   initialEmail?: string;
   onRecovered?: (email: string) => void;
+  triggerClassName?: string;
 };
 
-export function PasswordRecoveryModal({ initialEmail = "", onRecovered }: PasswordRecoveryModalProps) {
+export function PasswordRecoveryModal({ initialEmail = "", onRecovered, triggerClassName }: PasswordRecoveryModalProps) {
   const titleId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -162,7 +163,10 @@ export function PasswordRecoveryModal({ initialEmail = "", onRecovered }: Passwo
           event.stopPropagation();
           open();
         }}
-        className="mt-3 inline-flex w-full justify-end text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] transition hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+        className={
+          triggerClassName ??
+          "mt-3 inline-flex w-full justify-end text-[12px] uppercase tracking-[1.6px] text-[#7d7d78] transition hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+        }
       >
         Восстановить пароль
       </button>

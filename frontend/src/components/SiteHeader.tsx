@@ -3,7 +3,7 @@ import AuthHeaderButton from "./AuthHeaderButton";
 import { navLinks } from "../data/site";
 import { formatPrice, type Product } from "../data/products";
 import { loadCatalogListing } from "../lib/backend-api";
-import { loadSessionCart, SESSION_CART_UPDATED_EVENT } from "../lib/session-cart";
+import { getSessionCartQuantities, SESSION_CART_UPDATED_EVENT } from "../lib/session-cart";
 
 type SiteHeaderProps = {
   light?: boolean;
@@ -208,23 +208,19 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     if (typeof window === "undefined") return;
     let active = true;
 
-    const syncCartCount = async () => {
-      try {
-        const cart = await loadSessionCart();
-        if (!active) return;
-        setCartItemsCount(cart.items.reduce((sum, item) => sum + item.qty, 0));
-      } catch {
-        if (!active) return;
-        setCartItemsCount(0);
-      }
+    const syncCartCount = () => {
+      if (!active) return;
+      const quantities = getSessionCartQuantities();
+      const total = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
+      setCartItemsCount(total);
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      void syncCartCount();
+      syncCartCount();
     };
 
-    void syncCartCount();
+    syncCartCount();
     window.addEventListener(SESSION_CART_UPDATED_EVENT, syncCartCount as EventListener);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
