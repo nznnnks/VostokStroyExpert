@@ -2,6 +2,7 @@
 import { RegisterPage } from "../components/RegisterPage";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import SeoMeta from "../components/SeoMeta.astro";
+import { getConfiguredOrigin } from "../lib/site-url";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
@@ -10,7 +11,7 @@ export const prerender = false;
 const pageTitle = normalizeSeoText("Регистрация");
 const pageDescription = truncateSeoDescription("Регистрация нового аккаунта.");
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 ---
 
 <!doctype html>

@@ -26,6 +26,7 @@ export type Product = {
   power: number;
   volume: number;
   price: number;
+  stock?: number;
   rating: string;
   efficiency: string;
   efficiencyClass?: string;

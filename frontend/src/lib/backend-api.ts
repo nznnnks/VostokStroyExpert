@@ -720,6 +720,7 @@ function mapApiProduct(product: ApiProduct): Product {
     power,
     volume,
     price: actualPrice,
+    stock: typeof product.stock === "number" ? product.stock : undefined,
     rating: product.rating ?? (power >= 0.1 ? `Мощность: ${power.toFixed(1)} кВт` : ""),
     efficiency: product.efficiency && /уточняется/i.test(product.efficiency) ? "" : product.efficiency ?? "",
     efficiencyClass: product.efficiencyClass ?? undefined,

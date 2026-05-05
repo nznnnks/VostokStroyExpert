@@ -1,100 +1,67 @@
 import type { APIRoute } from "astro";
 
-import { loadCatalogCategories, loadCatalogListing, loadNewsPosts, loadServices } from "../lib/backend-api";
+import { loadCatalogListing } from "../lib/backend-api";
+import { getConfiguredOrigin } from "../lib/site-url";
 
-type SitemapEntry = {
-  loc: string;
-  changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
-  priority?: number;
-};
+type SitemapIndexEntry = { loc: string; lastmod?: string };
 
-function toXml(entries: SitemapEntry[]) {
+function toSitemapIndexXml(entries: SitemapIndexEntry[]) {
   const body = entries
     .map((entry) => {
-      const parts = [
-        `<loc>${entry.loc}</loc>`,
-        entry.changefreq ? `<changefreq>${entry.changefreq}</changefreq>` : "",
-        typeof entry.priority === "number" ? `<priority>${entry.priority.toFixed(1)}</priority>` : "",
-      ].filter(Boolean);
-
-      return `<url>${parts.join("")}</url>`;
+      const parts = [`<loc>${entry.loc}</loc>`, entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ""].filter(Boolean);
+      return `<sitemap>${parts.join("")}</sitemap>`;
     })
     .join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
     body +
-    `</urlset>`;
+    `</sitemapindex>`;
 }
 
-async function loadAllProductSlugs() {
-  const slugs = new Set<string>();
-  let page = 1;
-  let hasMore = true;
+const MAX_SITEMAPS = 50;
+const DEFAULT_PRODUCT_CHUNK = 10000;
+const MAX_URLS_PER_SITEMAP = 50000;
 
-  while (hasMore && page <= 200) {
-    const listing = await loadCatalogListing({ page, limit: 200, includeMeta: false, includeTotals: false });
-    for (const item of listing.items) slugs.add(item.slug);
-    hasMore = listing.hasMore;
-    page += 1;
-  }
-
-  return Array.from(slugs);
+function computeProductChunkSize(totalProducts: number) {
+  const planned = Math.ceil(totalProducts / DEFAULT_PRODUCT_CHUNK);
+  if (planned <= MAX_SITEMAPS) return DEFAULT_PRODUCT_CHUNK;
+  return Math.min(MAX_URLS_PER_SITEMAP, Math.ceil(totalProducts / MAX_SITEMAPS));
 }
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url }) => {
-  const origin = url.origin;
+export const GET: APIRoute = async () => {
+  const origin = getConfiguredOrigin();
 
-  const [categories, services, news, productSlugs] = await Promise.all([
-    loadCatalogCategories().catch(() => []),
-    loadServices().catch(() => []),
-    loadNewsPosts().catch(() => []),
-    loadAllProductSlugs().catch(() => []),
-  ]);
+  const listing = await loadCatalogListing({ page: 1, limit: 1, includeMeta: false, includeTotals: true }).catch(() => ({
+    items: [],
+    page: 1,
+    limit: 1,
+    total: 0,
+    totalAll: 0,
+    hasMore: false,
+    meta: null,
+  }));
 
-  const entries: SitemapEntry[] = [
-    { loc: `${origin}/`, changefreq: "weekly", priority: 1.0 },
-    { loc: `${origin}/about`, changefreq: "monthly", priority: 0.6 },
-    { loc: `${origin}/catalog`, changefreq: "daily", priority: 0.9 },
-    { loc: `${origin}/services`, changefreq: "weekly", priority: 0.8 },
-    { loc: `${origin}/news`, changefreq: "weekly", priority: 0.7 },
+  const totalProducts = Number.isFinite(listing.totalAll) ? listing.totalAll : 0;
+  const productChunkSize = computeProductChunkSize(totalProducts);
+  const productSitemaps = Math.min(MAX_SITEMAPS, Math.max(1, Math.ceil(totalProducts / productChunkSize)));
+
+  const entries: SitemapIndexEntry[] = [
+    { loc: `${origin}/sitemap-static.xml` },
+    { loc: `${origin}/sitemap-categories.xml` },
+    { loc: `${origin}/sitemap-services.xml` },
+    { loc: `${origin}/sitemap-news.xml` },
   ];
 
-  for (const category of categories) {
+  for (let i = 0; i < productSitemaps; i += 1) {
     entries.push({
-      loc: `${origin}/catalog/category/${encodeURIComponent(category.slug)}`,
-      changefreq: "weekly",
-      priority: 0.7,
+      loc: `${origin}/sitemap-products-${i}.xml`,
     });
   }
 
-  for (const service of services) {
-    entries.push({
-      loc: `${origin}/services/${encodeURIComponent(service.slug)}`,
-      changefreq: "monthly",
-      priority: 0.6,
-    });
-  }
-
-  for (const post of news) {
-    entries.push({
-      loc: `${origin}/news/${encodeURIComponent(post.slug)}`,
-      changefreq: "weekly",
-      priority: 0.6,
-    });
-  }
-
-  for (const slug of productSlugs) {
-    entries.push({
-      loc: `${origin}/catalog/${encodeURIComponent(slug)}`,
-      changefreq: "weekly",
-      priority: 0.8,
-    });
-  }
-
-  return new Response(toXml(entries), {
+  return new Response(toSitemapIndexXml(entries), {
     status: 200,
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
@@ -102,4 +69,3 @@ export const GET: APIRoute = async ({ url }) => {
     },
   });
 };
-

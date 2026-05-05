@@ -7,9 +7,8 @@ import { slugify } from "../lib/slug";
 import { getStableCategoryImage } from "../lib/category-images";
 import {
   SESSION_CART_UPDATED_EVENT,
-  addProductToSessionCart,
   getSessionCartQuantities,
-  updateSessionCartItem,
+  updateSessionCartItemOptimistic,
 } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
@@ -78,7 +77,6 @@ export function CatalogPage({
   const isLanding = variant === "landing";
   const isCategoryPage = Boolean(initialCategory && initialCategory !== "all");
   const [desktopFiltersTop, setDesktopFiltersTop] = useState(24);
-  const [catalogTopbarProgress, setCatalogTopbarProgress] = useState(0);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [catalogMeta, setCatalogMeta] = useState<CatalogListingResponse["meta"]>(initialMeta);
   const [catalogTotal, setCatalogTotal] = useState(initialTotal);
@@ -87,6 +85,7 @@ export function CatalogPage({
   const [isFetchingResults, setIsFetchingResults] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const requestIdRef = useRef(0);
+  const catalogRequestInFlightRef = useRef<Set<string>>(new Set());
   const cartSyncRequestIdRef = useRef(0);
   const searchDebounceTimeoutRef = useRef<number | null>(null);
   const suppressCatalogReloadRef = useRef(false);
@@ -100,6 +99,7 @@ export function CatalogPage({
   const cartQuantitiesRef = useRef<Record<string, number>>({});
   const cartSyncInFlightRef = useRef<Set<string>>(new Set());
   const pendingCartQuantityRef = useRef<Record<string, number>>({});
+  const pendingCartFlushTimeoutRef = useRef<Record<string, number>>({});
   const previousDynamicFilterBoundsRef = useRef<Record<string, [number, number]>>({});
   const formatFilterCountLabel = (count: number) => {
     const mod10 = count % 10;
@@ -154,50 +154,9 @@ export function CatalogPage({
     shouldScrollToResultsOnNextReplaceRef.current = true;
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let rafId: number | null = null;
-
-    const update = () => {
-      const y =
-        window.scrollY ??
-        window.pageYOffset ??
-        document.documentElement.scrollTop ??
-        0;
-      const startPx = 40;
-      const rangePx = 200;
-      const progress = Math.max(0, Math.min(1, (y - startPx) / rangePx));
-
-      setCatalogTopbarProgress((current) => {
-        if (Math.abs(current - progress) < 0.01) return current;
-        return progress;
-      });
-    };
-
-    const schedule = () => {
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        update();
-      });
-    };
-
-    schedule();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-
-    return () => {
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, []);
-
   const catalogTopbarStyle = useMemo(() => {
-    const maxHidePx = 140;
-    const hiddenPx = Math.round(catalogTopbarProgress * maxHidePx);
-    const opacity = 1 - Math.min(1, catalogTopbarProgress * 1.2);
+    const hiddenPx = 0;
+    const opacity = 1;
 
     return {
       opacity,
@@ -205,9 +164,9 @@ export function CatalogPage({
       marginBottom: `-${hiddenPx}px`,
       transition: "transform 220ms ease-out, opacity 220ms ease-out, margin-bottom 220ms ease-out",
       willChange: "transform, opacity, margin-bottom",
-      pointerEvents: catalogTopbarProgress >= 0.98 ? "none" : "auto",
+      pointerEvents: "auto",
     } as const;
-  }, [catalogTopbarProgress]);
+  }, []);
 
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -231,7 +190,6 @@ export function CatalogPage({
   const [sortMode, setSortMode] = useState<"popular" | "new" | "price-asc" | "price-desc">("popular");
   const isSortApplied = sortMode !== "popular";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const [pendingCartSlug, setPendingCartSlug] = useState<string | null>(null);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
   const [animatedCartSlug, setAnimatedCartSlug] = useState<string | null>(null);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 1440 : window.innerWidth));
@@ -280,7 +238,31 @@ export function CatalogPage({
     const syncCartQuantities = () => {
       const requestId = ++cartSyncRequestIdRef.current;
       if (!active || requestId !== cartSyncRequestIdRef.current) return;
-      setCartQuantities(getSessionCartQuantities());
+      const stored = getSessionCartQuantities();
+      const pending = pendingCartQuantityRef.current;
+      const inFlight = cartSyncInFlightRef.current;
+
+      if (pending && Object.keys(pending).length > 0) {
+        setCartQuantities({
+          ...stored,
+          ...pending,
+        });
+        return;
+      }
+
+      if (inFlight.size > 0) {
+        const keepLocal: Record<string, number> = {};
+        for (const slug of inFlight) {
+          keepLocal[slug] = cartQuantitiesRef.current[slug] ?? stored[slug] ?? 0;
+        }
+        setCartQuantities({
+          ...stored,
+          ...keepLocal,
+        });
+        return;
+      }
+
+      setCartQuantities(stored);
     };
 
     syncCartQuantities();
@@ -304,6 +286,15 @@ export function CatalogPage({
   useEffect(() => {
     cartQuantitiesRef.current = cartQuantities;
   }, [cartQuantities]);
+
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of Object.values(pendingCartFlushTimeoutRef.current)) {
+        window.clearTimeout(timeoutId);
+      }
+      pendingCartFlushTimeoutRef.current = {};
+    };
+  }, []);
 
   useEffect(() => {
     if (!allFiltersOpen) return;
@@ -420,6 +411,7 @@ export function CatalogPage({
 
   useEffect(() => {
     const previousBounds = previousDynamicFilterBoundsRef.current;
+    let didAdjustSelection = false;
     setSelectedNumericFilters((prev) => {
       const next: Record<string, [number, number]> = {};
       for (const filter of dynamicFilters) {
@@ -437,7 +429,9 @@ export function CatalogPage({
             ? [filter.min, filter.max]
             : [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])];
       }
-      return shallowRangeRecordEqual(prev, next) ? prev : next;
+      if (shallowRangeRecordEqual(prev, next)) return prev;
+      didAdjustSelection = true;
+      return next;
     });
     setSelectedNumericFilterDrafts((prev) => {
       const next: Record<string, [number, number]> = {};
@@ -456,7 +450,9 @@ export function CatalogPage({
             ? [filter.min, filter.max]
             : [Math.max(filter.min, current[0]), Math.min(filter.max, current[1])];
       }
-      return shallowRangeRecordEqual(prev, next) ? prev : next;
+      if (shallowRangeRecordEqual(prev, next)) return prev;
+      didAdjustSelection = true;
+      return next;
     });
     setSelectedTextFilters((prev) => {
       const next: Record<string, string[]> = {};
@@ -464,8 +460,16 @@ export function CatalogPage({
         if (filter.parameterType !== "TEXT") continue;
         next[filter.id] = prev[filter.id]?.filter((value) => filter.values.includes(value)) ?? [];
       }
-      return shallowTextRecordEqual(prev, next) ? prev : next;
+      if (shallowTextRecordEqual(prev, next)) return prev;
+      didAdjustSelection = true;
+      return next;
     });
+
+    if (didAdjustSelection) {
+      // Prevent a second network reload caused only by syncing the selected filter state
+      // to updated bounds/values from the response meta.
+      suppressCatalogReloadRef.current = true;
+    }
 
     previousDynamicFilterBoundsRef.current = Object.fromEntries(
       dynamicFilters
@@ -624,13 +628,19 @@ export function CatalogPage({
   }
 
   async function loadCatalogPage(nextPage: number, mode: "replace" | "append") {
-    const requestId = ++requestIdRef.current;
     const {
       signature,
       queryPayload,
       selectedTextFiltersPayload,
       selectedNumericFiltersPayload,
     } = buildCatalogRequestPayload();
+    const requestKey = `${mode}:${nextPage}:${signature}`;
+    const inFlight = catalogRequestInFlightRef.current;
+    if (inFlight.has(requestKey)) {
+      return;
+    }
+    inFlight.add(requestKey);
+    const requestId = ++requestIdRef.current;
     const metaRequestKey = JSON.stringify({
       search: query.trim(),
       category: effectiveCategoryFilter ?? "",
@@ -740,6 +750,7 @@ export function CatalogPage({
         void prefetchCatalogPage(nextPage + 1, signature, queryPayload);
       }
     } finally {
+      inFlight.delete(requestKey);
       if (requestId === requestIdRef.current) {
         setIsFetchingMore(false);
         setIsFetchingResults(false);
@@ -1137,23 +1148,13 @@ export function CatalogPage({
     setAllFiltersOpen(false);
   }
 
-  async function handleAddToCart(product: Product) {
-    if (pendingCartSlug === product.slug) return;
-
-    setPendingCartSlug(product.slug);
-    try {
-      await addProductToSessionCart(product);
-      setCartQuantities(getSessionCartQuantities());
-      setAnimatedCartSlug(product.slug);
-    } finally {
-      setPendingCartSlug((current) => (current === product.slug ? null : current));
-      window.setTimeout(() => {
-        setAnimatedCartSlug((current) => (current === product.slug ? null : current));
-      }, 420);
-    }
+  function handleAddToCart(product: Product) {
+    const slug = product.slug;
+    const currentQuantity = pendingCartQuantityRef.current[slug] ?? cartQuantitiesRef.current[slug] ?? 0;
+    handleCartQuantityChange(slug, currentQuantity + 1);
   }
 
-  async function flushCartQuantity(slug: string) {
+  function flushCartQuantity(slug: string) {
     if (cartSyncInFlightRef.current.has(slug)) {
       return;
     }
@@ -1163,16 +1164,15 @@ export function CatalogPage({
     try {
       while (true) {
         const quantity = pendingCartQuantityRef.current[slug];
-        await updateSessionCartItem(slug, quantity);
-        const nextQuantities = getSessionCartQuantities();
+        if (typeof quantity !== "number") {
+          break;
+        }
+
+        updateSessionCartItemOptimistic(slug, quantity);
         const currentPending = pendingCartQuantityRef.current[slug];
 
         if (currentPending === quantity) {
           cartSyncRequestIdRef.current += 1;
-          setCartQuantities((current) => ({
-            ...current,
-            [slug]: nextQuantities[slug] ?? 0,
-          }));
           delete pendingCartQuantityRef.current[slug];
           break;
         }
@@ -1193,7 +1193,14 @@ export function CatalogPage({
     window.setTimeout(() => {
       setAnimatedCartSlug((current) => (current === slug ? null : current));
     }, 420);
-    void flushCartQuantity(slug);
+    const currentTimeout = pendingCartFlushTimeoutRef.current[slug];
+    if (typeof currentTimeout === "number") {
+      window.clearTimeout(currentTimeout);
+    }
+    pendingCartFlushTimeoutRef.current[slug] = window.setTimeout(() => {
+      delete pendingCartFlushTimeoutRef.current[slug];
+      void flushCartQuantity(slug);
+    }, 180);
   }
 
   function handleCartQuantityStep(slug: string, delta: number) {
@@ -2115,9 +2122,9 @@ export function CatalogPage({
               ) : null}
 
               <div className="relative">
-                <div
-                  className={`sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-2 md:hidden ${
-                    isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
+                  <div
+                  className={`sticky top-[calc(var(--site-header-offset,76px)+44px)] z-[110] py-2 md:hidden ${
+                    isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+48px)]" : "md:top-[calc(var(--site-header-offset,76px)+48px)]"
                   }`}
                   style={catalogTopbarStyle as CSSProperties}
                 >
@@ -2262,8 +2269,8 @@ export function CatalogPage({
                 </div>
 
                 <div
-                  className={`hidden md:block sticky top-[calc(var(--site-header-offset,76px)+2px)] z-[110] py-4 ${
-                    isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+6px)]" : "md:top-[calc(var(--site-header-offset,76px)+6px)]"
+                  className={`hidden md:block sticky top-[calc(var(--site-header-offset,76px)+44px)] z-[110] py-4 ${
+                    isLanding ? "lg:top-[calc(var(--site-header-offset,76px)+48px)]" : "md:top-[calc(var(--site-header-offset,76px)+48px)]"
                   }`}
                   style={catalogTopbarStyle as CSSProperties}
                 >
@@ -2472,15 +2479,11 @@ export function CatalogPage({
                           ) : (
                             <button
                               type="button"
-                              onClick={() => void handleAddToCart(product)}
-                              disabled={pendingCartSlug === product.slug || !(Number.isFinite(product.price) && product.price > 0)}
+                              onClick={() => handleAddToCart(product)}
+                              disabled={!(Number.isFinite(product.price) && product.price > 0)}
                               className="inline-flex h-11 items-center justify-center bg-[#111] px-2 text-[10px] uppercase tracking-[1.3px] text-white transition-[transform,border-color,box-shadow,background-color,color,letter-spacing] duration-300 hover:bg-[#2a2a26] disabled:cursor-not-allowed disabled:bg-[#2a2a26] md:h-14 md:text-[16px] md:tracking-[2px] md:hover:tracking-[2.5px] 2xl:h-16 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                             >
-                              {pendingCartSlug === product.slug
-                                ? "добавляем"
-                                : Number.isFinite(product.price) && product.price > 0
-                                  ? "в корзину"
-                                  : "нет цены"}
+                              {Number.isFinite(product.price) && product.price > 0 ? "в корзину" : "нет цены"}
                             </button>
                           )}
                           {Number.isFinite(product.price) && product.price > 0 ? (

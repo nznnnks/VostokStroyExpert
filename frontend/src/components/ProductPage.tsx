@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice, type Product } from "../data/products";
 import { loadCatalogListing } from "../lib/catalog-api";
 import {
   SESSION_CART_UPDATED_EVENT,
-  addProductToSessionCart,
   getSessionCartItemQuantity,
-  updateSessionCartItem,
+  updateSessionCartItemOptimistic,
 } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
@@ -125,8 +124,11 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
   const [isImageTransitioning, setIsImageTransitioning] = useState(false);
   const [activeDetailsTab, setActiveDetailsTab] = useState<"description" | "specs">("description");
   const [cartQty, setCartQty] = useState(0);
-  const [cartPending, setCartPending] = useState(false);
   const [cartAnimated, setCartAnimated] = useState(false);
+  const cartQtyRef = useRef(0);
+  const pendingCartQtyRef = useRef<number | null>(null);
+  const cartSyncInFlightRef = useRef(false);
+  const pendingCartFlushTimeoutRef = useRef<number | null>(null);
   const categorySlug = product.categorySlug ?? "";
   const initialRelatedPool = useMemo(
     () =>
@@ -282,11 +284,62 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
   }
 
   useEffect(() => {
+    cartQtyRef.current = cartQty;
+  }, [cartQty]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingCartFlushTimeoutRef.current !== null) {
+        window.clearTimeout(pendingCartFlushTimeoutRef.current);
+        pendingCartFlushTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  function flushCartQty() {
+    if (cartSyncInFlightRef.current) {
+      return;
+    }
+
+    cartSyncInFlightRef.current = true;
+    try {
+      while (true) {
+        const nextQty = pendingCartQtyRef.current;
+        if (nextQty === null) {
+          break;
+        }
+        pendingCartQtyRef.current = null;
+        updateSessionCartItemOptimistic(product.slug, nextQty);
+        // If user changed again while we were syncing, loop continues.
+      }
+    } finally {
+      cartSyncInFlightRef.current = false;
+    }
+  }
+
+  function scheduleCartQtyChange(nextQty: number) {
+    const safeQty = Math.max(0, Math.floor(nextQty));
+    pendingCartQtyRef.current = safeQty;
+    setCartQty(safeQty);
+    setCartAnimated(true);
+    window.setTimeout(() => setCartAnimated(false), 420);
+    if (pendingCartFlushTimeoutRef.current !== null) {
+      window.clearTimeout(pendingCartFlushTimeoutRef.current);
+    }
+    pendingCartFlushTimeoutRef.current = window.setTimeout(() => {
+      pendingCartFlushTimeoutRef.current = null;
+      void flushCartQty();
+    }, 180);
+  }
+
+  useEffect(() => {
     let active = true;
 
     const syncCartQty = async () => {
       if (!active) return;
-      setCartQty(getSessionCartItemQuantity(product.slug));
+      if (cartSyncInFlightRef.current) return;
+      const pending = pendingCartQtyRef.current;
+      setCartQty(pending ?? getSessionCartItemQuantity(product.slug));
     };
 
     void syncCartQty();
@@ -333,31 +386,12 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
     goToImage(activeImageIndex + 1);
   }
 
-  async function handleAddToCart() {
-    if (cartPending) return;
-    setCartPending(true);
-    try {
-      setCartQty((current) => current + 1);
-      await addProductToSessionCart(product);
-      setCartAnimated(true);
-    } finally {
-      setCartPending(false);
-      window.setTimeout(() => setCartAnimated(false), 420);
-    }
+  function handleAddToCart() {
+    scheduleCartQtyChange(cartQtyRef.current + 1);
   }
 
-  async function handleCartQuantityChange(quantity: number) {
-    if (cartPending) return;
-    setCartPending(true);
-    try {
-      const nextQty = Math.max(0, Math.floor(quantity));
-      setCartQty(nextQty);
-      await updateSessionCartItem(product.slug, nextQty);
-      setCartAnimated(true);
-    } finally {
-      setCartPending(false);
-      window.setTimeout(() => setCartAnimated(false), 420);
-    }
+  function handleCartQuantityChange(quantity: number) {
+    scheduleCartQtyChange(quantity);
   }
 
   return (
@@ -487,9 +521,8 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                     >
                       <button
                         type="button"
-                        onClick={() => void handleCartQuantityChange(Math.max(0, cartQty - 1))}
-                        disabled={cartPending}
-                        className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        onClick={() => handleCartQuantityChange(Math.max(0, cartQty - 1))}
+                        className="flex items-center justify-center border-r border-white/12 text-[22px] leading-none transition-colors hover:bg-white/8"
                         aria-label="Уменьшить количество"
                       >
                         −
@@ -505,9 +538,8 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                       </div>
                       <button
                         type="button"
-                        onClick={() => void handleAddToCart()}
-                        disabled={cartPending}
-                        className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8 disabled:cursor-wait disabled:opacity-70"
+                        onClick={handleAddToCart}
+                        className="flex items-center justify-center border-l border-white/12 text-[20px] leading-none transition-colors hover:bg-white/8"
                         aria-label="Увеличить количество"
                       >
                         +
@@ -529,11 +561,10 @@ export function ProductPage({ product, relatedProducts, allProducts }: ProductPa
                 ) : (
                   <button
                     type="button"
-                    onClick={() => void handleAddToCart()}
-                    disabled={cartPending}
-                    className="inline-flex h-12 items-center justify-center bg-[#111] px-7 text-[clamp(0.82rem,0.82vw,1.05rem)] uppercase tracking-[1.8px] text-white transition-colors hover:bg-[#2a2a26] disabled:cursor-wait disabled:bg-[#2a2a26] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:tracking-[2.3px]"
+                    onClick={handleAddToCart}
+                    className="inline-flex h-12 items-center justify-center bg-[#111] px-7 text-[clamp(0.82rem,0.82vw,1.05rem)] uppercase tracking-[1.8px] text-white transition-colors hover:bg-[#2a2a26] [font-family:Jaldi,'JetBrains_Mono',monospace] md:h-16 md:tracking-[2.3px]"
                   >
-                    {cartPending ? "добавляем" : "в корзину"}
+                    в корзину
                   </button>
                 )}
                 {hasPrice ? (

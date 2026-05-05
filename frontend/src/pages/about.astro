@@ -3,6 +3,7 @@ import { AboutPage } from "../components/AboutPage";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import SeoMeta from "../components/SeoMeta.astro";
 import { loadSeoPage } from "../lib/backend-api";
+import { getConfiguredOrigin } from "../lib/site-url";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
@@ -13,7 +14,7 @@ const seo = await loadSeoPage("about").catch(() => null);
 const pageTitle = normalizeSeoText(seo?.metaTitle ?? "О компании");
 const pageDescription = truncateSeoDescription(seo?.metaDescription ?? "Информация о компании, подходе и опыте.");
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 ---
 
 <!doctype html>

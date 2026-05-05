@@ -6,6 +6,7 @@ import ServiceOrderModal from "../../components/ServiceOrderModal";
 import SeoMeta from "../../components/SeoMeta.astro";
 import { loadServiceBySlug } from "../../lib/backend-api";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
+import { getConfiguredOrigin } from "../../lib/site-url";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../lib/seo";
 
 export const prerender = false;
@@ -20,7 +21,7 @@ if (!service) {
 const pageTitle = normalizeSeoText(service.metaTitle ?? service.title);
 const pageDescription = truncateSeoDescription(service.metaDescription ?? service.lead);
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 
 const serviceProcessSteps = service.bullets.map((bullet, index) => ({
   title: bullet,

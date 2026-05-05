@@ -3,6 +3,7 @@ import { ProductPage } from "../../components/ProductPage";
 import SeoMeta from "../../components/SeoMeta.astro";
 import { loadCatalogProductBySlug } from "../../lib/backend-api";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
+import { getConfiguredOrigin } from "../../lib/site-url";
 import { truncateSeoDescription } from "../../lib/seo";
 import "../../styles/global.css";
 
@@ -58,7 +59,30 @@ function buildAutoKeywords() {
 const pageTitle = normalizeText(product.metaTitle ?? product.title);
 const pageDescription = truncateSeoDescription(product.metaDescription ?? buildAutoDescription());
 const pageKeywords = normalizeText(buildAutoKeywords());
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
+const origin = getConfiguredOrigin(Astro.site);
+const productImage = product.image?.startsWith("http") ? product.image : `${origin}${product.image}`;
+const productSchema = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: product.title,
+  image: product.gallery?.length ? product.gallery.map((value) => (value.startsWith("http") ? value : `${origin}${value}`)) : [productImage],
+  description: Array.isArray(product.description) ? product.description.join(" ") : pageDescription,
+  sku: product.article,
+  brand: { "@type": "Brand", name: product.brandLabel || product.brand },
+  offers: {
+    "@type": "Offer",
+    url: canonicalUrl,
+    price: String(product.price),
+    priceCurrency: "RUB",
+    availability:
+      typeof product.stock === "number"
+        ? product.stock > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
+  },
+};
 ---
 
 <!doctype html>
@@ -77,6 +101,8 @@ const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
       keywords={pageKeywords}
       canonicalUrl={canonicalUrl}
       ogType="product"
+      ogImagePath={product.image}
+      schemas={[productSchema]}
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -86,11 +86,13 @@ export function SiteFooter() {
           <div className="col-span-2 min-w-0 border-t border-[#ebe5dc] pt-6">
             <h3 className="text-[16px] uppercase [font-family:'Cormorant_Garamond',serif] md:text-[18px]">Юридическая информация</h3>
             <div className="mt-4 grid gap-3 text-[13px] uppercase tracking-[1.5px] text-[#7a7a75] md:mt-5 md:grid-cols-2 md:gap-4 md:text-[14px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-              <a href="/about#privacy" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
+              <a
+                href="/docs/privacy-policy.pdf"
+                target="_blank"
+                rel="noreferrer"
+                className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]"
+              >
                 Соглашение о конфиденциальности
-              </a>
-              <a href="/about#terms" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
-                Условия
               </a>
               <a
                 href="https://alpha-development.ru/"
@@ -126,11 +128,13 @@ export function SiteFooter() {
         <div className="hidden xl:block">
           <h3 className="text-[20px] uppercase [font-family:'Cormorant_Garamond',serif] 2xl:text-[22px]">Юридическая информация</h3>
           <div className="mt-10 space-y-9 text-[16px] uppercase tracking-[1.5px] text-[#7a7a75] 2xl:text-[17px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
-            <a href="/about#privacy" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
+            <a
+              href="/docs/privacy-policy.pdf"
+              target="_blank"
+              rel="noreferrer"
+              className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]"
+            >
               Соглашение о конфиденциальности
-            </a>
-            <a href="/about#terms" className="block leading-[1.45] transition duration-300 ease-out hover:translate-x-1 hover:text-[#2f2f2a]">
-              Условия
             </a>
             <a
               href="https://alpha-development.ru/"

@@ -43,13 +43,15 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const searchDebounceTimeoutRef = useRef<number | null>(null);
   const headerRootRef = useRef<HTMLElement | null>(null);
   const topbarHideProgressRef = useRef(0);
+  const topbarRef = useRef<HTMLDivElement | null>(null);
+  const topbarMaxHidePxRef = useRef(TOPBAR_MAX_HIDE_PX);
 
   useEffect(() => {
     topbarHideProgressRef.current = topbarHideProgress;
   }, [topbarHideProgress]);
 
   const applyHeaderOffset = (height: number) => {
-    const hiddenPx = light ? Math.round(topbarHideProgressRef.current * TOPBAR_MAX_HIDE_PX) : 0;
+    const hiddenPx = light ? Math.round(topbarHideProgressRef.current * topbarMaxHidePxRef.current) : 0;
     const next = Math.ceil(height - hiddenPx);
     if (next <= 0) return;
     document.documentElement.style.setProperty("--site-header-offset", `${next}px`);
@@ -265,7 +267,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   }, [lockScrolledState, light]);
 
   const topbarStyle = useMemo(() => {
-    const hiddenPx = Math.round(topbarHideProgress * TOPBAR_MAX_HIDE_PX);
+    const hiddenPx = Math.round(topbarHideProgress * topbarMaxHidePxRef.current);
     const opacity = 1 - Math.min(1, topbarHideProgress * 1.25);
     return {
       opacity,
@@ -282,16 +284,45 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
     const el = searchRef.current;
     if (!el) return;
 
+    const updateTopbarMaxHide = () => {
+      const topbarEl = topbarRef.current;
+      if (!topbarEl) return;
+      const next = Math.round(topbarEl.getBoundingClientRect().height);
+      if (!Number.isFinite(next) || next <= 0) return;
+      topbarMaxHidePxRef.current = next;
+    };
+
+    updateTopbarMaxHide();
+
     // Initial measurement.
     applyHeaderOffset(el.getBoundingClientRect().height);
 
     if (!("ResizeObserver" in window)) return;
     const ro = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      applyHeaderOffset(entry.contentRect.height);
+      const topbarEl = topbarRef.current;
+      let headerHeight: number | null = null;
+
+      for (const entry of entries) {
+        if (topbarEl && entry.target === topbarEl) {
+          const next = Math.round(entry.contentRect.height);
+          if (Number.isFinite(next) && next > 0) {
+            topbarMaxHidePxRef.current = next;
+          }
+          continue;
+        }
+
+        if (entry.target === el) {
+          headerHeight = entry.contentRect.height;
+        }
+      }
+
+      applyHeaderOffset(headerHeight ?? el.getBoundingClientRect().height);
     });
     ro.observe(el);
+    const topbarEl = topbarRef.current;
+    if (topbarEl) {
+      ro.observe(topbarEl);
+    }
     return () => ro.disconnect();
   }, []);
 
@@ -445,6 +476,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
          */}
         {light ? (
           <div
+            ref={topbarRef}
             className="grid overflow-hidden border-b border-white/8 bg-[#060606] text-white transform-gpu will-change-transform"
             style={topbarStyle}
           >

@@ -3,6 +3,7 @@ import { CatalogPage } from "../../../components/CatalogPage";
 import { loadCatalogCategories, loadCatalogListing } from "../../../lib/catalog-api";
 import GlobalPreloader from "../../../components/GlobalPreloader.astro";
 import SeoMeta from "../../../components/SeoMeta.astro";
+import { getConfiguredOrigin } from "../../../lib/site-url";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../../lib/seo";
 import "../../../styles/global.css";
 
@@ -47,14 +48,18 @@ if (!categoryName || initialCatalog.total === 0) {
 const pageTitle = normalizeSeoText(categorySeo?.metaTitle ?? categoryName);
 const pageDescription = truncateSeoDescription(categorySeo?.metaDescription ?? categorySeo?.description ?? `Товары категории: ${categoryName}.`);
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const origin = getConfiguredOrigin(Astro.site);
+const canonicalUrl = `${origin}${Astro.url.pathname}`;
 const itemListSchema = {
   "@context": "https://schema.org",
   "@type": "ItemList",
   itemListElement: initialCatalog.items.map((product, index) => ({
     "@type": "ListItem",
     position: index + 1,
-    url: `${Astro.url.origin}/catalog/${encodeURIComponent(product.slug)}`,
+    url: `${origin}/catalog/${product.slug
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/")}`,
     name: product.title,
   })),
 };

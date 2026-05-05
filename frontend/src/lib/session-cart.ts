@@ -235,6 +235,12 @@ export async function updateSessionCartItem(itemId: string, quantity: number) {
   return buildCartFromCookie();
 }
 
+// UI-optimized update: updates cookie + notifies listeners, but avoids refetching product data.
+// Use this for optimistic counters, then call `loadSessionCart()` later if you need totals/items.
+export function updateSessionCartItemOptimistic(itemId: string, quantity: number) {
+  setSessionCartItemQuantity(itemId, quantity);
+}
+
 export async function removeSessionCartItem(itemId: string) {
   const items = readStoredCartItems().filter((item) => item.slug !== itemId);
   writeStoredCartItems(items);

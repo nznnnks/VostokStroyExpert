@@ -2,6 +2,7 @@
 import { AdminPage } from "../components/AdminPage";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import SeoMeta from "../components/SeoMeta.astro";
+import { getConfiguredOrigin } from "../lib/site-url";
 import { truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
@@ -9,7 +10,7 @@ export const prerender = false;
 
 const pageTitle = "Панель администратора";
 const pageDescription = truncateSeoDescription("Вход и управление контентом административной части сайта.");
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 ---
 
 <!doctype html>

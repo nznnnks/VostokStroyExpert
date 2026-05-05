@@ -2,13 +2,14 @@
 import "../styles/global.css";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import SeoMeta from "../components/SeoMeta.astro";
+import { getConfiguredOrigin } from "../lib/site-url";
 
 const {
   title = "Панель администратора",
   description = "Административная панель и управление контентом.",
 } = Astro.props;
 
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 ---
 <!doctype html>
 <html lang="ru">

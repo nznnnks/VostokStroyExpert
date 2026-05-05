@@ -35,18 +35,22 @@ async function bootstrap() {
         return;
       }
 
-      const allowedOrigins = new Set([
-        'http://localhost:4321',
-        'http://127.0.0.1:4321',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'https://climatrade.store',
-        'https://www.climatrade.store',
-      ]);
+      try {
+        const url = new URL(origin);
+        const hostname = url.hostname;
+        const protocol = url.protocol;
 
-      if (allowedOrigins.has(origin)) {
-        callback(null, true);
-        return;
+        const isLocalhost =
+          protocol === 'http:' && (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1');
+        const isProductionOrigin =
+          protocol === 'https:' && (hostname === 'climatrade.store' || hostname === 'www.climatrade.store');
+
+        if (isLocalhost || isProductionOrigin) {
+          callback(null, true);
+          return;
+        }
+      } catch {
+        // ignore - rejected below
       }
 
       callback(new Error(`CORS: origin ${origin} is not allowed`), false);

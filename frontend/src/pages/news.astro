@@ -3,6 +3,7 @@ import { NewsPage } from "../components/NewsPage";
 import { loadNewsPosts } from "../lib/backend-api";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
 import SeoMeta from "../components/SeoMeta.astro";
+import { getConfiguredOrigin } from "../lib/site-url";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../lib/seo";
 import "../styles/global.css";
 
@@ -12,7 +13,7 @@ const posts = await loadNewsPosts();
 const pageTitle = normalizeSeoText("Новости");
 const pageDescription = truncateSeoDescription("Новости компании и отрасли.");
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
-const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const canonicalUrl = `${getConfiguredOrigin(Astro.site)}${Astro.url.pathname}`;
 ---
 
 <!doctype html>

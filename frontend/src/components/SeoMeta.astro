@@ -23,16 +23,20 @@ const {
   schemas = [],
 } = Astro.props as Props;
 
-const canonicalUrl = canonicalUrlProp ?? `${Astro.url.origin}${Astro.url.pathname}`;
-const ogImageUrl = ogImagePath.startsWith("http") ? ogImagePath : `${Astro.url.origin}${ogImagePath}`;
-const siteName = "Stayse Engineering";
+const configuredOrigin =
+  (Astro.site?.origin ? String(Astro.site.origin) : "") ||
+  (import.meta.env.PUBLIC_SITE_URL ? String(import.meta.env.PUBLIC_SITE_URL) : "") ||
+  "https://www.climatrade.store";
+const canonicalUrl = canonicalUrlProp ?? `${configuredOrigin}${Astro.url.pathname}`;
+const ogImageUrl = ogImagePath.startsWith("http") ? ogImagePath : `${configuredOrigin}${ogImagePath}`;
+const siteName = "CLIMATRADE";
 
 const organizationSchema: SeoMetaSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: siteName,
-  url: Astro.url.origin,
-  logo: `${Astro.url.origin}/icons/icon-512.png`,
+  url: configuredOrigin,
+  logo: `${configuredOrigin}/icons/icon-512.png`,
 };
 
 const allSchemas = [organizationSchema, ...schemas];
