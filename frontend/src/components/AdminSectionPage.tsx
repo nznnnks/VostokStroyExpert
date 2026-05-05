@@ -2218,17 +2218,13 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
               {subtitle ? <p className="mt-4 text-[16px] text-[#7a7a75] md:text-[18px] xl:text-[20px]">{subtitle}</p> : null}
 
               {activeKey === "seo" ? (
-                <div className="mt-10 border border-[#e8e3db] bg-white p-8">
+                <div className="mt-10 border border-[#e8e3db] bg-white p-8 md:p-10 2xl:p-12">
                   <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                       <p className="text-[12px] uppercase tracking-[3px] text-[#b1ada6] [font-family:Jaldi,'JetBrains_Mono',monospace]">SEO</p>
-                      <h2 className="mt-3 text-[28px] [font-family:'Cormorant_Garamond',serif]">Основные страницы</h2>
-                      <p className="mt-3 max-w-[760px] text-[16px] leading-7 text-[#7a7a75]">
-                        Для главных страниц задаются <span className="font-medium">заголовок</span> и <span className="font-medium">описание</span>, а ключевые слова формируются автоматически: заголовок + описание.
-                      </p>
                     </div>
 
-                    <div className="w-full max-w-[520px]">
+                    <div className="w-full max-w-[760px]">
                       <div className="admin-form-grid">
                         <label className="admin-toolbar__label">
                           Страница
