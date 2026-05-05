@@ -33,6 +33,47 @@ const productInclude = {
   },
 } satisfies Prisma.ProductInclude;
 
+const productCatalogListSelect = {
+  id: true,
+  slug: true,
+  sku: true,
+  name: true,
+  brand: true,
+  brandLabel: true,
+  country: true,
+  type: true,
+  price: true,
+  oldPrice: true,
+  power: true,
+  volume: true,
+  rating: true,
+  efficiency: true,
+  efficiencyClass: true,
+  coverage: true,
+  acoustics: true,
+  filtration: true,
+  images: true,
+  showcaseCategorySlug: true,
+  category: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  },
+  discounts: {
+    where: { isActive: true },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      value: true,
+    },
+  },
+} satisfies Prisma.ProductSelect;
+
 type CatalogMetadataSourceProduct = {
   id: string;
   name: string;
@@ -189,7 +230,7 @@ export class ProductsService {
         : Promise.resolve(null),
       this.prisma.product.findMany({
         where: publicWhere,
-        include: productInclude,
+        select: productCatalogListSelect,
         orderBy: this.getCatalogOrderBy(query.sort),
         skip: (page - 1) * limit,
         take,
@@ -199,7 +240,7 @@ export class ProductsService {
 
     const hasMore = query.includeTotals ? page * limit < (total ?? 0) : pagedProductsRaw.length > limit;
     const pagedProducts = query.includeTotals ? pagedProductsRaw : pagedProductsRaw.slice(0, limit);
-    const items = pagedProducts.map((product) => this.toProductResponse(product));
+    const items = pagedProducts.map((product) => this.toCatalogListProductResponse(product));
 
     return {
       items,
@@ -209,6 +250,54 @@ export class ProductsService {
       totalAll: totalAll ?? 0,
       hasMore,
       meta: metadata,
+    };
+  }
+
+  private toCatalogListProductResponse(
+    product: Prisma.ProductGetPayload<{ select: typeof productCatalogListSelect }>,
+  ) {
+    const discount = product.discounts[0] ?? null;
+    const price = product.price.toNumber();
+    const finalPrice = discount
+      ? discount.type === DiscountType.PERCENT
+        ? price - price * (discount.value.toNumber() / 100)
+        : Math.max(price - discount.value.toNumber(), 0)
+      : price;
+
+    const normalizedImages = this.normalizeUploads(product.images ?? []);
+    const images = normalizedImages.length > 0 ? [normalizedImages[0]] : [];
+
+    return {
+      id: product.id,
+      slug: product.slug,
+      sku: product.sku,
+      name: product.name,
+      brand: product.brand,
+      brandLabel: product.brandLabel,
+      country: product.country,
+      type: product.type,
+      rating: product.rating,
+      efficiency: product.efficiency,
+      efficiencyClass: product.efficiencyClass,
+      coverage: product.coverage,
+      acoustics: product.acoustics,
+      filtration: product.filtration,
+      category: product.category,
+      showcaseCategorySlug: product.showcaseCategorySlug,
+      images,
+      price,
+      oldPrice: product.oldPrice?.toNumber() ?? null,
+      power: product.power?.toNumber() ?? null,
+      volume: product.volume?.toNumber() ?? null,
+      finalPrice,
+      discount: discount
+        ? {
+            id: discount.id,
+            name: discount.name,
+            type: discount.type,
+            value: discount.value.toNumber(),
+          }
+        : null,
     };
   }
 

@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import SiteHeader from "../../components/SiteHeader";
 import SiteFooter from "../../components/SiteFooter";
 import ServiceOrderModal from "../../components/ServiceOrderModal";
+import SeoMeta from "../../components/SeoMeta.astro";
 import { loadServiceBySlug } from "../../lib/backend-api";
 import GlobalPreloader from "../../components/GlobalPreloader.astro";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../lib/seo";
@@ -19,6 +20,7 @@ if (!service) {
 const pageTitle = normalizeSeoText(service.metaTitle ?? service.title);
 const pageDescription = truncateSeoDescription(service.metaDescription ?? service.lead);
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 
 const serviceProcessSteps = service.bullets.map((bullet, index) => ({
   title: bullet,
@@ -83,10 +85,7 @@ const detailTextParagraphs = (generatedCopy?.detailText ?? service.detailText)
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content={pageDescription} />
-    <meta name="keywords" content={pageKeywords} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={pageDescription} />
+    <SeoMeta title={pageTitle} description={pageDescription} keywords={pageKeywords} canonicalUrl={canonicalUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

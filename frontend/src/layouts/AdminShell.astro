@@ -1,11 +1,14 @@
 ---
 import "../styles/global.css";
 import GlobalPreloader from "../components/GlobalPreloader.astro";
+import SeoMeta from "../components/SeoMeta.astro";
 
 const {
   title = "Панель администратора",
   description = "Административная панель и управление контентом.",
 } = Astro.props;
+
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 ---
 <!doctype html>
 <html lang="ru">
@@ -15,7 +18,7 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="description" content={description} />
+    <SeoMeta title={title} description={description} canonicalUrl={canonicalUrl} noIndex />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

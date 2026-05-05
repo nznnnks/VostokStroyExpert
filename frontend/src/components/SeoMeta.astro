@@ -1,0 +1,61 @@
+---
+export type SeoMetaSchema = Record<string, unknown>;
+
+type Props = {
+  title: string;
+  description: string;
+  keywords?: string;
+  canonicalUrl?: string;
+  ogType?: string;
+  ogImagePath?: string;
+  noIndex?: boolean;
+  schemas?: SeoMetaSchema[];
+};
+
+const {
+  title,
+  description,
+  keywords,
+  canonicalUrl: canonicalUrlProp,
+  ogType = "website",
+  ogImagePath = "/icons/icon-512.png",
+  noIndex = false,
+  schemas = [],
+} = Astro.props as Props;
+
+const canonicalUrl = canonicalUrlProp ?? `${Astro.url.origin}${Astro.url.pathname}`;
+const ogImageUrl = ogImagePath.startsWith("http") ? ogImagePath : `${Astro.url.origin}${ogImagePath}`;
+const siteName = "Stayse Engineering";
+
+const organizationSchema: SeoMetaSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteName,
+  url: Astro.url.origin,
+  logo: `${Astro.url.origin}/icons/icon-512.png`,
+};
+
+const allSchemas = [organizationSchema, ...schemas];
+---
+
+<link rel="canonical" href={canonicalUrl} />
+<meta name="description" content={description} />
+{keywords ? <meta name="keywords" content={keywords} /> : null}
+{noIndex ? <meta name="robots" content="noindex, nofollow" /> : null}
+
+<meta property="og:site_name" content={siteName} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:type" content={ogType} />
+<meta property="og:image" content={ogImageUrl} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageUrl} />
+
+{allSchemas.map((schema) => (
+  <script type="application/ld+json">{JSON.stringify(schema)}</script>
+))}
+

@@ -2,6 +2,7 @@
 import { CatalogPage } from "../../../components/CatalogPage";
 import { loadCatalogCategories, loadCatalogListing } from "../../../lib/catalog-api";
 import GlobalPreloader from "../../../components/GlobalPreloader.astro";
+import SeoMeta from "../../../components/SeoMeta.astro";
 import { buildKeywordsFromTitleAndDescription, normalizeSeoText, truncateSeoDescription } from "../../../lib/seo";
 import "../../../styles/global.css";
 
@@ -46,6 +47,17 @@ if (!categoryName || initialCatalog.total === 0) {
 const pageTitle = normalizeSeoText(categorySeo?.metaTitle ?? categoryName);
 const pageDescription = truncateSeoDescription(categorySeo?.metaDescription ?? categorySeo?.description ?? `Товары категории: ${categoryName}.`);
 const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescription);
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
+const itemListSchema = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: initialCatalog.items.map((product, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    url: `${Astro.url.origin}/catalog/${encodeURIComponent(product.slug)}`,
+    name: product.title,
+  })),
+};
 ---
 
 <!doctype html>
@@ -58,10 +70,13 @@ const pageKeywords = buildKeywordsFromTitleAndDescription(pageTitle, pageDescrip
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content={pageDescription} />
-    <meta name="keywords" content={pageKeywords} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={pageDescription} />
+    <SeoMeta
+      title={pageTitle}
+      description={pageDescription}
+      keywords={pageKeywords}
+      canonicalUrl={canonicalUrl}
+      schemas={[itemListSchema]}
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
