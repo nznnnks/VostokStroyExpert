@@ -2219,12 +2219,8 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
 
               {activeKey === "seo" ? (
                 <div className="mt-10 border border-[#e8e3db] bg-white p-8 md:p-10 2xl:p-12">
-                  <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-[12px] uppercase tracking-[3px] text-[#b1ada6] [font-family:Jaldi,'JetBrains_Mono',monospace]">SEO</p>
-                    </div>
-
-                    <div className="w-full max-w-[760px]">
+                  <p className="text-[12px] uppercase tracking-[3px] text-[#b1ada6] [font-family:Jaldi,'JetBrains_Mono',monospace]">SEO</p>
+                  <div className="mt-6 w-full max-w-[760px]">
                       <div className="admin-form-grid">
                         <label className="admin-toolbar__label">
                           Страница
@@ -2278,7 +2274,6 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
                           Очистить
                         </button>
                       </div>
-                    </div>
                   </div>
                 </div>
               ) : null}
