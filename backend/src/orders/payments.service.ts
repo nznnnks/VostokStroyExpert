@@ -117,7 +117,7 @@ export class PaymentsService {
     const receiptCustomer = this.buildYooKassaReceiptCustomer(order.contactPhone, order.user?.email ?? null);
     const receiptItems = order.items.map((item) => ({
       description: item.title.slice(0, 128),
-      quantity: item.quantity.toString(),
+      quantity: item.quantity,
       amount: {
         value: item.unitPrice.toFixed(2),
         currency: 'RUB',
@@ -165,8 +165,14 @@ export class PaymentsService {
 
     const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
     if (!response.ok || !payload) {
+      const code = typeof payload?.code === 'string' ? payload.code : null;
+      const parameter = typeof payload?.parameter === 'string' ? payload.parameter : null;
+      const description = typeof payload?.description === 'string' ? payload.description : null;
+      const details = [code ? `code=${code}` : null, parameter ? `parameter=${parameter}` : null, description]
+        .filter(Boolean)
+        .join(', ');
       throw new BadRequestException(
-        `YooKassa create payment failed${payload && typeof payload.description === 'string' ? `: ${payload.description}` : '.'}`,
+        `YooKassa create payment failed${details ? `: ${details}` : '.'}`,
       );
     }
 
