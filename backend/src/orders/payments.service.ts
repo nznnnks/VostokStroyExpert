@@ -138,10 +138,10 @@ export class PaymentsService {
       };
     });
     const receiptTaxSystemCode = this.getYooKassaTaxSystemCode();
+    const orderTotal = new Prisma.Decimal(amountValue).toDecimalPlaces(2);
     const receiptTotal = receiptItems
       .reduce((sum, item) => sum.plus(item.amount.value), new Prisma.Decimal(0))
       .toDecimalPlaces(2);
-    const orderTotal = new Prisma.Decimal(amountValue).toDecimalPlaces(2);
     if (!receiptTotal.equals(orderTotal)) {
       throw new BadRequestException(
         `Сумма чека YooKassa (${receiptTotal.toFixed(2)}) не совпадает с суммой платежа (${orderTotal.toFixed(2)}).`,

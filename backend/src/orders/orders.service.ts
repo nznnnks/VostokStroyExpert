@@ -166,8 +166,8 @@ export class OrdersService {
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice.toNumber(), 0);
     const discountTotal = this.getDiscountValue(subtotal, discount);
     const taxableBase = Math.max(subtotal - discountTotal, 0);
-    const vatTotal = Number((taxableBase * 0.2).toFixed(2));
-    const total = Number((taxableBase + vatTotal).toFixed(2));
+    const vatTotal = 0;
+    const total = Number(taxableBase.toFixed(2));
 
     const order = await this.prisma.order.create({
       data: {
