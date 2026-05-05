@@ -35,7 +35,7 @@ export function RegisterPage() {
           <div className="grid min-h-[calc(100svh-90px)] overflow-hidden xl:min-h-[calc(100svh-112px)] xl:grid-cols-[1.4fr_1fr]">
           <div className="hidden items-center justify-center overflow-hidden border-r border-[#ece8e1] bg-white xl:flex">
             <img
-              src="/image/complex.jpg"
+              src="/image/auth.jpg"
               alt="Вентиляционные системы"
               width="1600"
               height="2100"
