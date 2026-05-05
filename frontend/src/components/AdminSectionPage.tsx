@@ -2220,7 +2220,7 @@ export function AdminSectionPage({ activeKey, title, subtitle }: AdminSectionPag
               {activeKey === "seo" ? (
                 <div className="mt-10 border border-[#e8e3db] bg-white p-8 md:p-10 2xl:p-12">
                   <p className="text-[12px] uppercase tracking-[3px] text-[#b1ada6] [font-family:Jaldi,'JetBrains_Mono',monospace]">SEO</p>
-                  <div className="mt-6 w-full max-w-[760px]">
+                  <div className="mt-6 w-full max-w-none">
                       <div className="admin-form-grid">
                         <label className="admin-toolbar__label">
                           Страница
