@@ -861,7 +861,9 @@ export async function resolveProductIdsBySlugs(slugs: string[]) {
 
   const resolved = await Promise.allSettled(
     missing.map(async (slug) => {
-      const product = await apiRequest<ApiProduct>(`/api/products/slug/${encodeURIComponent(slug)}`);
+      const product = await apiRequest<ApiProduct>("/api/products/by-slug", {
+        query: { slug },
+      });
       return { slug, id: product.id };
     }),
   );

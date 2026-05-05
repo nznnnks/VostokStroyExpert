@@ -119,7 +119,7 @@ type PaymentBannerState =
   | null;
 
 export function CheckoutPage() {
-  const collapsedItemsLimit = 1;
+  const collapsedItemsLimit = 0;
   const orderSummaryRef = useRef<HTMLElement | null>(null);
   const [isQuickCheckout, setIsQuickCheckout] = useState(false);
   const [isAuthenticatedUser, setIsAuthenticatedUser] = useState(false);
@@ -795,16 +795,18 @@ export function CheckoutPage() {
           <aside
             ref={orderSummaryRef}
             style={{ top: `${orderSummaryTop}px` }}
-            className="self-start border border-[#e8e3db] p-8 md:p-12 xl:sticky xl:max-h-[calc(100svh-var(--site-header-offset,76px)-24px)] xl:overflow-y-auto"
+            className={`self-start border border-[#e8e3db] p-[clamp(0.75rem,1.5vw,1.25rem)] [@media(max-height:900px)]:p-3 [@media(max-height:800px)]:p-2.5 xl:sticky xl:max-h-[calc(100svh-var(--site-header-offset,76px)-12px)] [@media(max-height:900px)]:xl:max-h-[calc(100svh-var(--site-header-offset,76px)-8px)] [@media(max-height:800px)]:xl:max-h-[calc(100svh-var(--site-header-offset,76px)-4px)] ${
+              showAllItems ? "xl:overflow-y-auto" : "xl:overflow-hidden"
+            }`}
           >
-            <h2 className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Ваш заказ</h2>
+            <h2 className="text-[clamp(1.1rem,1.35vw,1.5rem)] uppercase tracking-[2.4px] [font-family:'Cormorant_Garamond',serif] [@media(max-height:900px)]:text-[1.2rem] [@media(max-height:800px)]:text-[1.05rem]">Ваш заказ</h2>
 
             {hydratedItems.length > 0 ? (
-              <div className="mt-12 space-y-6">
+              <div className="mt-5 space-y-3 md:mt-6 md:space-y-4">
                 {visibleItems.map((item, index) => (
                   <div
                     key={`${item.kind}-${item.slug}-${index}`}
-                    className={index === 0 ? "flex items-center gap-5" : "flex items-center gap-5 border-t border-[#e8e3db] pt-6"}
+                    className={index === 0 ? "flex items-center gap-4" : "flex items-center gap-4 border-t border-[#e8e3db] pt-4 md:pt-5"}
                   >
                     <a href={item.kind === "product" ? `/catalog/${item.slug}` : "/services"}>
                       <img
@@ -814,30 +816,30 @@ export function CheckoutPage() {
                         height="120"
                         loading="lazy"
                         decoding="async"
-                        className="h-[92px] w-[92px] object-cover"
+                        className="h-[76px] w-[76px] object-cover md:h-[84px] md:w-[84px]"
                       />
                     </a>
                     <div>
-                      <p className="text-[clamp(1rem,1.1vw,1.3rem)] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <p className="text-[clamp(0.95rem,1vw,1.18rem)] uppercase leading-[1.2] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                         {item.brandLabel ?? "AERIS PRECISION"}
                       </p>
-                      <p className="mt-1 text-[clamp(0.85rem,0.8vw,1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <p className="mt-1 text-[clamp(0.78rem,0.7vw,0.9rem)] uppercase tracking-[1.1px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                         {item.title}
                       </p>
-                      <p className="mt-2 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[1.2px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <p className="mt-1.5 text-[clamp(0.72rem,0.56vw,0.84rem)] uppercase tracking-[1.1px] text-[#a09f98] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                         {item.qty} шт.
                       </p>
-                      <p className="mt-4 text-[clamp(1.2rem,1.5vw,1.65rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <p className="mt-2.5 text-[clamp(1.05rem,1.2vw,1.4rem)] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                         {formatPrice(item.totalPrice)}
                       </p>
                     </div>
                   </div>
                 ))}
-                {hiddenItemsCount > 0 ? (
+                {hydratedItems.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setShowAllItems((current) => !current)}
-                    className="inline-flex items-center gap-3 pt-1 text-[clamp(0.82rem,0.9vw,1rem)] uppercase tracking-[1.4px] text-[#7b7b75] transition-colors hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                    className="inline-flex items-center gap-3 pt-1 text-[clamp(0.78rem,0.8vw,0.95rem)] uppercase tracking-[1.3px] text-[#7b7b75] transition-colors hover:text-[#111] [font-family:Jaldi,'JetBrains_Mono',monospace]"
                   >
                     <span
                       className={`text-[1rem] leading-none transition-transform ${showAllItems ? "rotate-180" : ""}`}
@@ -845,17 +847,17 @@ export function CheckoutPage() {
                     >
                       ↓
                     </span>
-                    {showAllItems ? "Свернуть список" : `Открыть еще ${hiddenItemsCount}`}
+                    {showAllItems ? "Скрыть товары" : `Показать товары (${hydratedItems.length})`}
                   </button>
                 ) : null}
               </div>
             ) : null}
 
-            <div className="mt-10 border-t border-[#e8e3db] pt-8">
-              <div className="space-y-6">
+            <div className="mt-[clamp(1.1rem,2vw,2rem)] border-t border-[#e8e3db] pt-[clamp(1rem,1.8vw,1.6rem)] [@media(max-height:900px)]:mt-3 [@media(max-height:900px)]:pt-3 [@media(max-height:800px)]:mt-2.5 [@media(max-height:800px)]:pt-2.5">
+              <div className="space-y-[clamp(0.75rem,1.4vw,1.3rem)]">
                 {summaryRows.map(([label, value]) => (
                   label === "Доставка" ? (
-                    <div key={label} className="space-y-4">
+                    <div key={label} className="space-y-[clamp(0.65rem,1.2vw,1rem)]">
                       <div className="flex items-start justify-between gap-6">
                         <span className="text-[clamp(0.9rem,1vw,1.1rem)] uppercase tracking-[1.2px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                           {label}
@@ -864,22 +866,22 @@ export function CheckoutPage() {
                           {value}
                         </span>
                       </div>
-                      <div className="mt-1 rounded-[32px] border border-[#eee4d4] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(252,248,242,0.95))] px-4 py-3 shadow-[0_18px_36px_rgba(17,17,17,0.055)]">
-                        <div className="flex items-center gap-3 rounded-[26px] bg-[rgba(255,255,255,0.78)] px-2.5 py-2">
-                          <span className="inline-flex h-11 min-w-0 flex-[1.65] items-center justify-center rounded-full border border-[#111] bg-[#111] px-6 shadow-[0_10px_20px_rgba(17,17,17,0.15)]">
+                      <div className="mt-1 rounded-[26px] border border-[#eee4d4] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(252,248,242,0.95))] px-3 py-2.5 shadow-[0_14px_28px_rgba(17,17,17,0.05)]">
+                        <div className="flex items-center gap-2.5 rounded-[22px] bg-[rgba(255,255,255,0.78)] px-2 py-1.5">
+                          <span className="inline-flex h-9 min-w-0 flex-[1.65] items-center justify-center rounded-full border border-[#111] bg-[#111] px-5 shadow-[0_8px_16px_rgba(17,17,17,0.14)]">
                             <img
                               src="/checkout/yandex-delivery.svg"
                               alt="Яндекс Доставка"
-                              className="h-[16px] w-auto max-w-full object-contain"
+                              className="h-[14px] w-auto max-w-full object-contain"
                               loading="lazy"
                               decoding="async"
                             />
                           </span>
-                          <span className="inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-full border border-[#eadfcd] bg-[#fbf6ee] px-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                          <span className="inline-flex h-9 min-w-0 flex-1 items-center justify-center rounded-full border border-[#eadfcd] bg-[#fbf6ee] px-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
                             <img
                               src="/checkout/cdek.svg"
                               alt="CDEK"
-                              className="h-[19px] w-auto max-w-full object-contain"
+                              className="h-[16px] w-auto max-w-full object-contain"
                               loading="lazy"
                               decoding="async"
                             />
@@ -899,26 +901,30 @@ export function CheckoutPage() {
               </div>
             </div>
 
-            <div className="mt-8 border-t border-[#e8e3db] pt-8">
+            <div className="mt-[clamp(0.9rem,1.8vw,1.5rem)] border-t border-[#e8e3db] pt-[clamp(0.9rem,1.6vw,1.4rem)] [@media(max-height:900px)]:mt-2.5 [@media(max-height:900px)]:pt-2.5 [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:pt-2">
               <div className="flex items-center justify-between gap-6">
-                <span className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[3px] [font-family:'Cormorant_Garamond',serif]">Итого</span>
-                <span className="text-[clamp(1.3rem,1.7vw,2rem)] uppercase tracking-[2px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(total)}</span>
+                <span className="text-[clamp(1.05rem,1.35vw,1.45rem)] uppercase tracking-[2.4px] [font-family:'Cormorant_Garamond',serif]">Итого</span>
+                <span className="text-[clamp(1.1rem,1.4vw,1.6rem)] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(total)}</span>
               </div>
             </div>
 
-            <div className="mt-10 border-t border-[#e8e3db] pt-8">
+            <div className="mt-[clamp(0.75rem,1.2vw,1.2rem)] border-t border-[#e8e3db] pt-[clamp(0.7rem,1.1vw,1.1rem)] [@media(max-height:900px)]:mt-2 [@media(max-height:900px)]:pt-2 [@media(max-height:800px)]:mt-1.5 [@media(max-height:800px)]:pt-1.5">
               <div className="flex items-center gap-4 text-[#111]">
                 <span className="text-[clamp(0.8rem,0.7vw,1rem)] uppercase tracking-[1.5px] text-[#7b7b75] [font-family:Jaldi,'JetBrains_Mono',monospace]">03</span>
-                <h2 className="text-[clamp(1.2rem,1.6vw,1.75rem)] uppercase tracking-[2px] [font-family:'Cormorant_Garamond',serif]">Способ оплаты</h2>
+                <h2 className="text-[clamp(1.05rem,1.35vw,1.45rem)] uppercase tracking-[1.6px] [font-family:'Cormorant_Garamond',serif]">Способ оплаты</h2>
               </div>
-              <div className="mt-6 space-y-4">
-                {paymentOptions.map(([id, title, note, icon]) => (
+              <div className="mt-[clamp(0.5rem,0.9vw,0.8rem)] space-y-[clamp(0.45rem,0.8vw,0.7rem)] [@media(max-height:900px)]:mt-1.5 [@media(max-height:900px)]:space-y-1.5 [@media(max-height:800px)]:mt-1 [@media(max-height:800px)]:space-y-1">
+                {paymentOptions.filter(([, , note]) => !note).map(([id, title, note, icon]) => (
                   <label
                     key={title as string}
                     htmlFor={id as string}
-                    className="flex min-h-[86px] cursor-pointer items-center justify-between border border-[#e8e3db] px-6 py-5 transition-colors hover:border-[#d8c7a6]"
+                    className={`flex items-center justify-between border border-[#e8e3db] transition-colors hover:border-[#d8c7a6] [@media(max-height:800px)]:py-1 ${
+                      note
+                        ? "min-h-[50px] px-[clamp(0.62rem,1vw,0.85rem)] py-[clamp(0.4rem,0.7vw,0.55rem)]"
+                        : "min-h-[62px] px-[clamp(0.75rem,1.2vw,1rem)] py-[clamp(0.55rem,0.9vw,0.75rem)]"
+                    }`}
                   >
-                    <span className="flex min-w-0 items-center gap-4">
+                    <span className={`flex min-w-0 items-center ${note ? "gap-2.5" : "gap-3"}`}>
                       <input
                         id={id as string}
                         type="radio"
@@ -930,18 +936,20 @@ export function CheckoutPage() {
                       />
                       <span
                         aria-hidden="true"
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
+                        className={`flex shrink-0 items-center justify-center rounded-full border ${
+                          note ? "h-6 w-6" : "h-7 w-7"
+                        } ${
                           selectedPayment === id ? "border-[#111]" : "border-[#d7d2ca]"
                         }`}
                       >
-                        <span className={`h-3.5 w-3.5 rounded-full ${selectedPayment === id ? "bg-[#111]" : "bg-transparent"}`} />
+                        <span className={`${note ? "h-2.5 w-2.5" : "h-3 w-3"} rounded-full ${selectedPayment === id ? "bg-[#111]" : "bg-transparent"}`} />
                       </span>
-                      <span className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-                        <span className="text-[clamp(0.95rem,1vw,1.15rem)] uppercase tracking-[1px] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                      <span className={`flex min-w-0 flex-wrap items-center ${note ? "gap-x-2.5 gap-y-0.5" : "gap-x-3 gap-y-1"}`}>
+                        <span className={`${note ? "text-[clamp(0.8rem,0.82vw,0.95rem)] tracking-[0.72px]" : "text-[clamp(0.86rem,0.9vw,1.02rem)] tracking-[0.85px]"} uppercase [font-family:Jaldi,'JetBrains_Mono',monospace]`}>
                           {title}
                         </span>
                         {note ? (
-                          <span className="text-[clamp(0.82rem,0.9vw,1rem)] uppercase tracking-[1px] text-[#a6a6a1] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                          <span className="text-[clamp(0.68rem,0.7vw,0.8rem)] uppercase tracking-[0.65px] text-[#a6a6a1] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                             {note}
                           </span>
                         ) : null}
@@ -955,21 +963,21 @@ export function CheckoutPage() {
                       height="28"
                       loading="lazy"
                       decoding="async"
-                      className="ml-4 h-7 w-7 shrink-0 opacity-70"
+                      className={`${note ? "ml-2.5 h-5 w-5" : "ml-3 h-6 w-6"} shrink-0 opacity-70`}
                     />
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="mt-10 border-t border-[#e8e3db] pt-8">
+            <div className="mt-[clamp(0.75rem,1.2vw,1.2rem)] border-t border-[#e8e3db] pt-[clamp(0.7rem,1.1vw,1.1rem)] [@media(max-height:900px)]:mt-2 [@media(max-height:900px)]:pt-2 [@media(max-height:800px)]:mt-1.5 [@media(max-height:800px)]:pt-1.5">
               {submitError ? (
-                <p className="mb-6 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[2px] text-[#b24a3a] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <p className="mb-3 text-[clamp(0.68rem,0.55vw,0.8rem)] uppercase tracking-[1.5px] text-[#b24a3a] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   {submitError}
                 </p>
               ) : null}
               {submitSuccess ? (
-                <p className="mb-6 text-[clamp(0.75rem,0.6vw,0.9rem)] uppercase tracking-[2px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                <p className="mb-3 text-[clamp(0.68rem,0.55vw,0.8rem)] uppercase tracking-[1.5px] text-[#2f7a52] [font-family:Jaldi,'JetBrains_Mono',monospace]">
                   {submitSuccess}
                 </p>
               ) : null}
@@ -977,7 +985,7 @@ export function CheckoutPage() {
                 type="submit"
                 form="checkout-form"
                 disabled={isSubmitting || cartLoading || Boolean(cartError) || !isAddressConfirmed}
-                className="inline-flex h-20 w-full items-center justify-center bg-[#111] px-8 text-[clamp(1rem,1.2vw,1.35rem)] uppercase tracking-[4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] disabled:opacity-60"
+                className="inline-flex h-[clamp(3rem,5.5vw,3.8rem)] w-full items-center justify-center bg-[#111] px-5 text-[clamp(0.88rem,0.95vw,1.05rem)] uppercase tracking-[2.4px] text-white transition-opacity [font-family:Jaldi,'JetBrains_Mono',monospace] [@media(max-height:900px)]:h-11 [@media(max-height:900px)]:text-[0.9rem] [@media(max-height:800px)]:h-10 [@media(max-height:800px)]:text-[0.82rem] [@media(max-height:800px)]:tracking-[2px] disabled:opacity-60"
               >
                 подтвердить заказ
               </button>

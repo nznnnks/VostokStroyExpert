@@ -78,6 +78,30 @@ export default function BrandScroller({
     return () => window.cancelAnimationFrame(rafId);
   }, [isInteracting, speed]);
 
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const onWheel = (event: WheelEvent) => {
+      // Convert vertical wheel gestures into horizontal movement inside the brands rail.
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      if (viewport.scrollWidth <= viewport.clientWidth + 1) return;
+
+      event.preventDefault();
+      viewport.scrollLeft += event.deltaY;
+      setIsInteracting(true);
+    };
+
+    const onWheelEnd = () => setIsInteracting(false);
+
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    viewport.addEventListener("mouseleave", onWheelEnd);
+    return () => {
+      viewport.removeEventListener("wheel", onWheel);
+      viewport.removeEventListener("mouseleave", onWheelEnd);
+    };
+  }, []);
+
   return (
     <div
       ref={viewportRef}
