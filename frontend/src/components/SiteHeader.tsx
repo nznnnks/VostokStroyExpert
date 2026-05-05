@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AuthHeaderButton from "./AuthHeaderButton";
 import { navLinks } from "../data/site";
 import { formatPrice, type Product } from "../data/products";
@@ -15,6 +15,7 @@ const PAGE_TRANSITION_TEXT = "открываем раздел climatrade";
 const WHATSAPP_URL = "https://wa.me/79895789929";
 const TELEGRAM_URL = "https://t.me/climatradestore";
 const MAX_URL = "https://max.ru/u/f9LHodD0cOJo7dLiHlqrUdR0RfIa_Y5BkOtoxhE8EC3A1GGfcX0nGghaKyw";
+const TOPBAR_MAX_HIDE_PX = 56;
 
 function isCatalogPath(pathname: string) {
   return pathname === "/catalog" || pathname.startsWith("/catalog/");
@@ -29,6 +30,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const [isMobileMenuActive, setIsMobileMenuActive] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [topbarHideProgress, setTopbarHideProgress] = useState(0);
   const [pathname, setPathname] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -40,6 +42,18 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
   const scrollLockUntilRef = useRef(0);
   const searchDebounceTimeoutRef = useRef<number | null>(null);
   const headerRootRef = useRef<HTMLElement | null>(null);
+  const topbarHideProgressRef = useRef(0);
+
+  useEffect(() => {
+    topbarHideProgressRef.current = topbarHideProgress;
+  }, [topbarHideProgress]);
+
+  const applyHeaderOffset = (height: number) => {
+    const hiddenPx = light ? Math.round(topbarHideProgressRef.current * TOPBAR_MAX_HIDE_PX) : 0;
+    const next = Math.ceil(height - hiddenPx);
+    if (next <= 0) return;
+    document.documentElement.style.setProperty("--site-header-offset", `${next}px`);
+  };
 
   const openMobileMenu = () => {
     setIsOpen(true);
@@ -179,23 +193,103 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (lockScrolledState) return;
+
+    const rootNode = headerRootRef.current;
+
+    const isScrollable = (node: Element) => {
+      const style = window.getComputedStyle(node);
+      const overflowY = style.overflowY;
+      const allowsScroll = overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+      return allowsScroll && node.scrollHeight > node.clientHeight + 1;
+    };
+
+    const getScrollContainer = () => {
+      let current: Element | null = rootNode?.parentElement ?? null;
+      while (current) {
+        if (isScrollable(current)) return current as HTMLElement;
+        current = current.parentElement;
+      }
+      return null;
+    };
+
+    const scrollContainer = getScrollContainer();
+
+    let rafId: number | null = null;
+
+    const update = () => {
+      const y = scrollContainer
+        ? scrollContainer.scrollTop
+        : (window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0);
+      const startPx = 0;
+      const rangePx = 140;
+      const progress = Math.max(0, Math.min(1, (y - startPx) / rangePx));
+
+      topbarHideProgressRef.current = progress;
+      setTopbarHideProgress((current) => {
+        if (Math.abs(current - progress) < 0.01) return current;
+        return progress;
+      });
+
+      const headerEl = searchRef.current;
+      if (headerEl) {
+        applyHeaderOffset(headerEl.getBoundingClientRect().height);
+      }
+    };
+
+    const schedule = () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        update();
+      });
+    };
+
+    schedule();
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", schedule, { passive: true });
+    } else {
+      window.addEventListener("scroll", schedule, { passive: true });
+    }
+    window.addEventListener("resize", schedule, { passive: true });
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", schedule);
+      } else {
+        window.removeEventListener("scroll", schedule);
+      }
+      window.removeEventListener("resize", schedule);
+    };
+  }, [lockScrolledState, light]);
+
+  const topbarStyle = useMemo(() => {
+    const hiddenPx = Math.round(topbarHideProgress * TOPBAR_MAX_HIDE_PX);
+    const opacity = 1 - Math.min(1, topbarHideProgress * 1.25);
+    return {
+      opacity,
+      transform: `translateY(-${hiddenPx}px)`,
+      marginBottom: `-${hiddenPx}px`,
+      transition: "transform 220ms ease-out, opacity 220ms ease-out, margin-bottom 220ms ease-out",
+      willChange: "transform, opacity, margin-bottom",
+      pointerEvents: topbarHideProgress >= 0.98 ? "none" : "auto",
+    } as const;
+  }, [topbarHideProgress]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const el = searchRef.current;
     if (!el) return;
 
-    const setCssVar = (height: number) => {
-      const next = Math.ceil(height);
-      if (next <= 0) return;
-      document.documentElement.style.setProperty("--site-header-offset", `${next}px`);
-    };
-
     // Initial measurement.
-    setCssVar(el.getBoundingClientRect().height);
+    applyHeaderOffset(el.getBoundingClientRect().height);
 
     if (!("ResizeObserver" in window)) return;
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
-      setCssVar(entry.contentRect.height);
+      applyHeaderOffset(entry.contentRect.height);
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -351,11 +445,8 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
          */}
         {light ? (
           <div
-            className={`grid overflow-hidden border-b border-white/8 bg-[#060606] text-white transition-[grid-template-rows,opacity,transform,border-color] duration-600 ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform ${
-              isScrolled
-                ? "grid-rows-[0fr] -translate-y-4 opacity-0 border-white/0"
-                : "grid-rows-[1fr] translate-y-0 opacity-100"
-            }`}
+            className="grid overflow-hidden border-b border-white/8 bg-[#060606] text-white transform-gpu will-change-transform"
+            style={topbarStyle}
           >
             <div className="min-h-0">
               <div className="mx-auto flex max-w-[1480px] min-h-[52px] items-center justify-between gap-4 px-4 py-3 text-[clamp(13px,0.35vw+11.5px,15px)] font-medium uppercase tracking-[0.7px] text-white/84 md:min-h-[40px] md:px-10 md:py-2.5 md:tracking-[1px] xl:px-12 2xl:max-w-[1860px] 2xl:px-16 [font-family:Jaldi,'JetBrains_Mono',monospace]">
@@ -399,11 +490,11 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
             href="/"
             onClick={(event) => handleNavLinkClick(event, "/")}
             className="block min-w-0 pr-1 transition duration-300 ease-out hover:opacity-75"
-            aria-label="ВостокСтройЭксперт"
+            aria-label="Climatrade"
           >
               <img
                 src="/logo.svg"
-                alt="ВостокСтройЭксперт"
+                alt="Climatrade"
                 loading="eager"
                 decoding="async"
                 className="h-14 w-auto object-contain sm:h-22 md:h-[86px]"
@@ -1080,7 +1171,7 @@ export function SiteHeader({ light = true, fullBleed = false, lockScrolledState 
             <div className="mt-8 flex items-center justify-center">
               <img
                 src="/logo.svg"
-                alt="ВостокСтройЭксперт"
+                alt="Climatrade"
                 loading="eager"
                 decoding="async"
                 className="h-auto w-[clamp(180px,46vw,260px)] object-contain"

@@ -160,7 +160,11 @@ export function CatalogPage({
     let rafId: number | null = null;
 
     const update = () => {
-      const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      const y =
+        window.scrollY ??
+        window.pageYOffset ??
+        document.documentElement.scrollTop ??
+        0;
       const startPx = 40;
       const rangePx = 200;
       const progress = Math.max(0, Math.min(1, (y - startPx) / rangePx));

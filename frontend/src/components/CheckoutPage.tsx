@@ -640,7 +640,7 @@ export function CheckoutPage() {
               Оформление заказа
             </h1>
             <p className="mt-4 max-w-[520px] text-[clamp(0.98rem,1.1vw,1.15rem)] leading-[1.45] text-[#75756f] md:mt-6">
-              Пожалуйста, заполните данные для доставки и оплаты вашей системы ВостокСтройЭксперт.
+              Пожалуйста, заполните данные для доставки и оплаты вашей системы Climatrade.
             </p>
 
             {paymentBanner ? (
