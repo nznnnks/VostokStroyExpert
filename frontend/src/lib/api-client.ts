@@ -25,6 +25,13 @@ export function getApiBaseUrl() {
     return String(explicit).replace(/\/+$/, "");
   }
 
+  // When rendering on the server (Astro SSR) there is no `window.location`.
+  // In production we still need a stable backend target for internal calls
+  // (sitemaps, metadata, etc). Nginx typically proxies the backend on 3000.
+  if (import.meta.env.PROD && import.meta.env.SSR) {
+    return "http://127.0.0.1:3000";
+  }
+
   // During local development frontend and backend usually run on different ports.
   // Defaulting to the frontend origin in DEV causes `/api/*` 404 from Astro.
   if (import.meta.env.DEV) {

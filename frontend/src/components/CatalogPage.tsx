@@ -84,6 +84,7 @@ export function CatalogPage({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isFetchingResults, setIsFetchingResults] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [resultsAnimationNonce, setResultsAnimationNonce] = useState(0);
   const requestIdRef = useRef(0);
   const catalogRequestInFlightRef = useRef<Set<string>>(new Set());
   const cartSyncRequestIdRef = useRef(0);
@@ -541,16 +542,6 @@ export function CatalogPage({
   const activeCatalogTypeFilters = isLanding ? selectedLandingTypeSlugs : selectedTypes;
   const effectiveCategoryFilter =
     isCategoryPage && selectedTypes.length > 0 ? undefined : selectedCategory !== "all" ? selectedCategory : undefined;
-  const resultsAnimationKey = [
-    query,
-    effectiveCategoryFilter ?? "all",
-    priceRange.join("-"),
-    selectedBrands.join("-"),
-    selectedCountries.join("-"),
-    activeCatalogTypeFilters.join("-"),
-    JSON.stringify(selectedNumericFilters),
-    JSON.stringify(selectedTextFilters),
-  ].join("|");
 
   function buildCatalogRequestPayload() {
     const selectedTextFiltersPayload = Object.fromEntries(
@@ -681,6 +672,11 @@ export function CatalogPage({
       prefetchedPageRef.current = null;
 
       setProducts((current) => (mode === "append" ? [...current, ...response.items] : response.items));
+      if (mode === "replace") {
+        // Prevent a "double refresh" feeling when meta-sync adjusts filter state:
+        // remount the grid only when we apply a fresh server response.
+        setResultsAnimationNonce((current) => current + 1);
+      }
       if (response.meta) {
         lastMetaRequestKeyRef.current = metaRequestKey;
         setCatalogMeta((current) => ({
@@ -833,6 +829,8 @@ export function CatalogPage({
 
     searchDebounceTimeoutRef.current = window.setTimeout(() => {
       searchDebounceTimeoutRef.current = null;
+      // Search should scroll to the results after it finishes loading.
+      markScrollToResults();
       setQuery(searchInput);
       setPage(1);
     }, 250);
@@ -2390,7 +2388,7 @@ export function CatalogPage({
                     resultsGridRef.current = node;
                   }}
                   id="catalog-results-top"
-                  key={resultsAnimationKey}
+                  key={resultsAnimationNonce}
                   className={`catalog-results mt-10 scroll-mt-[220px] grid grid-cols-2 gap-4 md:scroll-mt-[240px] md:gap-8 lg:grid-cols-2 xl:scroll-mt-[250px] [overflow-anchor:none] ${isLanding ? "xl:grid-cols-4 2xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-3"} 2xl:gap-10`}
                 >
                   {isFetchingResults && pageProducts.length === 0
