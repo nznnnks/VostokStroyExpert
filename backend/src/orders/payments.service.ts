@@ -115,18 +115,38 @@ export class PaymentsService {
     const creds = this.getYooKassaCredentials();
     const amountValue = order.total.toFixed(2);
     const receiptCustomer = this.buildYooKassaReceiptCustomer(order.contactPhone, order.user?.email ?? null);
-    const receiptItems = order.items.map((item) => ({
-      description: item.title.slice(0, 128),
-      quantity: 1,
-      amount: {
-        value: item.totalPrice.toFixed(2),
-        currency: 'RUB',
-      },
-      vat_code: this.getYooKassaVatCode(),
-      payment_mode: 'full_payment',
-      payment_subject: item.kind === 'SERVICE' ? 'service' : 'commodity',
-    }));
+    const receiptItems = order.items.map((item, index) => {
+      const amount = item.totalPrice.toDecimalPlaces(2);
+      const amountValueRaw = amount.toFixed(2);
+
+      if (!/^\d+\.\d{2}$/.test(amountValueRaw) || amount.lte(0)) {
+        throw new BadRequestException(
+          `Некорректная сумма позиции для чека YooKassa (item #${index + 1}, value=${amountValueRaw}).`,
+        );
+      }
+
+      return {
+        description: item.title.slice(0, 128),
+        quantity: '1.00',
+        amount: {
+          value: amountValueRaw,
+          currency: 'RUB',
+        },
+        vat_code: this.getYooKassaVatCode(),
+        payment_mode: 'full_payment',
+        payment_subject: item.kind === 'SERVICE' ? 'service' : 'commodity',
+      };
+    });
     const receiptTaxSystemCode = this.getYooKassaTaxSystemCode();
+    const receiptTotal = receiptItems
+      .reduce((sum, item) => sum.plus(item.amount.value), new Prisma.Decimal(0))
+      .toDecimalPlaces(2);
+    const orderTotal = new Prisma.Decimal(amountValue).toDecimalPlaces(2);
+    if (!receiptTotal.equals(orderTotal)) {
+      throw new BadRequestException(
+        `Сумма чека YooKassa (${receiptTotal.toFixed(2)}) не совпадает с суммой платежа (${orderTotal.toFixed(2)}).`,
+      );
+    }
     const returnUrl =
       dto.returnUrl?.trim() ||
       process.env.YOOKASSA_RETURN_URL?.trim() ||
