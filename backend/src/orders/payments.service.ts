@@ -117,9 +117,9 @@ export class PaymentsService {
     const receiptCustomer = this.buildYooKassaReceiptCustomer(order.contactPhone, order.user?.email ?? null);
     const receiptItems = order.items.map((item) => ({
       description: item.title.slice(0, 128),
-      quantity: item.quantity,
+      quantity: 1,
       amount: {
-        value: item.unitPrice.toFixed(2),
+        value: item.totalPrice.toFixed(2),
         currency: 'RUB',
       },
       vat_code: this.getYooKassaVatCode(),
