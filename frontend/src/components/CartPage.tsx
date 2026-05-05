@@ -7,7 +7,7 @@ import { getStoredAccessToken } from "../lib/auth";
 import SiteHeader from "./SiteHeader";
 
 const perks = [
-  ["/cart/check.svg", "Гарантия 5 лет на все системы"],
+  ["/cart/check.svg", "гарантия от производителя"],
   ["/cart/delivery.svg", "Бережная доставка оборудования"],
 ];
 
@@ -181,12 +181,10 @@ export function CartPage() {
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? 0;
   const discount = cart?.discountTotal ?? 0;
-  const vat = Math.round(Math.max(subtotal - discount, 0) * 0.2);
   const total = cart?.total ?? 0;
   const totals = [
     ["Промежуточный итог", formatPrice(subtotal)],
     ["Скидка", formatPrice(discount)],
-    ["НДС (20%)", formatPrice(vat)],
   ];
 
   function handleCheckoutClick(event: React.MouseEvent<HTMLAnchorElement>) {
