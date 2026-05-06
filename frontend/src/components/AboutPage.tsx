@@ -48,8 +48,8 @@ const aboutBlog = [
 const companyDetails = [
   {
     label: "Наименование компании",
-    value: "Индивидуальный предприниматель ДУЛЕВ ДЕНИС ПЕТРОВИЧ",
-    copyValue: "Индивидуальный предприниматель ДУЛЕВ ДЕНИС ПЕТРОВИЧ",
+    value: "ДУЛЕВ ДЕНИС ПЕТРОВИЧ (ИП)",
+    copyValue: "ДУЛЕВ ДЕНИС ПЕТРОВИЧ (ИП)",
     span: "xl:col-span-2",
   },
   {
@@ -59,27 +59,27 @@ const companyDetails = [
   },
   {
     label: "БИК",
-    value: "044525411",
-    copyValue: "044525411",
+    value: "044525593",
+    copyValue: "044525593",
   },
   {
     label: "Корреспондентский счёт",
-    value: "30101810145250000411",
-    copyValue: "30101810145250000411",
+    value: "30101810200000000593",
+    copyValue: "30101810200000000593",
     labelClassName: "xl:text-[14px] 2xl:text-[17px]",
     valueClassName: "xl:text-[17px] 2xl:text-[19px]",
   },
   {
     label: "Расчётный счёт",
-    value: "40802810600810225999",
-    copyValue: "40802810600810225999",
+    value: "40802810702520003450",
+    copyValue: "40802810702520003450",
     labelClassName: "xl:text-[14px] 2xl:text-[17px]",
     valueClassName: "xl:text-[17px] 2xl:text-[19px]",
   },
   {
     label: "Банк",
-    value: 'ФИЛИАЛ "ЦЕНТРАЛЬНЫЙ" БАНКА ВТБ (ПАО)',
-    copyValue: 'ФИЛИАЛ "ЦЕНТРАЛЬНЫЙ" БАНКА ВТБ (ПАО)',
+    value: 'АО "АЛЬФА-БАНК"',
+    copyValue: 'АО "АЛЬФА-БАНК"',
   },
   {
     label: "Юридический адрес",
