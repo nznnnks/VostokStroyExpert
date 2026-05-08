@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 
 type MailEnvelopeAddress = { name?: string | null; address?: string | null };
 
-type MailSendOptions = { to: string; subject: string; text?: string; html?: string };
+type MailSendOptions = { to: string | string[]; subject: string; text?: string; html?: string };
 
 function toAddressString(value: unknown) {
   if (!value) {
@@ -17,6 +17,19 @@ function toAddressString(value: unknown) {
     .filter(Boolean);
 
   return clean.length ? clean.join(', ') : null;
+}
+
+function normalizeRecipients(value: string | string[]) {
+  const parts = Array.isArray(value) ? value : [value];
+
+  return Array.from(
+    new Set(
+      parts
+        .flatMap((item) => item.split(','))
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 @Injectable()
@@ -183,25 +196,36 @@ export class MailService {
   }
 
   async sendMail(options: MailSendOptions) {
+    const recipients = normalizeRecipients(options.to);
+
+    if (recipients.length === 0) {
+      throw new BadRequestException('At least one recipient must be provided.');
+    }
+
+    const normalizedOptions = {
+      ...options,
+      to: recipients,
+    };
+
     if (this.smtpConfigured) {
       try {
-        return await this.sendViaSmtp(options);
+        return await this.sendViaSmtp(normalizedOptions);
       } catch (error) {
         if (!this.resendConfigured) {
           throw error;
         }
 
         this.logger.warn(
-          `SMTP send failed, falling back to Resend: to="${options.to}" subject="${options.subject}"`,
+          `SMTP send failed, falling back to Resend: to="${recipients.join(', ')}" subject="${options.subject}"`,
           error instanceof Error ? error.stack : String(error),
         );
 
-        return this.sendViaResend(options);
+        return this.sendViaResend(normalizedOptions);
       }
     }
 
     if (this.resendConfigured) {
-      return this.sendViaResend(options);
+      return this.sendViaResend(normalizedOptions);
     }
 
     throw new BadRequestException(
@@ -238,7 +262,7 @@ export class MailService {
 
       if (this.logSmtpResults) {
         this.logger.log(
-          `SMTP sent: to="${options.to}" subject="${options.subject}" messageId="${info.messageId}" accepted=${JSON.stringify(
+          `SMTP sent: to="${Array.isArray(options.to) ? options.to.join(', ') : options.to}" subject="${options.subject}" messageId="${info.messageId}" accepted=${JSON.stringify(
             info.accepted ?? [],
           )} rejected=${JSON.stringify(info.rejected ?? [])}`,
         );
@@ -257,6 +281,7 @@ export class MailService {
   private async sendViaResend(options: MailSendOptions) {
     const apiKey = this.resendApiKey;
     const from = this.resendFrom;
+    const recipients = normalizeRecipients(options.to);
 
     if (!apiKey) {
       throw new BadRequestException('RESEND_API_KEY must be configured on the backend.');
@@ -276,7 +301,7 @@ export class MailService {
         },
         body: JSON.stringify({
           from,
-          to: [options.to],
+          to: recipients,
           subject: options.subject,
           text: options.text,
           html: options.html,
