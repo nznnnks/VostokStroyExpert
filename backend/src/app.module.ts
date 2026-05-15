@@ -13,6 +13,7 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { RequestsModule } from './requests/requests.module';
 import { SeoPagesModule } from './seo-pages/seo-pages.module';
+import { ShippingModule } from './shipping/shipping.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SeoPagesModule } from './seo-pages/seo-pages.module';
     MailModule,
     RequestsModule,
     SeoPagesModule,
+    ShippingModule,
   ],
 })
 export class AppModule {}

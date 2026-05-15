@@ -2,7 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatPrice } from "../data/products";
 import { ApiError } from "../lib/api-client";
 import { getStoredAccessToken } from "../lib/auth";
-import { createOrder, createYooKassaPayment, getYooKassaPaymentStatus, loadCatalogProductBySlug, type CartView } from "../lib/backend-api";
+import {
+  createOrder,
+  createYooKassaPayment,
+  getCdekDeliveryQuote,
+  getYooKassaPaymentStatus,
+  loadCatalogProductBySlug,
+  type CartView,
+  type CdekDeliveryQuote,
+} from "../lib/backend-api";
 import { clearSessionCart, loadSessionCart, resolveSessionCartOrderItems } from "../lib/session-cart";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
@@ -141,6 +149,9 @@ export function CheckoutPage() {
   const [entrance, setEntrance] = useState("");
   const [apartment, setApartment] = useState("");
   const [courierComment, setCourierComment] = useState("");
+  const [deliveryQuote, setDeliveryQuote] = useState<CdekDeliveryQuote | null>(null);
+  const [deliveryQuoteError, setDeliveryQuoteError] = useState("");
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
   const [isAddressLoading, setIsAddressLoading] = useState(true);
   const [addressVerification, setAddressVerification] = useState<AddressVerificationState>({
     confirmed: false,
@@ -339,10 +350,88 @@ export function CheckoutPage() {
   const subtotal = cart?.subtotal ?? 0;
   const total = cart?.total ?? subtotal;
   const isAddressConfirmed = addressVerification.confirmed;
-  const summaryRows = [
-    ["Стоимость товара", formatPrice(subtotal)],
-    ["Доставка", subtotal > 0 ? "Рассчитывается после оплаты" : "0 ₽"],
-  ];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!isAddressConfirmed || hydratedItems.length === 0) {
+      setDeliveryQuote(null);
+      setDeliveryQuoteError("");
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+
+    const toPostalCode = (addressVerification.postalCode || postalCode || "").trim();
+    const toCity = city.trim();
+    if (!toPostalCode && !toCity) {
+      setDeliveryQuote(null);
+      setDeliveryQuoteError("");
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDeliveryQuoteLoading(true);
+    setDeliveryQuoteError("");
+
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const quote = await getCdekDeliveryQuote({
+            toPostalCode: toPostalCode || undefined,
+            toCity: toCity || undefined,
+            toAddress: (addressLine || addressVerification.formattedAddress).trim() || undefined,
+            items: hydratedItems.map((item) => ({ quantity: item.qty })),
+          });
+          if (cancelled) return;
+          setDeliveryQuote(quote);
+        } catch (error) {
+          if (cancelled) return;
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : error instanceof Error
+                ? error.message
+                : "Не удалось рассчитать доставку СДЭК.";
+          setDeliveryQuote(null);
+          setDeliveryQuoteError(message);
+        } finally {
+          if (cancelled) return;
+          setDeliveryQuoteLoading(false);
+        }
+      })();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [
+    isAddressConfirmed,
+    addressVerification.postalCode,
+    addressVerification.formattedAddress,
+    addressLine,
+    postalCode,
+    city,
+    hydratedItems,
+  ]);
+  const summaryRows = useMemo(() => {
+    const deliveryValue =
+      subtotal <= 0
+        ? "0 ₽"
+        : deliveryQuoteLoading
+          ? "Рассчитываем..."
+          : deliveryQuote
+            ? formatPrice(deliveryQuote.price)
+            : deliveryQuoteError
+              ? "Не удалось рассчитать"
+              : "Укажите адрес";
+
+    return [
+      ["Стоимость товара", formatPrice(subtotal)],
+      ["Доставка", deliveryValue],
+    ] as const;
+  }, [subtotal, deliveryQuoteLoading, deliveryQuote, deliveryQuoteError]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -545,6 +634,13 @@ export function CheckoutPage() {
       entrance.trim() ? `Подъезд: ${entrance.trim()}` : "",
       apartment.trim() ? `Квартира: ${apartment.trim()}` : "",
       courierComment.trim() ? `Комментарий курьеру: ${courierComment.trim()}` : "",
+      deliveryQuote
+        ? `СДЭК: ${formatPrice(deliveryQuote.price)}${
+            deliveryQuote.periodMin || deliveryQuote.periodMax
+              ? ` (${deliveryQuote.periodMin ?? "?"}-${deliveryQuote.periodMax ?? "?"} дн.)`
+              : ""
+          }`
+        : "",
     ].filter(Boolean);
 
     if (!isAuthenticatedUser && !contactEmail) {
@@ -570,9 +666,7 @@ export function CheckoutPage() {
         contactPhone: contactPhone || undefined,
         email: !isAuthenticatedUser ? contactEmail || undefined : undefined,
         deliveryAddress: deliveryAddress || undefined,
-        deliveryMethod: addressVerification.coords
-          ? `Курьерская доставка (${addressVerification.coords})`
-          : "Курьерская доставка",
+        deliveryMethod: `СДЭК${addressVerification.coords ? ` (${addressVerification.coords})` : ""}`,
         comment: deliveryCommentParts.join(" | ") || undefined,
         items: itemsPayload,
         payment: {
@@ -919,6 +1013,22 @@ export function CheckoutPage() {
                             />
                           </span>
                         </div>
+                        <a
+                          href="https://www.cdek.ru/ru/calculate/"
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="mt-2 flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-3 py-2 text-[11px] uppercase tracking-[1.6px] text-[#111] transition-colors hover:bg-[#fffaf2] [font-family:Jaldi,'JetBrains_Mono',monospace]"
+                        >
+                          <img
+                            src="/checkout/cdek.svg"
+                            alt=""
+                            aria-hidden="true"
+                            className="h-[14px] w-auto object-contain opacity-85"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          Высчитать доставку у партнера
+                        </a>
                       </div>
                     </div>
                   ) : (

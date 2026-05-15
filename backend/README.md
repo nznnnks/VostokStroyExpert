@@ -30,6 +30,24 @@ The backend can send mail via SMTP (primary). If SMTP is not configured or sendi
 - SMTP config: `MAIL_USER`, `MAIL_PASS`, optional `MAIL_FROM`, `MAIL_SMTP_*`.
 - Resend fallback config: `RESEND_API_KEY`, `RESEND_FROM` (must be a verified sender, e.g. `no-reply@climatrade.store`).
 
+## CDEK shipping quote (tariff calculator)
+
+Checkout can request an estimated CDEK shipping price via `POST /api/shipping/cdek/quote`.
+Configure the following env vars:
+
+- `CDEK_CLIENT_ID`, `CDEK_CLIENT_SECRET` - API credentials.
+- `CDEK_BASE_URL` - optional, defaults to `https://api.cdek.ru`.
+- Sender location (one of):
+  - `CDEK_FROM_POSTAL_CODE`
+  - `CDEK_FROM_CITY_CODE`
+- Package defaults (used because products currently do not store weight/dimensions):
+  - `CDEK_DEFAULT_WEIGHT_G` (default `1000`)
+  - `CDEK_DEFAULT_LENGTH_CM` (default `20`)
+  - `CDEK_DEFAULT_WIDTH_CM` (default `20`)
+  - `CDEK_DEFAULT_HEIGHT_CM` (default `10`)
+
+If `CDEK_FROM_POSTAL_CODE` / `CDEK_FROM_CITY_CODE` are not set, the backend falls back to Moscow center for testing (`101000`, and it will try to resolve `city_code` for "Москва" via CDEK locations API).
+
 ## Frontend-oriented JSON rules
 
 - `Decimal` values are serialized to numbers.

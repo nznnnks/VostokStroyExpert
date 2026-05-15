@@ -1978,6 +1978,27 @@ export async function createOrder(payload: {
   });
 }
 
+export type CdekDeliveryQuote = {
+  price: number;
+  currency: string;
+  periodMin?: number;
+  periodMax?: number;
+  tariffCode?: number;
+  tariffName?: string;
+};
+
+export async function getCdekDeliveryQuote(payload: {
+  toPostalCode?: string;
+  toCity?: string;
+  toAddress?: string;
+  items: Array<{ quantity: number }>;
+}) {
+  return apiRequest<CdekDeliveryQuote>("/api/shipping/cdek/quote", {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export async function createYooKassaPayment(payload: { orderId: string; returnUrl?: string }) {
   const authToken = getStoredAccessToken("user");
 
