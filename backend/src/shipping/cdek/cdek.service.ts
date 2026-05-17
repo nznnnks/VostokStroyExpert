@@ -397,27 +397,33 @@ export class CdekService {
   }
 
   private async loadProductShippingSpecs(productIds: string[]) {
-    const targetSlugs = new Set([
-      'massa-tovara-s-upakovkoy-brutto',
-      'massa-tovara-netto',
-      'shirina-upakovki-tovara',
-      'vysota-upakovki-tovara',
-      'glubina-upakovki-tovara',
-      'shirina-tovara',
-      'vysota-tovara',
-      'glubina-tovara',
-    ]);
-
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
       select: {
         id: true,
         filterValues: {
-          where: { parameter: { slug: { in: Array.from(targetSlugs) } } },
+          where: {
+            parameter: {
+              OR: [
+                { name: { contains: 'масса', mode: 'insensitive' } },
+                { name: { contains: 'вес', mode: 'insensitive' } },
+                { name: { contains: 'ширина', mode: 'insensitive' } },
+                { name: { contains: 'высота', mode: 'insensitive' } },
+                { name: { contains: 'глубина', mode: 'insensitive' } },
+                { name: { contains: 'габарит', mode: 'insensitive' } },
+                { name: { contains: 'размер', mode: 'insensitive' } },
+                { slug: { contains: 'massa', mode: 'insensitive' } },
+                { slug: { contains: 'ves', mode: 'insensitive' } },
+                { slug: { contains: 'shirina', mode: 'insensitive' } },
+                { slug: { contains: 'vysota', mode: 'insensitive' } },
+                { slug: { contains: 'glubina', mode: 'insensitive' } },
+              ],
+            },
+          },
           select: {
             value: true,
             numericValue: true,
-            parameter: { select: { slug: true, unit: true } },
+            parameter: { select: { slug: true, name: true, unit: true } },
           },
         },
       },
@@ -429,25 +435,41 @@ export class CdekService {
     >();
 
     for (const product of products) {
-      const valuesBySlug = new Map<string, { numeric: number | null; unit: string | null; raw: string }>();
+      const values: Array<{ slug: string; name: string; numeric: number | null; unit: string | null; raw: string }> = [];
       for (const fv of product.filterValues) {
         const numeric = fv.numericValue ? Number(fv.numericValue) : null;
-        valuesBySlug.set(fv.parameter.slug, { numeric, unit: fv.parameter.unit ?? null, raw: fv.value ?? '' });
+        values.push({
+          slug: fv.parameter.slug,
+          name: fv.parameter.name,
+          numeric,
+          unit: fv.parameter.unit ?? null,
+          raw: fv.value ?? '',
+        });
       }
 
-      const brutto = valuesBySlug.get('massa-tovara-s-upakovkoy-brutto');
-      const netto = valuesBySlug.get('massa-tovara-netto');
-      const weightG = this.toGrams(brutto?.numeric ?? null, brutto?.unit ?? null, brutto?.raw ?? '') ??
+      const norm = (s: string) => s.toLowerCase().trim();
+      const isPack = (s: string) => /упаковк|брутто|коробк/.test(norm(s));
+      const isItem = (s: string) => /товара/.test(norm(s));
+
+      const byKey = (predicate: (v: (typeof values)[number]) => boolean) => values.find(predicate) ?? null;
+
+      const brutto = byKey((v) => /масса|вес/.test(norm(v.name)) && /брутто|упаковк/.test(norm(v.name)));
+      const netto = byKey((v) => /масса|вес/.test(norm(v.name)) && /нетто/.test(norm(v.name)));
+      const weightAny = byKey((v) => /масса|вес/.test(norm(v.name)));
+
+      const weightG =
+        this.toGrams(brutto?.numeric ?? null, brutto?.unit ?? null, brutto?.raw ?? '') ??
         this.toGrams(netto?.numeric ?? null, netto?.unit ?? null, netto?.raw ?? '') ??
+        this.toGrams(weightAny?.numeric ?? null, weightAny?.unit ?? null, weightAny?.raw ?? '') ??
         null;
 
-      const wPack = valuesBySlug.get('shirina-upakovki-tovara');
-      const hPack = valuesBySlug.get('vysota-upakovki-tovara');
-      const dPack = valuesBySlug.get('glubina-upakovki-tovara');
+      const wPack = byKey((v) => /ширина/.test(norm(v.name)) && isPack(v.name));
+      const hPack = byKey((v) => /высота/.test(norm(v.name)) && isPack(v.name));
+      const dPack = byKey((v) => /глубина/.test(norm(v.name)) && isPack(v.name));
 
-      const wItem = valuesBySlug.get('shirina-tovara');
-      const hItem = valuesBySlug.get('vysota-tovara');
-      const dItem = valuesBySlug.get('glubina-tovara');
+      const wItem = byKey((v) => /ширина/.test(norm(v.name)) && isItem(v.name) && !isPack(v.name));
+      const hItem = byKey((v) => /высота/.test(norm(v.name)) && isItem(v.name) && !isPack(v.name));
+      const dItem = byKey((v) => /глубина/.test(norm(v.name)) && isItem(v.name) && !isPack(v.name));
 
       const dimsPack = this.pickDimsCm(wPack, hPack, dPack);
       const dimsItem = this.pickDimsCm(wItem, hItem, dItem);
