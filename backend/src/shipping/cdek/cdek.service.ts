@@ -206,11 +206,13 @@ export class CdekService {
     const packages: Array<{ weight: number; length: number; width: number; height: number }> = [];
     let hasOverweightSingleItem = false;
 
+    let productsFoundForSpecs = 0;
     for (const item of input.items) {
       const qty = Math.max(Number(item.quantity || 0), 0);
       if (qty <= 0) continue;
 
       const specs = item.productId ? productSpecsById.get(item.productId) : undefined;
+      if (specs) productsFoundForSpecs += 1;
       const weightG = Math.max(Math.ceil(specs?.weightG ?? defaultWeightG), 1);
       const lengthCm = Math.max(Math.ceil(specs?.lengthCm ?? defaultLengthCm), 1);
       const widthCm = Math.max(Math.ceil(specs?.widthCm ?? defaultWidthCm), 1);
@@ -326,6 +328,8 @@ export class CdekService {
                 to_location: requestPayload.to_location,
                 packages: requestPayload.packages,
                 additional_order_types: (requestPayload as any).additional_order_types ?? null,
+                itemsCount,
+                productsFoundForSpecs,
               },
             }
           : {}),
