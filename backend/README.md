@@ -40,13 +40,14 @@ Configure the following env vars:
 - Sender location (one of):
   - `CDEK_FROM_POSTAL_CODE`
   - `CDEK_FROM_CITY_CODE`
+  - `CDEK_FROM_DELIVERYPOINT_CODE` (optional; PVZ code, default `MSK2401`)
 - Package defaults (used because products currently do not store weight/dimensions):
   - `CDEK_DEFAULT_WEIGHT_G` (default `1000`)
   - `CDEK_DEFAULT_LENGTH_CM` (default `20`)
   - `CDEK_DEFAULT_WIDTH_CM` (default `20`)
   - `CDEK_DEFAULT_HEIGHT_CM` (default `10`)
 
-If `CDEK_FROM_POSTAL_CODE` / `CDEK_FROM_CITY_CODE` are not set, the backend falls back to Moscow center for testing (`101000`, and it will try to resolve `city_code` for "Москва" via CDEK locations API).
+If `CDEK_FROM_POSTAL_CODE` / `CDEK_FROM_CITY_CODE` are not set, the backend falls back to a Moscow center PVZ for testing (`CDEK_FROM_DELIVERYPOINT_CODE=MSK2401`, then it falls back to `101000`, and it may try to resolve `city_code` for "Москва" via CDEK locations API).
 
 ## Frontend-oriented JSON rules
 

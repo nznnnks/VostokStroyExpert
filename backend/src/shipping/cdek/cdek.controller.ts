@@ -8,12 +8,10 @@ export class CdekController {
 
   @Post('quote')
   async quote(@Body() dto: CdekQuoteRequestDto) {
-    const itemsCount = dto.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
     return this.cdekService.getBestQuote({
       toPostalCode: dto.toPostalCode,
       toCity: dto.toCity,
-      itemsCount,
+      items: dto.items,
     });
   }
 }
-

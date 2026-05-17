@@ -377,11 +377,13 @@ export function CheckoutPage() {
     const handle = window.setTimeout(() => {
       void (async () => {
         try {
+          const orderItems = cart ? await resolveSessionCartOrderItems(cart) : [];
+          if (cancelled) return;
           const quote = await getCdekDeliveryQuote({
             toPostalCode: toPostalCode || undefined,
             toCity: toCity || undefined,
             toAddress: (addressLine || addressVerification.formattedAddress).trim() || undefined,
-            items: hydratedItems.map((item) => ({ quantity: item.qty })),
+            items: orderItems.length > 0 ? orderItems : hydratedItems.map((item) => ({ quantity: item.qty })),
           });
           if (cancelled) return;
           setDeliveryQuote(quote);
@@ -414,6 +416,7 @@ export function CheckoutPage() {
     postalCode,
     city,
     hydratedItems,
+    cart,
   ]);
   const summaryRows = useMemo(() => {
     const deliveryValue =

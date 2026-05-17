@@ -1991,7 +1991,7 @@ export async function getCdekDeliveryQuote(payload: {
   toPostalCode?: string;
   toCity?: string;
   toAddress?: string;
-  items: Array<{ quantity: number }>;
+  items: Array<{ productId?: string; quantity: number }>;
 }) {
   return apiRequest<CdekDeliveryQuote>("/api/shipping/cdek/quote", {
     method: "POST",
