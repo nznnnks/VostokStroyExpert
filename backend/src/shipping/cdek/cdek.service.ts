@@ -345,9 +345,29 @@ export class CdekService {
     h?: { numeric: number | null; unit: string | null; raw: string } | null,
     d?: { numeric: number | null; unit: string | null; raw: string } | null,
   ) {
-    const widthCm = this.toCm(w?.numeric ?? null, w?.unit ?? null, w?.raw ?? '');
-    const heightCm = this.toCm(h?.numeric ?? null, h?.unit ?? null, h?.raw ?? '');
-    const depthCm = this.toCm(d?.numeric ?? null, d?.unit ?? null, d?.raw ?? '');
+    let widthCm = this.toCm(w?.numeric ?? null, w?.unit ?? null, w?.raw ?? '');
+    let heightCm = this.toCm(h?.numeric ?? null, h?.unit ?? null, h?.raw ?? '');
+    let depthCm = this.toCm(d?.numeric ?? null, d?.unit ?? null, d?.raw ?? '');
+
+    // Some catalog values come in packed form like "1000*200 мм" or "1000x200x50".
+    // If any dimension is missing, try to parse multi-dimension strings from available raws.
+    if (!widthCm || !heightCm || !depthCm) {
+      const candidates = [w?.raw ?? '', h?.raw ?? '', d?.raw ?? ''].filter(Boolean);
+      for (const raw of candidates) {
+        const parsed = this.parsePackedDimsToCm(raw);
+        if (!parsed) continue;
+        if (parsed.length === 2) {
+          widthCm ??= parsed[0];
+          heightCm ??= parsed[1];
+        } else if (parsed.length >= 3) {
+          widthCm ??= parsed[0];
+          heightCm ??= parsed[1];
+          depthCm ??= parsed[2];
+        }
+        if (widthCm && heightCm && depthCm) break;
+      }
+    }
+
     if (!widthCm || !heightCm || !depthCm) return null;
 
     // Use the largest dimension as "length" to better match carrier expectations.
@@ -356,22 +376,58 @@ export class CdekService {
   }
 
   private toGrams(value: number | null, unit: string | null, raw: string) {
-    if (!value || !Number.isFinite(value) || value <= 0) return null;
+    const numeric = this.fallbackParseNumber(value, raw);
+    if (!numeric || !Number.isFinite(numeric) || numeric <= 0) return null;
     const u = (unit ?? raw).toLowerCase();
-    if (u.includes('кг') || u.includes('kg')) return Math.ceil(value * 1000);
-    if (u.includes('г') || u.includes('gr') || u.includes('g')) return Math.ceil(value);
-    if (u.includes('т')) return Math.ceil(value * 1_000_000);
+    if (u.includes('кг') || u.includes('kg')) return Math.ceil(numeric * 1000);
+    if (u.includes('г') || u.includes('gr') || u.includes('g')) return Math.ceil(numeric);
+    if (u.includes('т')) return Math.ceil(numeric * 1_000_000);
     // No unit: most of the catalog uses kg for mass.
-    return Math.ceil(value * 1000);
+    return Math.ceil(numeric * 1000);
   }
 
   private toCm(value: number | null, unit: string | null, raw: string) {
-    if (!value || !Number.isFinite(value) || value <= 0) return null;
+    const numeric = this.fallbackParseNumber(value, raw);
+    if (!numeric || !Number.isFinite(numeric) || numeric <= 0) return null;
     const u = (unit ?? raw).toLowerCase();
-    if (u.includes('мм')) return Math.ceil(value / 10);
-    if (u.includes('cm') || u.includes('см')) return Math.ceil(value);
-    if ((u.includes('м') && !u.includes('мм')) || u.includes(' m')) return Math.ceil(value * 100);
+    if (u.includes('мм')) return Math.ceil(numeric / 10);
+    if (u.includes('cm') || u.includes('см')) return Math.ceil(numeric);
+    if ((u.includes('м') && !u.includes('мм')) || u.includes(' m')) return Math.ceil(numeric * 100);
     // No unit: assume centimeters (most catalog values are "см").
-    return Math.ceil(value);
+    return Math.ceil(numeric);
+  }
+
+  private fallbackParseNumber(value: number | null, raw: string) {
+    if (value && Number.isFinite(value)) return value;
+    const text = (raw ?? '').toString().replace(',', '.');
+    const match = text.match(/(-?\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private parsePackedDimsToCm(raw: string) {
+    const text = (raw ?? '').toString().toLowerCase();
+    if (!text) return null;
+
+    // Match 2-3 numbers separated by x/*/×/х (latin or cyrillic).
+    const m = text
+      .replace(',', '.')
+      .match(/(\d+(?:\.\d+)?)\s*([xх\*×])\s*(\d+(?:\.\d+)?)(?:\s*([xх\*×])\s*(\d+(?:\.\d+)?))?/i);
+    if (!m) return null;
+
+    const nums = [m[1], m[3], m[5]].filter(Boolean).map((v) => Number(v));
+    if (nums.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+
+    // Infer unit from the string.
+    const unit = text.includes('мм') ? 'мм' : text.includes('см') ? 'см' : text.match(/(^|[^\w])м([^\w]|$)/) ? 'м' : null;
+    const toCm = (n: number) => {
+      if (unit === 'мм') return Math.ceil(n / 10);
+      if (unit === 'м') return Math.ceil(n * 100);
+      // default to cm
+      return Math.ceil(n);
+    };
+
+    return nums.map(toCm);
   }
 }
