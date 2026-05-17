@@ -47,6 +47,10 @@ Configure the following env vars:
   - `CDEK_DEFAULT_WIDTH_CM` (default `20`)
   - `CDEK_DEFAULT_HEIGHT_CM` (default `10`)
 - `CDEK_TARIFF_CODE` (optional; defaults to `137`). Used to avoid picking the cheapest warehouse-warehouse option from `tarifflist` when quoting delivery for checkout.
+- `CDEK_TARIFF_CODE_HEAVY` (optional). Used when there is at least one item heavier than `CDEK_MAX_PACKAGE_WEIGHT_G` (e.g. cargo/pallet tariff).
+- `CDEK_MAX_PACKAGE_WEIGHT_G` (optional; defaults to `30000`). When the basket is heavier, the quote request is split into multiple packages to avoid underquoting for heavy shipments.
+- `CDEK_CALC_TYPE` (optional; defaults to `1`). Calculator "type": 1 - интернет-магазин, 2 - доставка.
+- `CDEK_CALC_TYPE_HEAVY` (optional). Calculator "type" override when using `CDEK_TARIFF_CODE_HEAVY` (for cargo tariffs like "Сборный груз" this is often `2`).
 
 If `CDEK_FROM_POSTAL_CODE` / `CDEK_FROM_CITY_CODE` are not set, the backend falls back to a Moscow center PVZ for testing (`CDEK_FROM_DELIVERYPOINT_CODE=MSK2401`, then it falls back to `101000`, and it may try to resolve `city_code` for "Москва" via CDEK locations API).
 

@@ -199,64 +199,90 @@ export class CdekService {
       ? await this.loadProductShippingSpecs(productIds)
       : new Map<string, { weightG: number | null; lengthCm: number | null; widthCm: number | null; heightCm: number | null }>();
 
-    let totalWeightG = 0;
-    let totalVolumeCm3 = 0;
-    let maxDimCm = 0;
+    const maxPackageWeightG = Math.max(Number(process.env.CDEK_MAX_PACKAGE_WEIGHT_G ?? 30000), 1);
+
+    // Build packages from actual items. Each unit becomes its own package (closer to real logistics),
+    // and we never "split" an overweight single item.
+    const packages: Array<{ weight: number; length: number; width: number; height: number }> = [];
+    let hasOverweightSingleItem = false;
+
     for (const item of input.items) {
       const qty = Math.max(Number(item.quantity || 0), 0);
       if (qty <= 0) continue;
 
       const specs = item.productId ? productSpecsById.get(item.productId) : undefined;
-      const weightG = specs?.weightG ?? defaultWeightG;
-      const lengthCm = specs?.lengthCm ?? defaultLengthCm;
-      const widthCm = specs?.widthCm ?? defaultWidthCm;
-      const heightCm = specs?.heightCm ?? defaultHeightCm;
+      const weightG = Math.max(Math.ceil(specs?.weightG ?? defaultWeightG), 1);
+      const lengthCm = Math.max(Math.ceil(specs?.lengthCm ?? defaultLengthCm), 1);
+      const widthCm = Math.max(Math.ceil(specs?.widthCm ?? defaultWidthCm), 1);
+      const heightCm = Math.max(Math.ceil(specs?.heightCm ?? defaultHeightCm), 1);
 
-      totalWeightG += weightG * qty;
-      totalVolumeCm3 += lengthCm * widthCm * heightCm * qty;
-      maxDimCm = Math.max(maxDimCm, lengthCm, widthCm, heightCm);
+      if (weightG > maxPackageWeightG) {
+        hasOverweightSingleItem = true;
+      }
+
+      const perUnit = { weight: weightG, length: lengthCm, width: widthCm, height: heightCm };
+      // Avoid generating ridiculous amount of packages; for quoting it's ok to cap and scale weight.
+      // Most real baskets are small; if not, fallback to aggregated approximation.
+      if (qty <= 30) {
+        for (let i = 0; i < qty; i += 1) packages.push(perUnit);
+      } else {
+        // Aggregate: keep 30 packages and distribute the rest weight roughly.
+        for (let i = 0; i < 30; i += 1) packages.push(perUnit);
+        const extra = qty - 30;
+        packages.push({
+          weight: perUnit.weight * extra,
+          length: perUnit.length,
+          width: perUnit.width,
+          height: perUnit.height,
+        });
+      }
     }
 
-    if (totalWeightG <= 0) {
-      totalWeightG = defaultWeightG * itemsCount;
+    if (packages.length === 0) {
+      packages.push({
+        weight: defaultWeightG,
+        length: defaultLengthCm,
+        width: defaultWidthCm,
+        height: defaultHeightCm,
+      });
     }
-    if (totalVolumeCm3 <= 0) {
-      totalVolumeCm3 = defaultLengthCm * defaultWidthCm * defaultHeightCm * itemsCount;
-      maxDimCm = Math.max(maxDimCm, defaultLengthCm, defaultWidthCm, defaultHeightCm);
-    }
-
-    const sideFromVolume = Math.ceil(Math.cbrt(totalVolumeCm3));
-    const packageSide = Math.max(sideFromVolume, Math.ceil(maxDimCm), 1);
 
     const token = await this.getToken();
 
+    const defaultCalcTypeRaw = (process.env.CDEK_CALC_TYPE ?? '1').trim();
+    const heavyCalcTypeRaw = (process.env.CDEK_CALC_TYPE_HEAVY ?? '').trim();
+    const defaultCalcType = Number(defaultCalcTypeRaw) === 2 ? 2 : 1;
+    const heavyCalcType = Number(heavyCalcTypeRaw) === 2 ? 2 : 1;
+
     const baseRequest = {
-      type: 1, // 1 - интернет-магазин
+      type: defaultCalcType, // 1 - интернет-магазин, 2 - доставка
       // CDEK calculator expects city "code" (internal city_code), not FIAS.
       from_location: fromCityCode ? { code: fromCityCode } : { postal_code: fromPostalCode },
       to_location: toPostalCode ? { postal_code: toPostalCode } : { city: toCity },
       packages: [
-        {
-          weight: Math.max(Math.ceil(totalWeightG), 1), // grams
-          length: packageSide, // cm
-          width: packageSide,
-          height: packageSide,
-        },
+        ...packages,
       ],
     };
 
     // Tarifflist returns multiple delivery modes (warehouse-warehouse can be very cheap).
     // For checkout we default to a configured tariff_code (usually courier to door).
-    const tariffCodeRaw = (process.env.CDEK_TARIFF_CODE ?? '137').trim();
+    // If there's a single item heavier than `CDEK_MAX_PACKAGE_WEIGHT_G`, use heavy/cargo tariff code.
+    const defaultTariffCodeRaw = (process.env.CDEK_TARIFF_CODE ?? '137').trim();
+    const heavyTariffCodeRaw = (process.env.CDEK_TARIFF_CODE_HEAVY ?? '').trim();
+    const useHeavy = hasOverweightSingleItem && heavyTariffCodeRaw;
+    const tariffCodeRaw = useHeavy ? heavyTariffCodeRaw : defaultTariffCodeRaw;
     const tariffCode = Number(tariffCodeRaw);
     if (Number.isFinite(tariffCode) && tariffCode > 0) {
+      const requestPayload = useHeavy
+        ? { ...baseRequest, type: heavyCalcType, tariff_code: tariffCode }
+        : { ...baseRequest, tariff_code: tariffCode };
       const response = await fetch(`${this.baseUrl}/v2/calculator/tariff`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...baseRequest, tariff_code: tariffCode }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
