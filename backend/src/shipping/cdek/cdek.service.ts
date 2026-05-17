@@ -297,17 +297,19 @@ export class CdekService {
     const tariffCodeRaw = useHeavy ? heavyTariffCodeRaw : defaultTariffCodeRaw;
     const tariffCode = Number(tariffCodeRaw);
     if (Number.isFinite(tariffCode) && tariffCode > 0) {
-      const heavyAdditionalOrderTypeCodeRaw = (process.env.CDEK_ADDITIONAL_ORDER_TYPE_HEAVY ?? '2').trim();
-      const heavyAdditionalOrderTypeCode = Number(heavyAdditionalOrderTypeCodeRaw);
-
       const requestPayload = useHeavy
         ? {
             ...baseRequest,
             type: heavyCalcType,
             tariff_code: tariffCode,
-            ...(Number.isFinite(heavyAdditionalOrderTypeCode) && heavyAdditionalOrderTypeCode > 0
-              ? { additional_order_types: [{ code: heavyAdditionalOrderTypeCode }] }
-              : {}),
+            // CDEK expects additional_order_types as an array of numeric codes.
+            ...(process.env.CDEK_ADDITIONAL_ORDER_TYPE_HEAVY ?? '').trim()
+              ? {
+                  additional_order_types: [(Number((process.env.CDEK_ADDITIONAL_ORDER_TYPE_HEAVY ?? '2').trim()) || 2)],
+                }
+              : {
+                  additional_order_types: [2],
+                },
           }
         : { ...baseRequest, tariff_code: tariffCode };
       const response = await fetch(`${this.baseUrl}/v2/calculator/tariff`, {
