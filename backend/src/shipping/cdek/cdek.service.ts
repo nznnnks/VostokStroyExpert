@@ -205,6 +205,15 @@ export class CdekService {
     // and we never "split" an overweight single item.
     const packages: Array<{ weight: number; length: number; width: number; height: number }> = [];
     let hasOverweightSingleItem = false;
+    const debugItems: Array<{
+      productId?: string;
+      quantity: number;
+      weightG: number;
+      lengthCm: number;
+      widthCm: number;
+      heightCm: number;
+      usedDefaults: boolean;
+    }> = [];
 
     let productsFoundForSpecs = 0;
     for (const item of input.items) {
@@ -213,6 +222,8 @@ export class CdekService {
 
       const specs = item.productId ? productSpecsById.get(item.productId) : undefined;
       if (specs) productsFoundForSpecs += 1;
+      const usedDefaults =
+        !specs || specs.weightG === null || specs.lengthCm === null || specs.widthCm === null || specs.heightCm === null;
       const weightG = Math.max(Math.ceil(specs?.weightG ?? defaultWeightG), 1);
       const lengthCm = Math.max(Math.ceil(specs?.lengthCm ?? defaultLengthCm), 1);
       const widthCm = Math.max(Math.ceil(specs?.widthCm ?? defaultWidthCm), 1);
@@ -223,6 +234,17 @@ export class CdekService {
       }
 
       const perUnit = { weight: weightG, length: lengthCm, width: widthCm, height: heightCm };
+      if (process.env.CDEK_DEBUG_QUOTE === '1') {
+        debugItems.push({
+          productId: item.productId,
+          quantity: qty,
+          weightG,
+          lengthCm,
+          widthCm,
+          heightCm,
+          usedDefaults,
+        });
+      }
       // Avoid generating ridiculous amount of packages; for quoting it's ok to cap and scale weight.
       // Most real baskets are small; if not, fallback to aggregated approximation.
       if (qty <= 30) {
@@ -330,6 +352,7 @@ export class CdekService {
                 additional_order_types: (requestPayload as any).additional_order_types ?? null,
                 itemsCount,
                 productsFoundForSpecs,
+                items: debugItems,
               },
             }
           : {}),
