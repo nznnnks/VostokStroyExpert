@@ -46,6 +46,7 @@ Configure the following env vars:
   - `CDEK_DEFAULT_LENGTH_CM` (default `20`)
   - `CDEK_DEFAULT_WIDTH_CM` (default `20`)
   - `CDEK_DEFAULT_HEIGHT_CM` (default `10`)
+- `CDEK_TARIFF_CODE` (optional; defaults to `137`). Used to avoid picking the cheapest warehouse-warehouse option from `tarifflist` when quoting delivery for checkout.
 
 If `CDEK_FROM_POSTAL_CODE` / `CDEK_FROM_CITY_CODE` are not set, the backend falls back to a Moscow center PVZ for testing (`CDEK_FROM_DELIVERYPOINT_CODE=MSK2401`, then it falls back to `101000`, and it may try to resolve `city_code` for "Москва" via CDEK locations API).
 

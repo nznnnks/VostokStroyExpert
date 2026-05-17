@@ -15,6 +15,16 @@ type CdekTariffListResponse = {
   message?: string;
 };
 
+type CdekTariffResponse = {
+  tariff_code?: number;
+  tariff_name?: string;
+  delivery_sum?: number;
+  period_min?: number;
+  period_max?: number;
+  errors?: Array<{ code?: string; message?: string }>;
+  message?: string;
+};
+
 type CdekDeliveryPoint = {
   code?: string;
   location?: {
@@ -220,7 +230,7 @@ export class CdekService {
 
     const token = await this.getToken();
 
-    const requestBody = {
+    const baseRequest = {
       type: 1, // 1 - интернет-магазин
       // CDEK calculator expects city "code" (internal city_code), not FIAS.
       from_location: fromCityCode ? { code: fromCityCode } : { postal_code: fromPostalCode },
@@ -235,13 +245,52 @@ export class CdekService {
       ],
     };
 
+    // Tarifflist returns multiple delivery modes (warehouse-warehouse can be very cheap).
+    // For checkout we default to a configured tariff_code (usually courier to door).
+    const tariffCodeRaw = (process.env.CDEK_TARIFF_CODE ?? '137').trim();
+    const tariffCode = Number(tariffCodeRaw);
+    if (Number.isFinite(tariffCode) && tariffCode > 0) {
+      const response = await fetch(`${this.baseUrl}/v2/calculator/tariff`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...baseRequest, tariff_code: tariffCode }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new ServiceUnavailableException(`CDEK tariff calculation failed (${response.status}). ${text}`.trim());
+      }
+
+      const json = (await response.json()) as CdekTariffResponse;
+      if (json.errors?.length) {
+        const msg = json.errors.map((e) => e.message).filter(Boolean).join('; ') || 'CDEK tariff calculation failed.';
+        throw new ServiceUnavailableException(msg);
+      }
+      if (typeof json.delivery_sum !== 'number') {
+        throw new ServiceUnavailableException(json.message || 'CDEK tariff calculation returned empty delivery_sum.');
+      }
+
+      return {
+        price: Number(json.delivery_sum ?? 0),
+        currency: 'RUB',
+        periodMin: json.period_min,
+        periodMax: json.period_max,
+        tariffCode: json.tariff_code ?? tariffCode,
+        tariffName: json.tariff_name,
+      };
+    }
+
+    // Fallback: choose the cheapest from tarifflist.
     const response = await fetch(`${this.baseUrl}/v2/calculator/tarifflist`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(baseRequest),
     });
 
     if (!response.ok) {
