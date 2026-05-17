@@ -222,7 +222,8 @@ export class CdekService {
 
     const requestBody = {
       type: 1, // 1 - интернет-магазин
-      from_location: fromCityCode ? { city_code: fromCityCode } : { postal_code: fromPostalCode },
+      // CDEK calculator expects city "code" (internal city_code), not FIAS.
+      from_location: fromCityCode ? { code: fromCityCode } : { postal_code: fromPostalCode },
       to_location: toPostalCode ? { postal_code: toPostalCode } : { city: toCity },
       packages: [
         {
