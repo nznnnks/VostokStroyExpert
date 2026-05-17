@@ -273,8 +273,18 @@ export class CdekService {
     const tariffCodeRaw = useHeavy ? heavyTariffCodeRaw : defaultTariffCodeRaw;
     const tariffCode = Number(tariffCodeRaw);
     if (Number.isFinite(tariffCode) && tariffCode > 0) {
+      const heavyAdditionalOrderTypeCodeRaw = (process.env.CDEK_ADDITIONAL_ORDER_TYPE_HEAVY ?? '2').trim();
+      const heavyAdditionalOrderTypeCode = Number(heavyAdditionalOrderTypeCodeRaw);
+
       const requestPayload = useHeavy
-        ? { ...baseRequest, type: heavyCalcType, tariff_code: tariffCode }
+        ? {
+            ...baseRequest,
+            type: heavyCalcType,
+            tariff_code: tariffCode,
+            ...(Number.isFinite(heavyAdditionalOrderTypeCode) && heavyAdditionalOrderTypeCode > 0
+              ? { additional_order_types: [{ code: heavyAdditionalOrderTypeCode }] }
+              : {}),
+          }
         : { ...baseRequest, tariff_code: tariffCode };
       const response = await fetch(`${this.baseUrl}/v2/calculator/tariff`, {
         method: 'POST',
@@ -306,6 +316,19 @@ export class CdekService {
         periodMax: json.period_max,
         tariffCode: json.tariff_code ?? tariffCode,
         tariffName: json.tariff_name,
+        ...(process.env.CDEK_DEBUG_QUOTE === '1'
+          ? {
+              debug: {
+                usedHeavy: useHeavy,
+                type: requestPayload.type,
+                tariffCode: requestPayload.tariff_code,
+                from_location: requestPayload.from_location,
+                to_location: requestPayload.to_location,
+                packages: requestPayload.packages,
+                additional_order_types: (requestPayload as any).additional_order_types ?? null,
+              },
+            }
+          : {}),
       };
     }
 
