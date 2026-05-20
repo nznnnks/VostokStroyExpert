@@ -175,6 +175,7 @@ export class OrdersService {
         userId,
         templateId: dto.templateId,
         appliedDiscountId: dto.appliedDiscountId,
+        status: dto.payment?.paidAt ? OrderStatus.PAID : undefined,
         deliveryMethod: dto.deliveryMethod,
         deliveryAddress: dto.deliveryAddress,
         contactName: dto.contactName,
@@ -205,7 +206,10 @@ export class OrdersService {
       include: orderInclude,
     });
 
-    await this.sendOrderCreatedEmail(order);
+    if (order.status === OrderStatus.PAID) {
+      await this.sendOrderPaidEmail(order);
+    }
+
     return this.toOrderResponse(order);
   }
 
@@ -234,7 +238,9 @@ export class OrdersService {
       include: orderInclude,
     });
 
-    if (dto.status && dto.status !== existing.status) {
+    if (dto.status === OrderStatus.PAID && dto.status !== existing.status) {
+      await this.sendOrderPaidNotification(order.id);
+    } else if (dto.status && dto.status !== existing.status) {
       await this.sendOrderStatusChangedEmail(order, existing.status);
     }
 
@@ -402,42 +408,55 @@ export class OrdersService {
     return process.env.ORDERS_NOTIFY_EMAIL?.trim() || 'climatrade@mail.ru';
   }
 
-  private buildNotificationRecipients(customerEmail?: string | null) {
-    const recipients = new Set<string>();
-
-    if (customerEmail?.trim()) {
-      recipients.add(customerEmail.trim());
-    }
-
-    if (this.notifyEmail?.trim()) {
-      recipients.add(this.notifyEmail.trim());
-    }
-
-    return Array.from(recipients).join(', ');
-  }
-
-  private async sendOrderCreatedEmail(order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>) {
-    const customerEmail = order.user?.email;
-    const recipients = this.buildNotificationRecipients(customerEmail);
-
-    if (!recipients) {
-      return;
-    }
-
-    const subject = `Заказ ${order.orderNumber} оформлен`;
-    const body = this.formatOrderEmail(order, {
-      header: `Спасибо! Мы получили ваш заказ ${order.orderNumber}.`,
-      statusLine: `Текущий статус: ${order.status}`,
+  async sendOrderPaidNotification(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: orderInclude,
     });
 
-    try {
-      await this.mailService.sendMail({
-        to: recipients,
-        subject,
-        text: body,
-      });
-    } catch {
-      // Do not block order placement if mail is misconfigured/unavailable.
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found.`);
+    }
+
+    await this.sendOrderPaidEmail(order);
+  }
+
+  private async sendOrderPaidEmail(order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>) {
+    const customerEmail = order.user?.email?.trim() || null;
+    const notifyEmail = this.notifyEmail?.trim() || null;
+    const customerSubject = `\u0417\u0430\u043a\u0430\u0437 ${order.orderNumber} \u043e\u043f\u043b\u0430\u0447\u0435\u043d`;
+    const customerBody = this.formatOrderEmail(order, {
+      header: `\u0421\u043f\u0430\u0441\u0438\u0431\u043e! \u041e\u043f\u043b\u0430\u0442\u0430 \u0437\u0430\u043a\u0430\u0437\u0430 ${order.orderNumber} \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430.`,
+      statusLine: `\u0421\u0442\u0430\u0442\u0443\u0441: ${order.status}`,
+    });
+    const adminSubject = `\u041e\u043f\u043b\u0430\u0447\u0435\u043d \u0437\u0430\u043a\u0430\u0437 ${order.orderNumber}`;
+    const adminBody = this.formatOrderEmail(order, {
+      header: `\u041f\u043e\u0441\u0442\u0443\u043f\u0438\u043b\u0430 \u043e\u043f\u043b\u0430\u0442\u0430 \u043f\u043e \u0437\u0430\u043a\u0430\u0437\u0443 ${order.orderNumber}.`,
+      statusLine: `\u0421\u0442\u0430\u0442\u0443\u0441: ${order.status}`,
+    });
+
+    if (customerEmail) {
+      try {
+        await this.mailService.sendMail({
+          to: customerEmail,
+          subject: customerSubject,
+          text: customerBody,
+        });
+      } catch {
+        // Do not block order processing if mail is misconfigured/unavailable.
+      }
+    }
+
+    if (notifyEmail) {
+      try {
+        await this.mailService.sendMail({
+          to: notifyEmail,
+          subject: adminSubject,
+          text: adminBody,
+        });
+      } catch {
+        // Do not block order processing if mail is misconfigured/unavailable.
+      }
     }
   }
 
@@ -445,10 +464,9 @@ export class OrdersService {
     order: Prisma.OrderGetPayload<{ include: typeof orderInclude }>,
     previousStatus: string,
   ) {
-    const customerEmail = order.user?.email;
-    const recipients = this.buildNotificationRecipients(customerEmail);
+    const customerEmail = order.user?.email?.trim();
 
-    if (!recipients) {
+    if (!customerEmail) {
       return;
     }
 
@@ -460,7 +478,7 @@ export class OrdersService {
 
     try {
       await this.mailService.sendMail({
-        to: recipients,
+        to: customerEmail,
         subject,
         text: body,
       });

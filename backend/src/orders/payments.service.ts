@@ -6,6 +6,7 @@ import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateYooKassaPaymentDto } from './dto/create-yookassa-payment.dto';
+import { OrdersService } from './orders.service';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { YooKassaWebhookDto } from './dto/yookassa-webhook.dto';
 
@@ -13,7 +14,10 @@ import { YooKassaWebhookDto } from './dto/yookassa-webhook.dto';
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ordersService: OrdersService,
+  ) {}
 
   findAll(query: PaginationQueryDto) {
     return this.prisma.payment.findMany({
@@ -49,30 +53,38 @@ export class PaymentsService {
     return payment;
   }
 
-  create(dto: CreatePaymentDto) {
-    return this.prisma.payment.create({
+  async create(dto: CreatePaymentDto) {
+    const payment = await this.prisma.payment.create({
       data: {
         ...dto,
+        status: dto.status ?? (dto.paidAt ? PaymentStatus.PAID : undefined),
         paidAt: dto.paidAt ? new Date(dto.paidAt) : undefined,
       },
       include: {
         order: true,
       },
     });
+
+    await this.syncOrderPaidState(payment.orderId, payment.status, null);
+    return payment;
   }
 
   async update(id: string, dto: UpdatePaymentDto) {
-    await this.ensureExists(id);
-    return this.prisma.payment.update({
+    const existing = await this.ensureExists(id);
+    const payment = await this.prisma.payment.update({
       where: { id },
       data: {
         ...dto,
+        status: dto.status ?? (dto.paidAt ? PaymentStatus.PAID : undefined),
         paidAt: dto.paidAt ? new Date(dto.paidAt) : undefined,
       },
       include: {
         order: true,
       },
     });
+
+    await this.syncOrderPaidState(payment.orderId, payment.status, existing.status);
+    return payment;
   }
 
   async remove(id: string) {
@@ -227,6 +239,8 @@ export class PaymentsService {
       },
     });
 
+    await this.syncOrderPaidState(localPayment.orderId, localPayment.status, null);
+
     return {
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -339,14 +353,43 @@ export class PaymentsService {
       },
     });
 
-    if (nextStatus === PaymentStatus.PAID && existing.order.status === OrderStatus.NEW) {
+    await this.syncOrderPaidState(existing.orderId, nextStatus, existing.status, existing.order.status);
+
+    return payment;
+  }
+
+  private async syncOrderPaidState(
+    orderId: string,
+    paymentStatus: PaymentStatus,
+    previousPaymentStatus?: PaymentStatus | null,
+    currentOrderStatus?: OrderStatus,
+  ) {
+    if (paymentStatus !== PaymentStatus.PAID || previousPaymentStatus === PaymentStatus.PAID) {
+      return;
+    }
+
+    const order =
+      currentOrderStatus !== undefined
+        ? { status: currentOrderStatus }
+        : await this.prisma.order.findUnique({
+            where: { id: orderId },
+            select: { status: true },
+          });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found.`);
+    }
+
+    if (order.status !== OrderStatus.PAID) {
       await this.prisma.order.update({
-        where: { id: existing.orderId },
+        where: { id: orderId },
         data: { status: OrderStatus.PAID },
       });
     }
 
-    return payment;
+    if (order.status !== OrderStatus.PAID) {
+      await this.ordersService.sendOrderPaidNotification(orderId);
+    }
   }
 
   private mapYooKassaStatus(status: string, paid: boolean) {
@@ -429,11 +472,13 @@ export class PaymentsService {
   private async ensureExists(id: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, orderId: true, status: true },
     });
 
     if (!payment) {
       throw new NotFoundException(`Payment ${id} not found.`);
     }
+
+    return payment;
   }
 }
