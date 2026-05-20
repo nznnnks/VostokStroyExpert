@@ -325,6 +325,7 @@ type ApiOrder = {
     subtotal: number;
     discountTotal: number;
     vatTotal: number;
+    deliveryPrice: number;
     total: number;
   };
   user?: {
@@ -1960,6 +1961,7 @@ export async function createOrder(payload: {
   deliveryAddress?: string;
   deliveryMethod?: string;
   comment?: string;
+  deliveryPrice?: number;
   items: Array<{ productId: string; quantity: number }>;
   payment?: {
     method: "CARD" | "SBP" | "INVOICE" | "CASH";

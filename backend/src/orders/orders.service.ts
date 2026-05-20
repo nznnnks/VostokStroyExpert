@@ -166,8 +166,9 @@ export class OrdersService {
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice.toNumber(), 0);
     const discountTotal = this.getDiscountValue(subtotal, discount);
     const taxableBase = Math.max(subtotal - discountTotal, 0);
+    const deliveryPrice = Number((dto.deliveryPrice ?? 0).toFixed(2));
     const vatTotal = 0;
-    const total = Number(taxableBase.toFixed(2));
+    const total = Number((taxableBase + deliveryPrice).toFixed(2));
 
     const order = await this.prisma.order.create({
       data: {
@@ -184,6 +185,7 @@ export class OrdersService {
         subtotal,
         discountTotal,
         vatTotal,
+        deliveryPrice,
         total,
         placedAt: new Date(),
         items: {
@@ -399,6 +401,7 @@ export class OrdersService {
         subtotal: order.subtotal.toNumber(),
         discountTotal: order.discountTotal.toNumber(),
         vatTotal: order.vatTotal.toNumber(),
+        deliveryPrice: order.deliveryPrice.toNumber(),
         total: order.total.toNumber(),
       },
     };
@@ -506,10 +509,11 @@ export class OrdersService {
     lines.push(`- Email: ${order.user?.email ?? '-'}`);
     lines.push('');
 
-    if (order.deliveryMethod || order.deliveryAddress) {
-      lines.push('Доставка:');
-      if (order.deliveryMethod) lines.push(`- Способ: ${order.deliveryMethod}`);
-      if (order.deliveryAddress) lines.push(`- Адрес: ${order.deliveryAddress}`);
+    if (order.deliveryMethod || order.deliveryAddress || order.deliveryPrice.toNumber() > 0) {
+      lines.push('\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430:');
+      if (order.deliveryMethod) lines.push(`- \u0421\u043f\u043e\u0441\u043e\u0431: ${order.deliveryMethod}`);
+      if (order.deliveryAddress) lines.push(`- \u0410\u0434\u0440\u0435\u0441: ${order.deliveryAddress}`);
+      lines.push(`- \u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c: ${order.deliveryPrice.toNumber().toFixed(2)} RUB`);
       lines.push('');
     }
 
@@ -530,7 +534,7 @@ export class OrdersService {
     lines.push('Итого:');
     lines.push(`- Подытог: ${order.subtotal.toNumber().toFixed(2)} RUB`);
     lines.push(`- Скидка: ${order.discountTotal.toNumber().toFixed(2)} RUB`);
-    lines.push(`- НДС (20%): ${order.vatTotal.toNumber().toFixed(2)} RUB`);
+    lines.push(`- \u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430: ${order.deliveryPrice.toNumber().toFixed(2)} RUB`);
     lines.push(`- К оплате: ${order.total.toNumber().toFixed(2)} RUB`);
 
     return lines.join('\n');

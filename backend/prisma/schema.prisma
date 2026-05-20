@@ -331,6 +331,7 @@ model Order {
   subtotal          Decimal     @db.Decimal(12, 2)
   discountTotal     Decimal     @default(0) @db.Decimal(12, 2)
   vatTotal          Decimal     @default(0) @db.Decimal(12, 2)
+  deliveryPrice     Decimal     @default(0) @db.Decimal(12, 2)
   total             Decimal     @db.Decimal(12, 2)
   deliveryMethod    String?
   deliveryAddress   String?

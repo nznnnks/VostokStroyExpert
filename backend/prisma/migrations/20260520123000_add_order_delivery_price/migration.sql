@@ -1,0 +1,2 @@
+ALTER TABLE "Order"
+ADD COLUMN "deliveryPrice" DECIMAL(12, 2) NOT NULL DEFAULT 0;

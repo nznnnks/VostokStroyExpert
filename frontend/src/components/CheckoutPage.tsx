@@ -350,6 +350,10 @@ export function CheckoutPage() {
   const subtotal = cart?.subtotal ?? 0;
   const total = cart?.total ?? subtotal;
   const isAddressConfirmed = addressVerification.confirmed;
+  const totalWithDelivery = useMemo(() => {
+    const delivery = deliveryQuote?.price ?? 0;
+    return Number((total + delivery).toFixed(2));
+  }, [total, deliveryQuote?.price]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -671,6 +675,7 @@ export function CheckoutPage() {
         deliveryAddress: deliveryAddress || undefined,
         deliveryMethod: `СДЭК${addressVerification.coords ? ` (${addressVerification.coords})` : ""}`,
         comment: deliveryCommentParts.join(" | ") || undefined,
+        deliveryPrice: deliveryQuote?.price,
         items: itemsPayload,
         payment: {
           method: selectedPayment === "card" ? "CARD" : "INVOICE",
@@ -1049,7 +1054,7 @@ export function CheckoutPage() {
             <div className="mt-[clamp(0.9rem,1.8vw,1.5rem)] border-t border-[#e8e3db] pt-[clamp(0.9rem,1.6vw,1.4rem)] [@media(max-height:900px)]:mt-2.5 [@media(max-height:900px)]:pt-2.5 [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:pt-2">
               <div className="flex items-center justify-between gap-6">
                 <span className="text-[clamp(1.05rem,1.35vw,1.45rem)] uppercase tracking-[2.4px] [font-family:'Cormorant_Garamond',serif]">Итого</span>
-                <span className="text-[clamp(1.1rem,1.4vw,1.6rem)] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(total)}</span>
+                <span className="text-[clamp(1.1rem,1.4vw,1.6rem)] uppercase tracking-[1.6px] [font-family:Jaldi,'JetBrains_Mono',monospace]">{formatPrice(totalWithDelivery)}</span>
               </div>
             </div>
 
