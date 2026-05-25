@@ -25,6 +25,29 @@ type CdekTariffResponse = {
   message?: string;
 };
 
+type CdekQuoteDebug = {
+  usedHeavy: string | boolean;
+  type: number;
+  tariffCode: number;
+  from_location: { code?: number; postal_code?: string };
+  to_location: { postal_code?: string; city?: string };
+  packages: Array<{ weight: number; length: number; width: number; height: number }>;
+  additional_order_types: number[] | null;
+  itemsCount: number;
+  productsFoundForSpecs: number;
+  items: Array<{
+    productId?: string;
+    quantity: number;
+    weightG: number;
+    lengthCm: number;
+    widthCm: number;
+    heightCm: number;
+    usedDefaults: boolean;
+  }>;
+  fallbackReason?: string;
+  availableTariffs?: Array<{ tariffCode?: number; tariffName?: string; price?: number }>;
+};
+
 type CdekDeliveryPoint = {
   code?: string;
   location?: {
@@ -145,6 +168,103 @@ export class CdekService {
     return {
       cityCode: typeof cityCode === 'number' ? cityCode : null,
       postalCode: typeof postalCode === 'string' && postalCode.trim() ? postalCode.trim() : null,
+    };
+  }
+
+  private buildDebugPayload(input: {
+    usedHeavy: string | boolean;
+    type: number;
+    tariffCode: number;
+    from_location: { code?: number; postal_code?: string };
+    to_location: { postal_code?: string; city?: string };
+    packages: Array<{ weight: number; length: number; width: number; height: number }>;
+    additional_order_types: number[] | null;
+    itemsCount: number;
+    productsFoundForSpecs: number;
+    items: CdekQuoteDebug['items'];
+    fallbackReason?: string;
+    availableTariffs?: CdekQuoteDebug['availableTariffs'];
+  }) {
+    if (process.env.CDEK_DEBUG_QUOTE !== '1') {
+      return {};
+    }
+
+    return {
+      debug: {
+        usedHeavy: input.usedHeavy,
+        type: input.type,
+        tariffCode: input.tariffCode,
+        from_location: input.from_location,
+        to_location: input.to_location,
+        packages: input.packages,
+        additional_order_types: input.additional_order_types,
+        itemsCount: input.itemsCount,
+        productsFoundForSpecs: input.productsFoundForSpecs,
+        items: input.items,
+        ...(input.fallbackReason ? { fallbackReason: input.fallbackReason } : {}),
+        ...(input.availableTariffs ? { availableTariffs: input.availableTariffs } : {}),
+      } satisfies CdekQuoteDebug,
+    };
+  }
+
+  private async quoteFromTarifflist(input: {
+    token: string;
+    request: {
+      type: number;
+      from_location: { code?: number; postal_code?: string };
+      to_location: { postal_code?: string; city?: string };
+      packages: Array<{ weight: number; length: number; width: number; height: number }>;
+    };
+    preferredTariffCodes: number[];
+    debugMeta: Omit<CdekQuoteDebug, 'tariffCode' | 'type'> & { type: number };
+    fallbackReason: string;
+  }) {
+    const response = await fetch(`${this.baseUrl}/v2/calculator/tarifflist`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${input.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input.request),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new ServiceUnavailableException(`CDEK tariff calculation failed (${response.status}). ${text}`.trim());
+    }
+
+    const json = (await response.json()) as CdekTariffListResponse;
+    if (json.errors?.length) {
+      const msg = json.errors.map((e) => e.message).filter(Boolean).join('; ') || 'CDEK tariff calculation failed.';
+      throw new ServiceUnavailableException(msg);
+    }
+
+    const tariffs = (json.tariff_codes ?? []).filter((t) => typeof t.delivery_sum === 'number');
+    if (!tariffs.length) {
+      throw new ServiceUnavailableException(json.message || 'CDEK returned empty tariff list.');
+    }
+
+    const preferred = tariffs.find((t) => t.tariff_code && input.preferredTariffCodes.includes(t.tariff_code));
+    const selected = preferred ?? tariffs.reduce((min, t) => (t.delivery_sum! < min.delivery_sum! ? t : min), tariffs[0]);
+
+    return {
+      price: Number(selected.delivery_sum ?? 0),
+      currency: 'RUB',
+      periodMin: selected.period_min,
+      periodMax: selected.period_max,
+      tariffCode: selected.tariff_code,
+      tariffName: selected.tariff_name,
+      ...this.buildDebugPayload({
+        ...input.debugMeta,
+        type: input.request.type,
+        tariffCode: selected.tariff_code ?? 0,
+        fallbackReason: input.fallbackReason,
+        availableTariffs: tariffs.map((t) => ({
+          tariffCode: t.tariff_code,
+          tariffName: t.tariff_name,
+          price: t.delivery_sum,
+        })),
+      }),
     };
   }
 
@@ -323,11 +443,49 @@ export class CdekService {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
+        if (text.includes('err_result_service_empty')) {
+          return this.quoteFromTarifflist({
+            token,
+            request: baseRequest,
+            preferredTariffCodes: [tariffCode],
+            debugMeta: {
+              usedHeavy: useHeavy,
+              from_location: requestPayload.from_location,
+              to_location: requestPayload.to_location,
+              packages: requestPayload.packages,
+              additional_order_types: (requestPayload as any).additional_order_types ?? null,
+              itemsCount,
+              productsFoundForSpecs,
+              items: debugItems,
+              type: requestPayload.type,
+            },
+            fallbackReason: `tariff_${tariffCode}_unavailable`,
+          });
+        }
         throw new ServiceUnavailableException(`CDEK tariff calculation failed (${response.status}). ${text}`.trim());
       }
 
       const json = (await response.json()) as CdekTariffResponse;
       if (json.errors?.length) {
+        if (json.errors.some((e) => e.code === 'err_result_service_empty')) {
+          return this.quoteFromTarifflist({
+            token,
+            request: baseRequest,
+            preferredTariffCodes: [tariffCode],
+            debugMeta: {
+              usedHeavy: useHeavy,
+              from_location: requestPayload.from_location,
+              to_location: requestPayload.to_location,
+              packages: requestPayload.packages,
+              additional_order_types: (requestPayload as any).additional_order_types ?? null,
+              itemsCount,
+              productsFoundForSpecs,
+              items: debugItems,
+              type: requestPayload.type,
+            },
+            fallbackReason: `tariff_${tariffCode}_unavailable`,
+          });
+        }
         const msg = json.errors.map((e) => e.message).filter(Boolean).join('; ') || 'CDEK tariff calculation failed.';
         throw new ServiceUnavailableException(msg);
       }
@@ -342,60 +500,38 @@ export class CdekService {
         periodMax: json.period_max,
         tariffCode: json.tariff_code ?? tariffCode,
         tariffName: json.tariff_name,
-        ...(process.env.CDEK_DEBUG_QUOTE === '1'
-          ? {
-              debug: {
-                usedHeavy: useHeavy,
-                type: requestPayload.type,
-                tariffCode: requestPayload.tariff_code,
-                from_location: requestPayload.from_location,
-                to_location: requestPayload.to_location,
-                packages: requestPayload.packages,
-                additional_order_types: (requestPayload as any).additional_order_types ?? null,
-                itemsCount,
-                productsFoundForSpecs,
-                items: debugItems,
-              },
-            }
-          : {}),
+        ...this.buildDebugPayload({
+          usedHeavy: useHeavy,
+          type: requestPayload.type,
+          tariffCode: requestPayload.tariff_code,
+          from_location: requestPayload.from_location,
+          to_location: requestPayload.to_location,
+          packages: requestPayload.packages,
+          additional_order_types: (requestPayload as any).additional_order_types ?? null,
+          itemsCount,
+          productsFoundForSpecs,
+          items: debugItems,
+        }),
       };
     }
 
-    // Fallback: choose the cheapest from tarifflist.
-    const response = await fetch(`${this.baseUrl}/v2/calculator/tarifflist`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    return this.quoteFromTarifflist({
+      token,
+      request: baseRequest,
+      preferredTariffCodes: [],
+      debugMeta: {
+        usedHeavy: false,
+        from_location: baseRequest.from_location,
+        to_location: baseRequest.to_location,
+        packages: baseRequest.packages,
+        additional_order_types: null,
+        itemsCount,
+        productsFoundForSpecs,
+        items: debugItems,
+        type: baseRequest.type,
       },
-      body: JSON.stringify(baseRequest),
+      fallbackReason: 'explicit_tariff_not_configured',
     });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new ServiceUnavailableException(`CDEK tariff calculation failed (${response.status}). ${text}`.trim());
-    }
-
-    const json = (await response.json()) as CdekTariffListResponse;
-    if (json.errors?.length) {
-      const msg = json.errors.map((e) => e.message).filter(Boolean).join('; ') || 'CDEK tariff calculation failed.';
-      throw new ServiceUnavailableException(msg);
-    }
-
-    const tariffs = (json.tariff_codes ?? []).filter((t) => typeof t.delivery_sum === 'number');
-    if (!tariffs.length) {
-      throw new ServiceUnavailableException(json.message || 'CDEK returned empty tariff list.');
-    }
-
-    const best = tariffs.reduce((min, t) => (t.delivery_sum! < min.delivery_sum! ? t : min), tariffs[0]);
-    return {
-      price: Number(best.delivery_sum ?? 0),
-      currency: 'RUB',
-      periodMin: best.period_min,
-      periodMax: best.period_max,
-      tariffCode: best.tariff_code,
-      tariffName: best.tariff_name,
-    };
   }
 
   private async loadProductShippingSpecs(productIds: string[]) {

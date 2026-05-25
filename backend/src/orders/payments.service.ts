@@ -149,6 +149,30 @@ export class PaymentsService {
         payment_subject: item.kind === 'SERVICE' ? 'service' : 'commodity',
       };
     });
+
+    if (order.deliveryPrice.gt(0)) {
+      const deliveryAmount = order.deliveryPrice.toDecimalPlaces(2);
+      const deliveryAmountValue = deliveryAmount.toFixed(2);
+
+      if (!/^\d+\.\d{2}$/.test(deliveryAmountValue) || deliveryAmount.lte(0)) {
+        throw new BadRequestException(
+          `Некорректная сумма доставки для чека YooKassa (value=${deliveryAmountValue}).`,
+        );
+      }
+
+      receiptItems.push({
+        description: 'Доставка'.slice(0, 128),
+        quantity: '1.00',
+        amount: {
+          value: deliveryAmountValue,
+          currency: 'RUB',
+        },
+        vat_code: this.getYooKassaVatCode(),
+        payment_mode: 'full_payment',
+        payment_subject: 'service',
+      });
+    }
+
     const receiptTaxSystemCode = this.getYooKassaTaxSystemCode();
     const orderTotal = new Prisma.Decimal(amountValue).toDecimalPlaces(2);
     const receiptTotal = receiptItems
