@@ -216,6 +216,8 @@ export class CdekService {
       packages: Array<{ weight: number; length: number; width: number; height: number }>;
     };
     preferredTariffCodes: number[];
+    modeHint?: 'door' | 'cargo';
+    strictPreferred?: boolean;
     debugMeta: Omit<CdekQuoteDebug, 'tariffCode' | 'type'> & { type: number };
     fallbackReason: string;
   }) {
@@ -245,7 +247,29 @@ export class CdekService {
     }
 
     const preferred = tariffs.find((t) => t.tariff_code && input.preferredTariffCodes.includes(t.tariff_code));
-    const selected = preferred ?? tariffs.reduce((min, t) => (t.delivery_sum! < min.delivery_sum! ? t : min), tariffs[0]);
+
+    const byMode =
+      input.modeHint === 'door'
+        ? tariffs.filter((t) => (t.tariff_name ?? '').toLowerCase().includes('двер'))
+        : input.modeHint === 'cargo'
+          ? tariffs.filter((t) => {
+              const name = (t.tariff_name ?? '').toLowerCase();
+              return name.includes('груз') || name.includes('двер');
+            })
+          : [];
+
+    const selected =
+      preferred ??
+      (byMode.length > 0 ? byMode.reduce((min, t) => (t.delivery_sum! < min.delivery_sum! ? t : min), byMode[0]) : null) ??
+      (!input.strictPreferred ? tariffs.reduce((min, t) => (t.delivery_sum! < min.delivery_sum! ? t : min), tariffs[0]) : null);
+
+    if (!selected) {
+      throw new ServiceUnavailableException(
+        input.modeHint === 'door'
+          ? 'Для этого направления нет доступного тарифа СДЭК с доставкой до двери.'
+          : 'Для этого направления нет доступного сопоставимого тарифа СДЭК.',
+      );
+    }
 
     return {
       price: Number(selected.delivery_sum ?? 0),
@@ -448,6 +472,8 @@ export class CdekService {
             token,
             request: baseRequest,
             preferredTariffCodes: [tariffCode],
+            modeHint: useHeavy ? 'cargo' : 'door',
+            strictPreferred: true,
             debugMeta: {
               usedHeavy: useHeavy,
               from_location: requestPayload.from_location,
@@ -472,6 +498,8 @@ export class CdekService {
             token,
             request: baseRequest,
             preferredTariffCodes: [tariffCode],
+            modeHint: useHeavy ? 'cargo' : 'door',
+            strictPreferred: true,
             debugMeta: {
               usedHeavy: useHeavy,
               from_location: requestPayload.from_location,
@@ -519,6 +547,7 @@ export class CdekService {
       token,
       request: baseRequest,
       preferredTariffCodes: [],
+      strictPreferred: false,
       debugMeta: {
         usedHeavy: false,
         from_location: baseRequest.from_location,
