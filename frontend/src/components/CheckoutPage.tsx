@@ -431,7 +431,7 @@ export function CheckoutPage() {
           : deliveryQuote
             ? formatPrice(deliveryQuote.price)
             : deliveryQuoteError
-              ? "Не удалось рассчитать"
+              ? "Стоимость доставки будет рассчитана отдельно"
               : "Укажите адрес";
 
     return [
