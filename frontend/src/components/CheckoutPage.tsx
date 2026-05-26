@@ -1021,6 +1021,11 @@ export function CheckoutPage() {
                             />
                           </span>
                         </div>
+                        {deliveryQuoteError ? (
+                          <p className="mt-2 text-[10px] uppercase tracking-[1.3px] text-[#8c8c86] [font-family:Jaldi,'JetBrains_Mono',monospace]">
+                            Стоимость доставки будет рассчитана отдельно
+                          </p>
+                        ) : null}
                         <a
                           href="https://www.cdek.ru/ru/calculate/"
                           target="_blank"
